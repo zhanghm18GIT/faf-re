@@ -1,4 +1,4 @@
-name: Formatter source check (bounded x64)
+name: Allocator source check (bounded x86)
 on:
   workflow_dispatch:
     inputs:
@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       sdk_public_build_approved:
-        description: Owner approved this one public ephemeral SDK and DXSDK build (no uploads)
+        description: Owner approved this one x86 SDK and DXSDK ephemeral build (no uploads)
         required: true
         default: false
         type: boolean
@@ -44,9 +44,11 @@ jobs:
           submodules: false
       - name: Parse scripts before any provisioning
         run: |
-          $tokens = $null; $errors = $null
-          $null = [System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE/ci/source-check/run.ps1", [ref]$tokens, [ref]$errors)
-          if ($errors.Count) { throw ($errors | Out-String) }
+          foreach ($name in @('run.ps1','accept-phase.ps1')) {
+            $tokens = $null; $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE/ci/source-check/$name", [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw ($errors | Out-String) }
+          }
       - name: Compile and test only the reviewed source
         env:
           SOURCE_SHA: ${{ inputs.source_sha }}
