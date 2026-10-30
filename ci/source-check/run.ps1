@@ -38,18 +38,23 @@ $source = (Resolve-Path "$PSScriptRoot/../..").Path
 Set-Location $source
 $actual = (& git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -or $actual -cne $SourceSha) { throw 'Source SHA mismatch' }
-# Do not carry the superseded D3D10 helper-policy patch into this candidate.
-SourceHashIs "$source/src/gpg/gal/MeshFormatter.cpp" '3aac870af7d02461377f2d30cd4550aeac228f3d12700b54e934861e63b75aa3'
-$unchanged = @{
-    'src/gpg/gal/MeshFormatter.cpp' = '2c547c446bd5781eb1f8f0e81c8d575940f9fa5c'
-    'src/gpg/gal/MeshFormatter.h' = 'bab67a32d8b9591e15719c6eff4947f3365b9b9d'
-    'src/gpg/gal/backends/d3d10/D3D10Interfaces.cpp' = 'b5382d005f8b5d684822c26d455d44ef95bad9d2'
+# Exact frozen recon candidate and unchanged stock renderer (no #220/#222).
+$identities = @(
+    @('src/moho/sim/ReconBlip.cpp','bb9fef65139e95a217a60d446b7cc7ba50a8d6ae','071be4748be37e487edf1eb94880d5fc646db07e8d606df47242871a697fd78e'),
+    @('src/moho/sim/UnitUpdateFill.cpp','34bd192f27bdd2200f8ee7f79a784c27a6968a5e','74530572a89d323df2cb2e0be7007cabbd09e64e140cba8944ac77a347e80e26'),
+    @('src/moho/sim/UnitUpdateFill.h','a014bf4777802a5d56103530fce8067c7c47ef59','aca088ca5a7299eb8b590addea04c9ebf4d41b43f889be5099f7fcc1b600c66d'),
+    @('tests/CMakeLists.txt','54be39ea25c8f7c39d48932811c85f852df417f4','c4ce763e39c29b862ea6395e0ce6fb9497978cc1cf482bbbb509de97e39ff7c5'),
+    @('tests/sim/ReconScrollPacketTests.cpp','ab129327ad3fcabade4c79579741e62a9404e872','0f371b65f93374f5b1d86fe4f9da7ce3622004f70c0dd64e2e6b036c06e17c21'),
+    @('src/gpg/gal/MeshFormatter.cpp','cea373d122b0286258c0a6e05cfa00cd89705339','b913d47d65ef06b23a504faafc1c23b4ad7db86096c199d2d6155b9916711457'),
+    @('src/gpg/gal/MeshFormatter.h','c32fc2410a224d82356b6f4e07a9646a0074b5a9','03beae63208c89d28f28bbea873bb612145ffa8e8f249dd8ef8f629b34ca9c01'),
+    @('src/gpg/gal/backends/d3d10/D3D10Interfaces.cpp','b5382d005f8b5d684822c26d455d44ef95bad9d2','79ff660104b3afaedecb83554e63bb9045acd3c4111ea7418245d4df0da498a3')
+)
+foreach ($row in $identities) {
+    $blob = (& git rev-parse "HEAD:$($row[0])").Trim()
+    if ($LASTEXITCODE -or $blob -cne $row[1]) { throw "Committed source identity mismatch: $($row[0])" }
+    SourceHashIs "$source/$($row[0])" $row[2]
 }
-foreach ($entry in $unchanged.GetEnumerator()) {
-    $blob = (& git rev-parse "HEAD:$($entry.Key)").Trim()
-    if ($LASTEXITCODE -or $blob -cne $entry.Value) { throw "Unrelated formatter change: $($entry.Key)" }
-}
-$root = Join-Path $env:RUNNER_TEMP 'formatter-source-check'
+$root = Join-Path $env:RUNNER_TEMP 'recon-source-check'
 if (Test-Path $root) { throw 'Runner scratch directory must be fresh' }
 New-Item -ItemType Directory -Path $root | Out-Null
 $llvm = 'C:/Program Files/LLVM'
@@ -129,19 +134,39 @@ foreach ($row in $dlls) {
 }
 # Required before sim-math automatic POST_BUILD execution; process-local only.
 $env:PATH = "$runtime;$env:PATH"
-# Full-float regression uses actual current D3D9 selector/writers and native D3DX conversion.
-$cpp = "$root/formatter.cpp"
-Checked python @("$PSScriptRoot/formatter_matrix.py", $source, $cpp)
-Checked cmake (@('-S', $PSScriptRoot, '-B', "$root/policy", "-DFORMATTER_CPP=$(Posix $cpp)", "-DFAF_DXSDK_DIR=$(Posix $source)/dependencies/dxsdk") + $common)
-Checked cmake @('--build', "$root/policy", '--parallel', '2')
-Checked ctest @('--test-dir', "$root/policy", '--verbose', '--output-on-failure','--no-tests=error','--timeout','120','-R','^formatter_policy$')
-Checked cmake @('--build',$build,'--parallel','2','--target','faf_main','faf_net_tests','faf_profiler_tests','faf_sim_math_tests')
-Checked ctest @('--test-dir',$build,'--output-on-failure','--no-tests=error','--timeout','120','-R','^(net_robustness|profiler_facade|sim_math)$')
+# Discover actual generated Ninja object names; do not guess CMake layout.
+$targetListing = & ninja -C $build -t targets all
+if ($LASTEXITCODE -ne 0) { throw 'Ninja target discovery failed' }
+$objects = @()
+# UnitUpdateFill.h is covered by the two production translation units.
+foreach ($suffix in @('/moho/sim/ReconBlip.cpp.obj', '/moho/sim/UnitUpdateFill.cpp.obj', '/sim/ReconScrollPacketTests.cpp.obj')) {
+    $objectMatches = @($targetListing | ForEach-Object {
+        if ($_ -match '^(.+): [^:]+$') {
+            $target = $Matches[1].Replace('\','/')
+            if ($target.EndsWith($suffix, [StringComparison]::Ordinal)) { $target }
+        }
+    })
+    if ($objectMatches.Count -ne 1) { throw "Expected exactly one generated object target for $suffix; found $($objectMatches.Count)" }
+    $objects += $objectMatches[0]
+}
+Write-Host "Fail-fast actual object targets: $($objects -join ', ')"
+Checked ninja (@('-C', $build, '-j', '2') + $objects)
+Checked cmake @('--build',$build,'--parallel','2','--target','faf_main','faf_recon_scroll_packet_tests','faf_net_tests','faf_profiler_tests','faf_sim_math_tests')
+# Require all four registered tests, not merely a nonempty regex match.
+$testPattern = '^(recon_scroll_packet|net_robustness|profiler_facade|sim_math)$'
+$listing = & ctest --test-dir $build --show-only=json-v1 -R $testPattern
+if ($LASTEXITCODE -ne 0) { throw 'CTest listing failed' }
+$registered = @((($listing -join "`n") | ConvertFrom-Json).tests | ForEach-Object { $_.name } | Sort-Object)
+$expected = @('net_robustness','profiler_facade','recon_scroll_packet','sim_math')
+if ($registered.Count -ne 4 -or @((Compare-Object $expected $registered)).Count -ne 0) {
+    throw 'Expected four native tests were not registered'
+}
+Checked ctest @('--test-dir',$build,'--verbose','--output-on-failure','--no-tests=error','--timeout','120','-R','^(recon_scroll_packet|net_robustness|profiler_facade|sim_math)$')
 @"
 ## Source-only Windows check
 - Commit: $actual
 - Runner: $env:ImageVersion; LLVM20.1.8; MSVC $vcVersion; UCRT10.0.22000.0
-- PASS: actual-source D3D9 full-float default/selection/packing regression (native D3DX conversion), full x64 client compile/link, net robustness, profiler facade, sim math.
-- NOT TESTED: GPU rendering/rebatch lifecycle, game launch, replay parity, x86.
+- PASS: native recon packet, full x64 client compile/link, net robustness, profiler facade, sim math.
+- NOT TESTED: live recon/tread visibility, game launch, core/extended replay parity, x86.
 - No binaries, SDK files, DLLs, game data or private archives uploaded.
 "@ | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
