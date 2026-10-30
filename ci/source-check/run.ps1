@@ -38,10 +38,11 @@ $source = (Resolve-Path "$PSScriptRoot/../..").Path
 Set-Location $source
 $actual = (& git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -or $actual -cne $SourceSha) { throw 'Source SHA mismatch' }
-# Current b7cf5a24 full-float default-0 base and reviewed test overlay.
+# Frozen baseline production and A/B test overlay, b7cf5a24.
 $identities = @(
     @('.gitmodules','8777f05826e811b5d0fb3ae7b3fbb30500cdda8e','1a9da3812d426e1d02daf69e121c1bbf27bf7da8fc30f1ea3bbf4601cf998b05'),
     @('CMakeLists.txt','940009c010dbb4f346cc3f41a9c234264f86cd43','3d17310999a93ca23c8999ec97f89b7982339fb1855810365306129aad3a18d7'),
+    @('ci/source-check/rotation.patch','2900235027e6f5678066d815b790056c4fb80822','1dae21cef152ec130aa6d915b15d927f8446df54820c1cf4e383df8055cb44dc'),
     @('cmake/FafDependencies.cmake','92d2c9d84da6dce8962f32004da5034f00a311be','cd932380c3a52e62d3be790a10cdb7c1dc73096ff089e9078ae8c77bb18bd44e'),
     @('cmake/toolchains/clang-cl-x64.cmake','69c09b528767cb2dd3753ca59c726438cfd19185','c94f12f9a8e00121f56f0c7431ff52bce75ef3b3568bc606f33ebedfc0f3a2c8'),
     @('src/CMakeLists.txt','36f624f3ac200824c6b371070b9cf2c9b3ee2336','4dfa21a57a903b91218ae8814aabfac9f4f8bb474a53448ee4799ca2894a1b2c'),
@@ -63,11 +64,13 @@ $identities = @(
     @('src/moho/sim/SimWorkerPool.h','2d6eeae602db31f6ce1970d4e7fa75f07b78ba8a','2910613ada701d02e366be884f21e2d5ae1a61f365ebe52e3b8beac28342b13d'),
     @('src/moho/sim/UnitUpdateFill.cpp','843214eb5a59b77ea57a366233007a61bffd6f01','7a7948216065917ddb6ddea407f5f6e0685446d0165071225187f1e59fdc1fe6'),
     @('src/moho/sim/UnitUpdateFill.h','1af96d0fed813a08f4258d21350094722ddbf171','0724a0740ce6ae9a777c62ee560748c31003ea89160017f845971d4c64430022'),
-    @('tests/CMakeLists.txt','218447ff8aeb7fd317154672a9429153382b7c65','0f74eafc671720422451d5714f5e2da1dff9b40893749f4499796cbc9e0fe3af'),
+    @('tests/CMakeLists.txt','23169053a36c46d21ee2f22404deb409b6c5d64a','ebbff905f67c4ce46d52216f1a73c7f726c1b6c69b3be1ce58d30c9c18ea41d5'),
     @('tests/memory/X64AllocatorTests.cpp','cb89b5790a6b04fbddea7344cd34176110613d10','aa5de602c2b4f8d788b39c8c19be5b0aeedf47bd8ab72b376316dc5579ae6cc3'),
     @('tests/remote/CMakeLists.txt','9e3daf3612c49c91758425d4ca1f1fec52a4fb41','0b1cccf987519f1ead1840d6240fe753348245359e0235927899bd0759f56b00'),
-    @('tests/tread/CMakeLists.txt','97f5536ed57ce113fc63c6b1d72af48ccb75a74b','e3117d0cb32f91e521831a49566c1c99ee8ed898d113bfc103c462d7a6cc6e65'),
-    @('tests/tread/TreadComponentTests.cpp','aaca06a2387c485e7e4240beca63d568cb2f45bd','6f631cc92488340ebabc11f9ff23791a30628f42fe36bb85ff72b2ee8120fe7a')
+    @('tests/tread/CMakeLists.txt','622b7ce2bdbd3522156d80fc61a343f268e908f2','e2d80424e3abfe1737729969311fa62eac89cead5ce4a22d0c222c82c8a46008'),
+    @('tests/tread/TreadComponentTests.cpp','5a6fd62ca8435c96e8f49e50fc5749b937558c5e','ee3fefce5d54ad3b1856bdb9f1ddd4d9bad34ef9a2aac4ed578bb2f8028f7dc9'),
+    @('tests/tread_rotation/CMakeLists.txt','533b5837c9617b749d707fab0ff36b524f709b68','bd343bb1dff21300c355928b2b4d3434f02f28ea08a8a5d133458adb128eb18f'),
+    @('tests/tread_rotation/RotationRepairTests.cpp','7869c1b072244cfd585e84c236f34a949dc788fd','0504c8e4d59b67a533b4acfc049e19ee32c60e8b64a2d9e95854fef8f7eee524')
 )
 foreach ($row in $identities) {
     $blob = (& git rev-parse "HEAD:$($row[0])").Trim()
@@ -87,7 +90,7 @@ foreach ($row in $dependencyIdentities) {
     $identity = (& git rev-parse "HEAD:$($row[0])").Trim()
     if ($LASTEXITCODE -or $identity -cne $row[1]) { throw "Dependency identity mismatch: $($row[0])" }
 }
-$root = Join-Path $env:RUNNER_TEMP 'current-engine-source-check'
+$root = Join-Path $env:RUNNER_TEMP 'rotation-ab-source-check'
 if (Test-Path $root) { throw 'Runner scratch directory must be fresh' }
 New-Item -ItemType Directory -Path $root | Out-Null
 $llvm = 'C:/Program Files/LLVM'
@@ -148,7 +151,7 @@ $common = @('-G','Ninja','-DCMAKE_BUILD_TYPE=Release',"-DCMAKE_TOOLCHAIN_FILE=$a
 Write-Host "Source $actual; runner $env:ImageVersion; MSVC $vcVersion; SDK headers $headers; static UCRT 10.0.22000.0"
 # New disposable source tree only. Upstream verifies download hashes and applies its patches.
 $build = "$root/build"
-Checked cmake (@('-S',$source,'-B',$build,'-DFAF_ENABLE_TRACY=OFF','-DFAF_DXSDK_FORCE_DOWNLOAD=ON','-DFAF_SERVER_MODE=OFF','-DFAF_TREAD_COMPONENT_TESTS=ON') + $common)
+Checked cmake (@('-S',$source,'-B',$build,'-DFAF_ENABLE_TRACY=OFF','-DFAF_DXSDK_FORCE_DOWNLOAD=ON','-DFAF_SERVER_MODE=OFF','-DFAF_TREAD_COMPONENT_TESTS=ON','-DFAF_TREAD_ROTATION_VARIANT=baseline') + $common)
 $dxArchive = "$source/dependencies/.downloads/DXSDK_Jun10.exe"
 HashIs $dxArchive '705271dc83bfee54d9b94e028426e288d5f070784b7446d164f48ecfbb2a02cb'
 $runtime = "$root/runtime"
@@ -171,7 +174,7 @@ $env:PATH = "$runtime;$env:PATH"
 $targetListing = & ninja -C $build -t targets all
 if ($LASTEXITCODE -ne 0) { throw 'Ninja target discovery failed' }
 $objects = @()
-foreach ($suffix in @('/moho/entity/Entity.cpp.obj','/moho/entity/CTextureScroller.cpp.obj','/moho/entity/UserEntity.cpp.obj','/moho/entity/SSTIEntityVariableData.cpp.obj','/moho/mesh/HardwareMeshBatch.cpp.obj','/moho/sim/UnitUpdateFill.cpp.obj','/gpg/core/utils/Global.cpp.obj','/faf_tread_component_tests.dir/TreadComponentTests.cpp.obj','/memory/X64AllocatorTests.cpp.obj')) {
+foreach ($suffix in @('/moho/entity/Entity.cpp.obj','/moho/entity/CTextureScroller.cpp.obj','/moho/entity/UserEntity.cpp.obj','/moho/entity/SSTIEntityVariableData.cpp.obj','/moho/mesh/HardwareMeshBatch.cpp.obj','/moho/sim/UnitUpdateFill.cpp.obj','/gpg/core/utils/Global.cpp.obj','/faf_tread_component_tests.dir/TreadComponentTests.cpp.obj','/memory/X64AllocatorTests.cpp.obj','/faf_tread_rotation_tests.dir/RotationRepairTests.cpp.obj')) {
     $objectMatches = @($targetListing | ForEach-Object {
         if ($_ -match '^(.+): [^:]+$') {
             $target = $Matches[1].Replace('\','/')
@@ -183,36 +186,89 @@ foreach ($suffix in @('/moho/entity/Entity.cpp.obj','/moho/entity/CTextureScroll
 }
 Write-Host "Fail-fast object targets: $($objects -join ', ')"
 Checked ninja (@('-C', $build, '-j', '2') + $objects)
-Checked cmake @('--build',$build,'--parallel','2','--target','faf_main','faf_tread_component_tests','faf_x64_allocator_tests','faf_net_tests','faf_profiler_tests','faf_sim_math_tests')
-# Inspect ALL registrations: no regex masking extra or missing tests.
-$listing = & ctest --test-dir $build --show-only=json-v1
-if ($LASTEXITCODE -ne 0) { throw 'CTest listing failed' }
-$registered = @((($listing -join "`n") | ConvertFrom-Json).tests | ForEach-Object { $_.name } | Sort-Object)
-$expected = @('net_robustness','profiler_facade','sim_math','tread_motion_fixture','tread_phase_fixture','tread_snapshot_fixture','x64_allocator_pool_off','x64_allocator_pool_on')
-if ($registered.Count -ne 8 -or @((Compare-Object $expected $registered)).Count -ne 0) {
-    throw "Expected exactly eight native tests; got: $($registered -join ', ')"
-}
-$testData = (($listing -join "`n") | ConvertFrom-Json).tests
-$executables = @{
-    net_robustness = 'faf_net_tests.exe'; profiler_facade = 'faf_profiler_tests.exe'; sim_math = 'faf_sim_math_tests.exe'
-    tread_motion_fixture = 'faf_tread_component_tests.exe'; tread_phase_fixture = 'faf_tread_component_tests.exe'; tread_snapshot_fixture = 'faf_tread_component_tests.exe'
-    x64_allocator_pool_on = 'faf_x64_allocator_tests.exe'; x64_allocator_pool_off = 'faf_x64_allocator_tests.exe'
-}
-$modes = @{ tread_motion_fixture='motion'; tread_phase_fixture='phase'; tread_snapshot_fixture='snapshot'; x64_allocator_pool_on='pool-on'; x64_allocator_pool_off='pool-off' }
-foreach ($test in $testData) {
-    if (!(Test-Path -LiteralPath $test.command[0] -PathType Leaf) -or (Split-Path -Leaf $test.command[0]) -cne $executables[$test.name]) {
-        throw "Wrong/missing registered test executable: $($test.name)"
+Checked cmake @('--build',$build,'--parallel','2','--target','faf_main','faf_tread_component_tests','faf_x64_allocator_tests','faf_net_tests','faf_profiler_tests','faf_sim_math_tests','faf_tread_rotation_tests')
+# Inspect ALL registrations for each variant; no regex masking extra/missing tests.
+function RunSuite([string]$Variant) {
+    $listing = & ctest --test-dir $build --show-only=json-v1
+    if ($LASTEXITCODE -ne 0) { throw 'CTest listing failed' }
+    $testData = (($listing -join "`n") | ConvertFrom-Json).tests
+    $registered = @($testData | ForEach-Object { $_.name } | Sort-Object)
+    $expected = @('net_robustness','profiler_facade','sim_math','tread_motion_fixture','tread_phase_fixture','tread_snapshot_fixture','tread_rotation_guard','x64_allocator_pool_off','x64_allocator_pool_on')
+    if ($registered.Count -ne 9 -or @((Compare-Object $expected $registered)).Count -ne 0) {
+        throw "Expected exactly nine native tests; got: $($registered -join ', ')"
     }
-    if ($modes.ContainsKey($test.name) -and ($test.command.Count -ne 2 -or $test.command[1] -cne $modes[$test.name])) {
-        throw "Unexpected test mode: $($test.name)"
+    $executables = @{
+        net_robustness='faf_net_tests.exe'; profiler_facade='faf_profiler_tests.exe'; sim_math='faf_sim_math_tests.exe'
+        tread_motion_fixture='faf_tread_component_tests.exe'; tread_phase_fixture='faf_tread_component_tests.exe'; tread_snapshot_fixture='faf_tread_component_tests.exe'
+        tread_rotation_guard='faf_tread_rotation_tests.exe'; x64_allocator_pool_on='faf_x64_allocator_tests.exe'; x64_allocator_pool_off='faf_x64_allocator_tests.exe'
     }
+    $modes = @{ tread_motion_fixture='motion'; tread_phase_fixture='phase'; tread_snapshot_fixture='snapshot'; tread_rotation_guard=$Variant; x64_allocator_pool_on='pool-on'; x64_allocator_pool_off='pool-off' }
+    foreach ($test in $testData) {
+        if (!(Test-Path -LiteralPath $test.command[0] -PathType Leaf) -or (Split-Path -Leaf $test.command[0]) -cne $executables[$test.name]) {
+            throw "Wrong/missing registered test executable: $($test.name)"
+        }
+        if ($modes.ContainsKey($test.name) -and ($test.command.Count -ne 2 -or $test.command[1] -cne $modes[$test.name])) {
+            throw "Unexpected test mode: $($test.name)"
+        }
+    }
+    Write-Host "BEGIN native suite variant=$Variant"
+    Checked ctest @('--test-dir',$build,'--verbose','--output-on-failure','--no-tests=error','--timeout','120') | ForEach-Object { Write-Host $_ }
+    $rotation = @($testData | Where-Object { $_.name -ceq 'tread_rotation_guard' })
+    return $rotation[0].command[0]
 }
-Checked ctest @('--test-dir',$build,'--verbose','--output-on-failure','--no-tests=error','--timeout','120')
+# Explicit semantic discriminator: opposite source expectation must fail exactly,
+# not merely crash/timeout; matching mode emits traces for bitwise comparison.
+function RunRotation([string]$Exe,[string]$Mode,[string]$Stage,[bool]$ExpectFailure) {
+    $stdout = "$root/$Stage-$Mode.stdout.txt"
+    $stderr = "$root/$Stage-$Mode.stderr.txt"
+    $process = Start-Process -FilePath $Exe -ArgumentList $Mode -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    if (!$process.WaitForExit(120000)) { $process.Kill(); throw "Rotation timeout $Stage/$Mode" }
+    $process.WaitForExit()
+    $out = Get-Content -LiteralPath $stdout -Raw
+    $err = Get-Content -LiteralPath $stderr -Raw
+    Write-Host $out
+    Write-Host $err
+    if ($ExpectFailure) {
+        if ($process.ExitCode -ne 1 -or $err -notmatch '(?m)^FAIL rotation source outcome\r?$') {
+            throw "Wrong source-discrimination failure $Stage/$Mode exit=$($process.ExitCode)"
+        }
+        Write-Host "EXPECTED source discriminator $Stage/$Mode: exact assertion, exit1"
+    } elseif ($process.ExitCode -ne 0 -or $out -notmatch "PASS real Tick rotation guard comparison variant=$Mode;") {
+        throw "Rotation matching expectation failed $Stage/$Mode exit=$($process.ExitCode)"
+    }
+    return @($out -split "`r?`n" | Where-Object { $_ -match '^TRACE ' -and $_ -notmatch '^TRACE (yaw_positive|yaw_negative|repeated_yaw|repeated_tilted_positive|repeated_tilted_negative_scale) ' })
+}
+# RunSuite prints native output to host and returns only the registered executable path.
+$baselineExe = (RunSuite 'baseline')
+$baselineTrace = @(RunRotation $baselineExe 'baseline' 'baseline' $false)
+$null = RunRotation $baselineExe 'candidate' 'baseline' $true
+$baselineExeHash = (Get-FileHash -LiteralPath $baselineExe -Algorithm SHA256).Hash
+# Candidate changes exactly one production source file. Inputs were pinned before provisioning.
+Checked git @('apply','--check','--whitespace=error','ci/source-check/rotation.patch')
+Checked git @('apply','--whitespace=error','ci/source-check/rotation.patch')
+$changed = @(& git diff --name-only --ignore-submodules=all)
+if ($LASTEXITCODE -ne 0 -or $changed.Count -ne 1 -or $changed[0] -cne 'src/moho/entity/CTextureScroller.cpp') { throw 'Unexpected candidate source delta' }
+SourceHashIs "$source/src/moho/entity/CTextureScroller.cpp" '51a638e0f6a1378faff8c5dec623d430d41ff82cfedec8fbd944ab055317356d'
+foreach ($row in $identities) {
+    if ($row[0] -cne 'src/moho/entity/CTextureScroller.cpp') { SourceHashIs "$source/$($row[0])" $row[2] }
+}
+Checked cmake @('-S',$source,'-B',$build,'-DFAF_TREAD_ROTATION_VARIANT=candidate')
+Checked cmake @('--build',$build,'--parallel','2','--target','faf_main','faf_tread_component_tests','faf_x64_allocator_tests','faf_net_tests','faf_profiler_tests','faf_sim_math_tests','faf_tread_rotation_tests')
+$candidateExe = (RunSuite 'candidate')
+$candidateTrace = @(RunRotation $candidateExe 'candidate' 'candidate' $false)
+$null = RunRotation $candidateExe 'baseline' 'candidate' $true
+$candidateExeHash = (Get-FileHash -LiteralPath $candidateExe -Algorithm SHA256).Hash
+if ($baselineExeHash -ceq $candidateExeHash) { throw 'Candidate executable did not change' }
+if ($baselineTrace.Count -ne 14 -or $baselineTrace.Count -ne $candidateTrace.Count) { throw 'Missing nonrotation trace comparison' }
+for ($i=0;$i -lt $baselineTrace.Count;$i++) {
+    if ($baselineTrace[$i] -cne $candidateTrace[$i]) { throw "Nonrotation endpoint bits changed at trace $i" }
+}
+Write-Host "PASS A/B nonrotation trace identity rows=$($baselineTrace.Count); baselineEXE=$baselineExeHash candidateEXE=$candidateExeHash"
 @"
-## Source-only Windows check
-- Commit: $actual
-- Runner: $env:ImageVersion; LLVM20.1.8; MSVC $vcVersion; UCRT10.0.22000.0
-- PASS: 3 tread component cases, 2 real x64 allocator modes, stock net/profiler/math, full x64 client compile/link.
-- NOT TESTED: live game/GPU visibility, live Sim scheduler, core/extended replay parity, x86. No unmerged recon fix applied.
-- No binaries, SDK files, DLLs, game data or private archives uploaded.
+## Rotation A/B native validation
+- Commit: $actual; baseline b7cf5a24 source plus tests; candidate patch SHA256 guarded.
+- Runner: $env:ImageVersion; LLVM20.1.8; MSVC $vcVersion; UCRT10.0.22000.0.
+- PASS: baseline omission and candidate repair with opposite-expectation discrimination;9 native tests in each variant; nonrotation trace bits identical; full x64 client linked in both stages.
+- NOT TESTED: live locomotor/visibility/GPU, sim scheduler, core/extended replay parity, x86. No unmerged recon fix.
+- No binaries, SDK/DLL files, assets or private archives uploaded.
 "@ | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY

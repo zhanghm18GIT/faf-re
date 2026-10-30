@@ -61,8 +61,12 @@ void Motion() {
   Fixture rotation;
   rotation.Data().mCurTransform.orient_={cosine,0.0f,sine,0.0f};
   rotation.scroller.Tick();
+#if defined(FAF_TREAD_ROTATION_CANDIDATE)
+  Check(Near(rotation.Data().mScrollBeatEnd.x,-std::sin(.2f)) && Near(rotation.Data().mScrollBeatEnd.y,std::sin(.2f)),"candidate pure-rotation projected update");
+#else
   Check(rotation.Data().mScrollBeatEnd.x==0.0f && rotation.Data().mScrollBeatEnd.y==0.0f,"current pure-rotation early return observation");
-  std::printf("FINDING fixture_only pure_rotation output=(0,0) rigid_side_expected=(%.9g,%.9g); stationary_keeps_prior_pair=true; straight_ticks=1024 zero_gaps=%u\n",-std::sin(.2f),std::sin(.2f),zero);
+#endif
+  std::printf("FINDING fixture_only pure_rotation output=(%.9g,%.9g) rigid_side_expected=(%.9g,%.9g); stationary_keeps_prior_pair=true; straight_ticks=1024 zero_gaps=%u\n",rotation.Data().mScrollBeatEnd.x,rotation.Data().mScrollBeatEnd.y,-std::sin(.2f),std::sin(.2f),zero);
 }
 void Consume(const SSTIEntityVariableData& source,float alpha,float& x,float& y) {
   // Real empty spatial database outlives the mesh; null resource uses default skeleton.

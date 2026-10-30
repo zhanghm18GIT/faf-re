@@ -61,3 +61,5 @@ if(WIN32 AND FAF_TARGET_ARCH STREQUAL "x64")
   set_tests_properties(x64_allocator_pool_on PROPERTIES ENVIRONMENT "FAF_SMALLPOOL=1;FAF_HIGHMEM=0" TIMEOUT 120)
   set_tests_properties(x64_allocator_pool_off PROPERTIES ENVIRONMENT "FAF_SMALLPOOL=0;FAF_HIGHMEM=0" TIMEOUT 120)
 endif()
+
+add_subdirectory(tread_rotation)
