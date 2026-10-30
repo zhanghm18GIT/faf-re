@@ -2406,7 +2406,3 @@ void gpg::SetThreadName([[maybe_unused]] const unsigned int id, [[maybe_unused]]
 {
   FAF_PROFILE_SET_THREAD_NAME(name);
 }
-
-#if defined(FAF_ALLOCATOR_BOUNDARY_TESTS)
-#include "../../../../tests/memory/AllocatorBoundsNative.inl"
-#endif

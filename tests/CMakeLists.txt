@@ -50,4 +50,16 @@ add_executable(faf_terrain_check EXCLUDE_FROM_ALL terrain/TerrainCheck.cpp)
 target_link_libraries(faf_terrain_check PRIVATE faf_engine)
 add_subdirectory(remote)
 
-add_subdirectory(memory)
+# Disposable production-backed tread component fixtures.
+add_subdirectory(tread)
+
+if(WIN32 AND FAF_TARGET_ARCH STREQUAL "x64")
+  add_executable(faf_x64_allocator_tests EXCLUDE_FROM_ALL memory/X64AllocatorTests.cpp)
+  target_link_libraries(faf_x64_allocator_tests PRIVATE faf_engine)
+  add_test(NAME x64_allocator_pool_on COMMAND faf_x64_allocator_tests pool-on)
+  add_test(NAME x64_allocator_pool_off COMMAND faf_x64_allocator_tests pool-off)
+  set_tests_properties(x64_allocator_pool_on PROPERTIES ENVIRONMENT "FAF_SMALLPOOL=1;FAF_HIGHMEM=0" TIMEOUT 120)
+  set_tests_properties(x64_allocator_pool_off PROPERTIES ENVIRONMENT "FAF_SMALLPOOL=0;FAF_HIGHMEM=0" TIMEOUT 120)
+endif()
+
+add_subdirectory(tread_rotation)
