@@ -24,7 +24,7 @@ jobs:
   windows:
     if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/formatter-windows-x64'
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: pwsh

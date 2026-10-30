@@ -50,8 +50,14 @@ add_executable(faf_terrain_check EXCLUDE_FROM_ALL terrain/TerrainCheck.cpp)
 target_link_libraries(faf_terrain_check PRIVATE faf_engine)
 add_subdirectory(remote)
 
-# Entity update scroll snapshots and payload ownership.
-add_executable(faf_recon_scroll_packet_tests EXCLUDE_FROM_ALL sim/ReconScrollPacketTests.cpp)
-target_link_libraries(faf_recon_scroll_packet_tests PRIVATE faf_engine)
-add_test(NAME recon_scroll_packet COMMAND faf_recon_scroll_packet_tests)
-set_tests_properties(recon_scroll_packet PROPERTIES TIMEOUT 120)
+# Disposable production-backed tread component fixtures.
+add_subdirectory(tread)
+
+if(WIN32 AND FAF_TARGET_ARCH STREQUAL "x64")
+  add_executable(faf_x64_allocator_tests EXCLUDE_FROM_ALL memory/X64AllocatorTests.cpp)
+  target_link_libraries(faf_x64_allocator_tests PRIVATE faf_engine)
+  add_test(NAME x64_allocator_pool_on COMMAND faf_x64_allocator_tests pool-on)
+  add_test(NAME x64_allocator_pool_off COMMAND faf_x64_allocator_tests pool-off)
+  set_tests_properties(x64_allocator_pool_on PROPERTIES ENVIRONMENT "FAF_SMALLPOOL=1;FAF_HIGHMEM=0" TIMEOUT 120)
+  set_tests_properties(x64_allocator_pool_off PROPERTIES ENVIRONMENT "FAF_SMALLPOOL=0;FAF_HIGHMEM=0" TIMEOUT 120)
+endif()

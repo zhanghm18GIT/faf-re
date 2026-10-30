@@ -33,7 +33,6 @@ namespace moho
       std::size_t mIndex;                    // into SSyncData::mEntityUpdates
       const SSTIEntityVariableData* mSource; // the payload passed to the queue call
       std::uint8_t mRequestRefreshUI;        // the source's value when queued
-      bool mHasScrollOverride;              // endpoints captured in the queued record
       const SPerArmyReconInfo* mReconOverrides;
     };
     SEntityUpdateFill sEntityUpdateFills[kMaxUnitUpdateFills];
@@ -146,17 +145,7 @@ namespace moho
     for (std::size_t i = begin; i < end; ++i) {
       const SEntityUpdateFill& fill = sEntityUpdateFills[i];
       SSTIEntityVariableData& payload = mSyncData->mEntityUpdates[fill.mIndex].mVariableData;
-      // Snapshot only initialized override values; ordinary deferred records do
-      // not need their default scroll lanes read. Queue storage may have moved.
-      if (fill.mHasScrollOverride) {
-        const auto scrollStart = payload.mScrollBeatStart;
-        const auto scrollEnd = payload.mScrollBeatEnd;
-        payload = *fill.mSource;
-        payload.mScrollBeatStart = scrollStart;
-        payload.mScrollBeatEnd = scrollEnd;
-      } else {
-        payload = *fill.mSource;
-      }
+      payload = *fill.mSource;
       payload.mRequestRefreshUI = fill.mRequestRefreshUI;
       if (const SPerArmyReconInfo* const recon = fill.mReconOverrides; recon != nullptr) {
         payload.mMeshBlueprint = recon->mStiMesh;
@@ -184,25 +173,9 @@ namespace moho
     SEntityVariableUpdateEntry& entry = syncData->mEntityUpdates.back();
     entry.mEntityId = entityId;
     sEntityUpdateFills[sEntityUpdateFillCount++] = SEntityUpdateFill{
-      syncData->mEntityUpdates.size() - 1u, &variableData, variableData.mRequestRefreshUI, false, nullptr
+      syncData->mEntityUpdates.size() - 1u, &variableData, variableData.mRequestRefreshUI, nullptr
     };
     return &entry;
-  }
-
-  void OverrideEntityUpdateScroll(SSyncData* const syncData, const SSTIEntityVariableData& source)
-  {
-    if (syncData == nullptr || syncData->mEntityUpdates.empty()) {
-      return;
-    }
-    SSTIEntityVariableData& payload = syncData->mEntityUpdates.back().mVariableData;
-    payload.mScrollBeatStart = source.mScrollBeatStart;
-    payload.mScrollBeatEnd = source.mScrollBeatEnd;
-    if (syncData == sActiveSyncData && sEntityUpdateFillCount != 0u) {
-      SEntityUpdateFill& last = sEntityUpdateFills[sEntityUpdateFillCount - 1u];
-      if (last.mIndex + 1u == syncData->mEntityUpdates.size()) {
-        last.mHasScrollOverride = true;
-      }
-    }
   }
 
   bool OverrideDeferredEntityUpdateFromRecon(SSyncData* const syncData, const SPerArmyReconInfo* const reconInfo)
