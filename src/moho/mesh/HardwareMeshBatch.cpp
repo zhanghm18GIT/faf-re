@@ -1,3 +1,6 @@
+#if defined(FAF_TREAD_TEST_SEAMS)
+#include "moho/entity/TreadComponentTestSeams.h"
+#endif
 #include "MeshBatch.h"
 #include "legacy/math/X87Math.h"
 
@@ -966,10 +969,14 @@ namespace moho
           );
           staging.useSecondaryData = mUseSecondaryData;
           staging.parameter = (&meshInstance->parameters)[mParameterAnnotation];
+#if defined(FAF_TREAD_TEST_SEAMS)
+          TreadTestInterpolateMesh(meshInstance, staging);
+#else
           staging.scroll[0] = meshInstance->scroll1.x
             + ((meshInstance->scroll2.x - meshInstance->scroll1.x) * MeshInstance::sCurrentInterpolant);
           staging.scroll[1] = meshInstance->scroll1.y
             + ((meshInstance->scroll2.y - meshInstance->scroll1.y) * MeshInstance::sCurrentInterpolant);
+#endif
           staging.dissolve = static_cast<std::uint8_t>(
             static_cast<std::int32_t>(meshInstance->dissolve * kDissolveToByteScale)
           );
@@ -1218,3 +1225,16 @@ namespace moho
     Initialize(lod, remapToReferenceResource, referenceResource, currentResource);
   }
 } // namespace moho
+
+#if defined(FAF_TREAD_TEST_SEAMS)
+namespace moho
+{
+void TreadTestInterpolateMesh(const MeshInstance* meshInstance, gpg::gal::MeshVertex& staging)
+{
+          staging.scroll[0] = meshInstance->scroll1.x
+            + ((meshInstance->scroll2.x - meshInstance->scroll1.x) * MeshInstance::sCurrentInterpolant);
+          staging.scroll[1] = meshInstance->scroll1.y
+            + ((meshInstance->scroll2.y - meshInstance->scroll1.y) * MeshInstance::sCurrentInterpolant);
+}
+}
+#endif

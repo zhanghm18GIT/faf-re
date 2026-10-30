@@ -1,3 +1,6 @@
+#if defined(FAF_TREAD_TEST_SEAMS)
+#include "moho/entity/TreadComponentTestSeams.h"
+#endif
 #include "moho/entity/UserEntity.h"
 
 #include <algorithm>
@@ -441,8 +444,12 @@ namespace moho
         mMeshInstance->scale = mVariableData.mScale;
       }
 
+#if defined(FAF_TREAD_TEST_SEAMS)
+      TreadTestPublishMesh(mMeshInstance, variableData);
+#else
       mMeshInstance->scroll1 = variableData.mScrollBeatStart;
       mMeshInstance->scroll2 = variableData.mScrollBeatEnd;
+#endif
 
       // `SetStance` minus its bounds republish, which `FinishEntityDataUpdate`
       // runs first - the next step in the binary's order either way.
@@ -920,3 +927,14 @@ namespace moho
     return ((categoryBits >> (categoryBitIndex & 0x1Fu)) & 1u) != 0u;
   }
 } // namespace moho
+
+#if defined(FAF_TREAD_TEST_SEAMS)
+namespace moho
+{
+void TreadTestPublishMesh(MeshInstance* mMeshInstance, const SSTIEntityVariableData& variableData)
+{
+      mMeshInstance->scroll1 = variableData.mScrollBeatStart;
+      mMeshInstance->scroll2 = variableData.mScrollBeatEnd;
+}
+}
+#endif
