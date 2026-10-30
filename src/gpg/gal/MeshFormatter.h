@@ -121,8 +121,9 @@ namespace gpg::gal
 	 *
 	 * What it does:
 	 * True when the `mesh_Rebatch` instancing switch is on and the active
-	 * device instances in hardware. All hardware formatters require it, and
-	 * the mesh batch factory only builds a hardware batch when it holds.
+	 * device instances in hardware. Both D3D9 formatters require it, and the
+	 * mesh batch factory only builds a hardware batch when it holds; the D3D10
+	 * formatters read the device context alone.
 	 */
 	[[nodiscard]] bool MeshInstancingEnabled();
 
@@ -131,13 +132,14 @@ namespace gpg::gal
 	 *
 	 * What it does:
 	 * True when the `mesh_Rebatch` float16 switch is on and the active device
-	 * takes float16 vertex data. Both float16 formatters require it.
+	 * takes float16 vertex data. The D3D9 float16 formatter requires it.
 	 */
 	[[nodiscard]] bool MeshFloat16Enabled();
 
 	/**
 	 * The two `mesh_Rebatch` switches (0x00F324B5 instancing, 0x00F324B4
-	 * float16), both on by default. The console command writes them directly
+	 * float16), both on by default in retail. FAF defaults float16 off while
+	 * keeping instancing on. The console command still writes them directly
 	 * and then calls `ResetHardwareVertexFormatter`.
 	 */
 	extern std::uint8_t sMeshAllowInstancing;

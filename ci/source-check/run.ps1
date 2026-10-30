@@ -26,6 +26,16 @@ $source = (Resolve-Path "$PSScriptRoot/../..").Path
 Set-Location $source
 $actual = (& git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -or $actual -cne $SourceSha) { throw 'Source SHA mismatch' }
+# Do not carry the superseded D3D10 helper-policy patch into this candidate.
+HashIs "$source/src/gpg/gal/MeshFormatter.cpp" '3aac870af7d02461377f2d30cd4550aeac228f3d12700b54e934861e63b75aa3'
+$unchanged = @{
+    'src/gpg/gal/MeshFormatter.h' = 'bab67a32d8b9591e15719c6eff4947f3365b9b9d'
+    'src/gpg/gal/backends/d3d10/D3D10Interfaces.cpp' = 'b5382d005f8b5d684822c26d455d44ef95bad9d2'
+}
+foreach ($entry in $unchanged.GetEnumerator()) {
+    $blob = (& git rev-parse "HEAD:$($entry.Key)").Trim()
+    if ($LASTEXITCODE -or $blob -cne $entry.Value) { throw "Unrelated formatter change: $($entry.Key)" }
+}
 $root = Join-Path $env:RUNNER_TEMP 'formatter-source-check'
 if (Test-Path $root) { throw 'Runner scratch directory must be fresh' }
 New-Item -ItemType Directory -Path $root | Out-Null
@@ -85,12 +95,6 @@ $common = @('-G','Ninja','-DCMAKE_BUILD_TYPE=Release',"-DCMAKE_TOOLCHAIN_FILE=$a
     "-DFAF_LLVM_ROOT=$llvm", "-DFAF_MSVC_TOOLS_DIR=$vc", "-DFAF_WINSDK_DIR=$(Posix $overlay)",
     "-DFAF_WINSDK_VERSION=$headers", '-DFAF_UCRT_LIB_VERSION=10.0.22000.0')
 Write-Host "Source $actual; runner $env:ImageVersion; MSVC $vcVersion; SDK headers $headers; static UCRT 10.0.22000.0"
-# Narrow policy matrix uses actual current source bodies; no fallback private/local files.
-$cpp = "$root/formatter.cpp"
-Checked python @("$PSScriptRoot/formatter_matrix.py", $source, $cpp)
-Checked cmake (@('-S', $PSScriptRoot, '-B', "$root/policy", "-DFORMATTER_CPP=$(Posix $cpp)") + $common)
-Checked cmake @('--build', "$root/policy", '--parallel', '2')
-Checked ctest @('--test-dir', "$root/policy", '--output-on-failure','--no-tests=error','--timeout','120','-R','^formatter_policy$')
 # New disposable source tree only. Upstream verifies download hashes and applies its patches.
 $build = "$root/build"
 Checked cmake (@('-S',$source,'-B',$build,'-DFAF_ENABLE_TRACY=OFF','-DFAF_DXSDK_FORCE_DOWNLOAD=ON') + $common)
@@ -112,13 +116,19 @@ foreach ($row in $dlls) {
 }
 # Required before sim-math automatic POST_BUILD execution; process-local only.
 $env:PATH = "$runtime;$env:PATH"
+# Full-float regression uses actual current D3D9 selector/writers and native D3DX conversion.
+$cpp = "$root/formatter.cpp"
+Checked python @("$PSScriptRoot/formatter_matrix.py", $source, $cpp)
+Checked cmake (@('-S', $PSScriptRoot, '-B', "$root/policy", "-DFORMATTER_CPP=$(Posix $cpp)", "-DFAF_DXSDK_DIR=$(Posix $source)/dependencies/dxsdk") + $common)
+Checked cmake @('--build', "$root/policy", '--parallel', '2')
+Checked ctest @('--test-dir', "$root/policy", '--verbose', '--output-on-failure','--no-tests=error','--timeout','120','-R','^formatter_policy$')
 Checked cmake @('--build',$build,'--parallel','2','--target','faf_main','faf_net_tests','faf_profiler_tests','faf_sim_math_tests')
 Checked ctest @('--test-dir',$build,'--output-on-failure','--no-tests=error','--timeout','120','-R','^(net_robustness|profiler_facade|sim_math)$')
 @"
 ## Source-only Windows check
 - Commit: $actual
 - Runner: $env:ImageVersion; LLVM20.1.8; MSVC $vcVersion; UCRT10.0.22000.0
-- PASS: actual-source formatter matrix, full x64 client compile/link, net robustness, profiler facade, sim math.
+- PASS: actual-source D3D9 full-float default/selection/packing regression (native D3DX conversion), full x64 client compile/link, net robustness, profiler facade, sim math.
 - NOT TESTED: GPU rendering/rebatch lifecycle, game launch, replay parity, x86.
 - No binaries, SDK files, DLLs, game data or private archives uploaded.
 "@ | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
