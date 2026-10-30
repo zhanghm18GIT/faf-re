@@ -1,0 +1,56 @@
+name: Allocator source check (bounded x86)
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact reviewed CI-branch source commit (40 hex digits)
+        required: true
+        type: string
+      sdk_public_build_approved:
+        description: Owner approved this one x86 SDK and DXSDK ephemeral build (no uploads)
+        required: true
+        default: false
+        type: boolean
+      approval_date:
+        description: UTC date of scoped owner approval (YYYY-MM-DD)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: formatter-source-check-once
+  cancel-in-progress: false
+jobs:
+  windows:
+    if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/formatter-windows-x64'
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check exact input (never shell-interpolate user text)
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          APPROVAL_DATE: ${{ inputs.approval_date }}
+        run: |
+          if ($env:SOURCE_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required' }
+          if ($env:APPROVAL_DATE -notmatch '^2026-10-30$') { throw 'Reviewed approval date required' }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+      - name: Parse scripts before any provisioning
+        run: |
+          foreach ($name in @('run.ps1','accept-phase.ps1')) {
+            $tokens = $null; $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE/ci/source-check/$name", [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw ($errors | Out-String) }
+          }
+      - name: Compile and test only the reviewed source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          APPROVAL_DATE: ${{ inputs.approval_date }}
+        run: ./ci/source-check/run.ps1 -SourceSha $env:SOURCE_SHA -ApprovalDate $env:APPROVAL_DATE
