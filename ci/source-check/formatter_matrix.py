@@ -22,7 +22,9 @@ parser.add_argument('source_root',type=Path)
 parser.add_argument('output_cpp',type=Path)
 a=parser.parse_args()
 s=a.source_root/'src'
-policy=(s/'gpg/gal/MeshFormatter.cpp').read_bytes()
+# Match the committed LF content even when Git checks out CRLF on Windows.
+# Deliberately preserve BOM, lone CR, whitespace and every other content byte.
+policy=(s/'gpg/gal/MeshFormatter.cpp').read_bytes().replace(b'\r\n', b'\n')
 if hashlib.sha256(policy).hexdigest() != '3aac870af7d02461377f2d30cd4550aeac228f3d12700b54e934861e63b75aa3':
     raise SystemExit('Unexpected full-float candidate source identity')
 d3d=(s/'gpg/gal/backends/d3d9/D3D9Interfaces.cpp').read_text(encoding='utf-8-sig')

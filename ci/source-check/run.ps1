@@ -13,6 +13,18 @@ function HashIs([string]$File, [string]$Expected) {
         throw "SHA256 mismatch: $(Split-Path -Leaf $File)"
     }
 }
+# Git may check out text as CRLF on Windows. Normalize only CRLF, not content.
+function SourceHashIs([string]$File, [string]$Expected) {
+    $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
+    $bytes = [IO.File]::ReadAllBytes($File)
+    $text = $utf8.GetString($bytes)
+    $normalized = $utf8.GetBytes($text.Replace("`r`n", "`n"))
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($normalized)).ToLowerInvariant()
+    $rawHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    $crlfCount = [regex]::Matches($text, "`r`n").Count
+    Write-Host "Source identity $(Split-Path -Leaf $File): raw bytes=$($bytes.Length) SHA256=$rawHash; CRLF=$crlfCount; normalized bytes=$($normalized.Length) SHA256=$hash"
+    if ($hash -cne $Expected) { throw "Normalized source SHA256 mismatch: $(Split-Path -Leaf $File)" }
+}
 function Fetch([string]$Url, [string]$File, [string]$Sha) {
     Invoke-WebRequest -Uri $Url -OutFile $File -MaximumRedirection 3
     HashIs $File $Sha
@@ -27,8 +39,9 @@ Set-Location $source
 $actual = (& git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -or $actual -cne $SourceSha) { throw 'Source SHA mismatch' }
 # Do not carry the superseded D3D10 helper-policy patch into this candidate.
-HashIs "$source/src/gpg/gal/MeshFormatter.cpp" '3aac870af7d02461377f2d30cd4550aeac228f3d12700b54e934861e63b75aa3'
+SourceHashIs "$source/src/gpg/gal/MeshFormatter.cpp" '3aac870af7d02461377f2d30cd4550aeac228f3d12700b54e934861e63b75aa3'
 $unchanged = @{
+    'src/gpg/gal/MeshFormatter.cpp' = '2c547c446bd5781eb1f8f0e81c8d575940f9fa5c'
     'src/gpg/gal/MeshFormatter.h' = 'bab67a32d8b9591e15719c6eff4947f3365b9b9d'
     'src/gpg/gal/backends/d3d10/D3D10Interfaces.cpp' = 'b5382d005f8b5d684822c26d455d44ef95bad9d2'
 }
