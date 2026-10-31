@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   windows:
-    if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/formatter-windows-x64'
+    if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && github.run_attempt == 1 && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/allocator-windows-x86-retry'
     runs-on: windows-2022
     timeout-minutes: 60
     defaults:
@@ -35,7 +35,7 @@ jobs:
           APPROVAL_DATE: ${{ inputs.approval_date }}
         run: |
           if ($env:SOURCE_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required' }
-          if ($env:APPROVAL_DATE -notmatch '^2026-10-30$') { throw 'Reviewed approval date required' }
+          if ($env:APPROVAL_DATE -notmatch '^2026-10-31$') { throw 'Reviewed approval date required' }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.source_sha }}

@@ -48,6 +48,7 @@ Assert-Registrations $BuildDirectory $Exe
     $code = $p.ExitCode
     $err = Get-Content -Raw -LiteralPath $stderr
     $out = Get-Content -Raw -LiteralPath $stdout
+    if ($out) { Write-Output $out.Trim() }
     if ($code -eq 77) { throw "BLOCKED required native evidence: $variant $case : $err" }
     $expectedFailure = $variant -eq 'baseline' -and $case -in @('high','map')
     if ($expectedFailure) {
@@ -56,7 +57,6 @@ Assert-Registrations $BuildDirectory $Exe
     } elseif ($code -ne 0 -or $out -notmatch [regex]::Escape("PASS native production-backed allocator case=$case")) {
       throw "FAIL $variant $case code=$code $err"
     }
-    if ($out) { Write-Output $out.Trim() }
     if ($expectedFailure) { Write-Output $err.Trim() }
     Write-Output "Accepted $variant $case code=$code"
   }

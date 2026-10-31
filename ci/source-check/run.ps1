@@ -1,5 +1,5 @@
 param([Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string]$SourceSha,
-      [Parameter(Mandatory)][ValidatePattern('^2026-10-30$')][string]$ApprovalDate)
+      [Parameter(Mandatory)][ValidatePattern('^2026-10-31$')][string]$ApprovalDate)
 # Public, source-only, disposable runner; no credentials, assets or uploads.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -53,7 +53,7 @@ $identities = @(
     @('src/gpg/gal/backends/d3d10/D3D10Interfaces.cpp','b5382d005f8b5d684822c26d455d44ef95bad9d2','79ff660104b3afaedecb83554e63bb9045acd3c4111ea7418245d4df0da498a3'),
     @('tests/CMakeLists.txt','d83c889cb1ba76728578ed02f16e51591619e621','bfb0ee41a191de37e0bb3391af8ff01c36301001321e175b897e08aa0f4f711a'),
     @('tests/memory/AllocatorBoundsNative.cpp','6167ff87fc767dd6b084c7da6aaf6440e2783e18','f2b90034e4901d7ac65f3c957411d7195ee0d2012cb9c6f46bf1336db3f5956a'),
-    @('tests/memory/AllocatorBoundsNative.inl','6cc1b37740f3aff6738a8773ebeb479b21e4c2da','6c59af19305b265ca9f67b65ba2a2a70634574c71d193e2c5c6afc797c15f6d7'),
+    @('tests/memory/AllocatorBoundsNative.inl','ae834e65a655c4f61e453129fe935b067f3ebfa8','79951a3277708a69c371f2aec97fa9771e8894eecf96ae4868ffda6372db78ab'),
     @('tests/memory/CMakeLists.txt','a282c2b5442b8e2aed02ffa521ef6b9d8e8ba3b1','7f59372bc9b783a27b7d6efba5f6ca4d2fc25ec19b69e2f3e17fad0f553c77f2')
 )
 foreach ($row in $identities) {
@@ -184,7 +184,7 @@ function NativeExe {
 $native = NativeExe
 & "$PSScriptRoot/accept-phase.ps1" -Variant baseline -Exe $native -BuildDirectory $build -LogDirectory "$root/logs"
 # The same reviewed test seam remains; only x86 production constants change.
-HashIs "$PSScriptRoot/production.patch" 'c6a2530cec0fd25aa804695cc1106e906cbb40105a84d386b3944c016074f818'
+SourceHashIs "$PSScriptRoot/production.patch" 'c6a2530cec0fd25aa804695cc1106e906cbb40105a84d386b3944c016074f818'
 Checked git @('apply','--check',"$PSScriptRoot/production.patch")
 Checked git @('apply',"$PSScriptRoot/production.patch")
 SourceHashIs "$source/src/gpg/core/utils/Global.cpp" '2d151e855ef79a89e97c6fafe01fa60499aee2251d5fce5b4f9a9682d12f6cba'

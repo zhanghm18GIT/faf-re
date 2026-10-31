@@ -27,27 +27,75 @@ void BoundsSmoke()
     }
 }
 DWORD WINAPI BoundsThread(void*) { for (unsigned i=0; i<16; ++i) BoundsSmoke(); return 0; }
-// Bounded 64 KiB probes only. Never fill lower address space to force an address.
-std::uint8_t* BoundsReserve(std::uintptr_t first, unsigned bytes)
+// Reconstructed retry fixture: bounded free-region discovery, never VA filling.
+// All arithmetic stays 64-bit until a verified in-range native pointer is formed.
+std::uint8_t* BoundsReserve(std::uint64_t first, std::uint64_t last, bool pair = false)
 {
+    constexpr std::uint64_t granularity = 65536;
+    constexpr unsigned maxQueries = 1024, maxAllocations = 64;
+    BoundsCheck(first < last && last <= 0x100000000ull && first % granularity == 0 &&
+                last % granularity == 0, "fixture interval");
     SYSTEM_INFO si{};
     ::GetSystemInfo(&si);
-    BoundsCheck(si.dwAllocationGranularity == 65536 && si.dwPageSize == 4096, "Windows geometry");
-    const auto limit = reinterpret_cast<std::uintptr_t>(si.lpMaximumApplicationAddress);
-    for (unsigned i=0; i<64; ++i) {
-        const auto address = static_cast<std::uint64_t>(first) + i * 65536ull;
-        if (address + bytes - 1 > limit) break;
-        auto* p = static_cast<std::uint8_t*>(::VirtualAlloc(
-            reinterpret_cast<void*>(static_cast<std::uintptr_t>(address)), bytes,
-            MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
-        if (p != nullptr) {
-            MEMORY_BASIC_INFORMATION info{};
-            BoundsCheck(::VirtualQuery(p, &info, sizeof(info)) == sizeof(info), "VirtualQuery");
-            BoundsCheck(info.AllocationBase == p && info.State == MEM_COMMIT, "real reservation");
-            return p;
+    BoundsCheck(si.dwAllocationGranularity == granularity && si.dwPageSize == 4096, "Windows geometry");
+    const auto osFirst = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(si.lpMinimumApplicationAddress));
+    const auto osLast = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(si.lpMaximumApplicationAddress)) + 1;
+    if (last > osLast) last = osLast;
+    auto cursor = first > osFirst ? first : osFirst;
+    cursor = (cursor + granularity - 1) & ~(granularity - 1);
+    const std::uint64_t needed = pair ? 2 * granularity : granularity;
+    unsigned queries = 0, allocations = 0;
+    DWORD error = 0;
+    std::printf("fixture interval=[%llx,%llx) heap_base=%p initialized=%d pair=%d\n",
+                static_cast<unsigned long long>(cursor), static_cast<unsigned long long>(last),
+                gHeapBase, gAllocatorSentinelIsCritical ? 1 : 0, pair ? 1 : 0);
+    while (cursor < last && last - cursor >= needed && queries < maxQueries &&
+           allocations + (pair ? 2u : 1u) <= maxAllocations) {
+        MEMORY_BASIC_INFORMATION info{};
+        ++queries;
+        const auto address = reinterpret_cast<void*>(static_cast<std::uintptr_t>(cursor));
+        if (::VirtualQuery(address, &info, sizeof(info)) != sizeof(info)) { error = ::GetLastError(); break; }
+        const auto regionFirst = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(info.BaseAddress));
+        const auto regionLast = regionFirst + static_cast<std::uint64_t>(info.RegionSize);
+        BoundsCheck(regionFirst <= cursor && regionLast > cursor && regionLast <= 0x100000000ull,
+                    "VirtualQuery progress/range");
+        const auto end = regionLast < last ? regionLast : last;
+        if (info.State != MEM_FREE || end - cursor < needed) {
+            cursor = (end + granularity - 1) & ~(granularity - 1);
+            continue;
         }
+        ++allocations;
+        auto* p = static_cast<std::uint8_t*>(::VirtualAlloc(address, granularity,
+                                                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+        if (!p) { error = ::GetLastError(); cursor += granularity; continue; }
+        BoundsCheck(p == address, "exact reservation address");
+        auto* q = static_cast<std::uint8_t*>(nullptr);
+        if (pair) {
+            ++allocations;
+            q = static_cast<std::uint8_t*>(::VirtualAlloc(p + granularity, granularity,
+                                                         MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
+            if (!q) {
+                error = ::GetLastError();
+                BoundsCheck(::VirtualFree(p, 0, MEM_RELEASE) != 0, "pair race cleanup");
+                cursor += granularity;
+                continue;
+            }
+            BoundsCheck(q == p + granularity, "exact second reservation address");
+        }
+        for (unsigned i = 0; i < (pair ? 2u : 1u); ++i) {
+            auto* allocation = i ? q : p;
+            MEMORY_BASIC_INFORMATION actual{};
+            BoundsCheck(::VirtualQuery(allocation, &actual, sizeof(actual)) == sizeof(actual) &&
+                        actual.BaseAddress == allocation && actual.AllocationBase == allocation &&
+                        actual.State == MEM_COMMIT && actual.RegionSize >= granularity,
+                        "real independent reservation");
+        }
+        std::printf("fixture selected=%p queries=%u allocations=%u\n", p, queries, allocations);
+        return p;
     }
-    BoundsFail("required bounded virtual-address range unavailable", 77);
+    std::printf("fixture unavailable queries=%u allocations=%u last_error=%lu\n", queries, allocations,
+                static_cast<unsigned long>(error));
+    BoundsFail("required range unavailable within bounded discovery; not proof of OS exhaustion", 77);
 }
 HeapRecord* BoundsRecord(void* address, unsigned pages, void* reservation)
 {
@@ -62,9 +110,9 @@ void BoundsDispose(HeapRecord* record)
     (void)PushHeapBlock(reinterpret_cast<SmallBlockNode*>(record),
                         static_cast<std::int32_t>(GetSmallBlockIndex(kHeapRecordSizeBytes)));
 }
-void BoundsMerge(std::uintptr_t first, bool releaseLeftFirst)
+void BoundsMerge(std::uint64_t first, std::uint64_t last, bool releaseLeftFirst)
 {
-    auto* p = BoundsReserve(first, 65536);
+    auto* p = BoundsReserve(first, last);
     std::printf("reservation=%p bytes=65536 order=%s\n", p, releaseLeftFirst ? "left-first" : "right-first");
     ::EnterCriticalSection(&gAllocatorSentinel);
     // Real writable pages and descriptors allocated by the production allocator.
@@ -87,18 +135,8 @@ void BoundsMerge(std::uintptr_t first, bool releaseLeftFirst)
 void BoundsSeparateReservations()
 {
     // Reserve two independent adjacent 64 KiB allocations; never substitute a false AllocationBase.
-    std::uint8_t* p = nullptr;
-    std::uint8_t* q = nullptr;
-    for (unsigned i=0; i<64 && q == nullptr; ++i) {
-        auto address = std::uintptr_t(0xC1000000u) + i * 131072u;
-        p = static_cast<std::uint8_t*>(::VirtualAlloc(reinterpret_cast<void*>(address),65536,
-                                                    MEM_RESERVE | MEM_COMMIT,PAGE_READWRITE));
-        if (!p) continue;
-        q = static_cast<std::uint8_t*>(::VirtualAlloc(p + 65536,65536,
-                                                    MEM_RESERVE | MEM_COMMIT,PAGE_READWRITE));
-        if (!q) { BoundsCheck(::VirtualFree(p,0,MEM_RELEASE)!=0,"probe cleanup"); p=nullptr; }
-    }
-    if (!q) BoundsFail("adjacent independent reservations unavailable",77);
+    auto* p = BoundsReserve(0xC0000000ull, 0xFFC00000ull, true);
+    auto* q = p + 65536;
     ::EnterCriticalSection(&gAllocatorSentinel);
     auto* left = BoundsRecord(p + 61440,1,p);
     auto* right = BoundsRecord(q,1,q);
@@ -125,14 +163,14 @@ extern "C" int FafRunAllocatorBoundsCase(const char* mode)
         BoundsCheck(::WaitForMultipleObjects(2,threads,TRUE,60000)==WAIT_OBJECT_0,"thread completion");
         for (auto handle: threads) { DWORD code=1; BoundsCheck(::GetExitCodeThread(handle,&code)&&code==0,"thread exit"); ::CloseHandle(handle); }
     } else if (std::strcmp(mode,"low") == 0) {
-        BoundsMerge(0x20000000u,false); BoundsMerge(0x20000000u,true);
+        BoundsMerge(0x10000ull,0xC0000000ull,false); BoundsMerge(0x10000ull,0xC0000000ull,true);
     } else if (std::strcmp(mode,"high") == 0) {
-        BoundsMerge(0xC0000000u,false); BoundsMerge(0xC0000000u,true);
+        BoundsMerge(0xC0000000ull,0xFFC00000ull,false); BoundsMerge(0xC0000000ull,0xFFC00000ull,true);
     } else if (std::strcmp(mode,"map") == 0) {
         // Baseline refuses BEFORE its known out-of-bounds access; no deliberate corruption.
         BoundsCheck(kPageOwnerMapBytes/sizeof(HeapRecord*) == 0x100000u,"full x86 map capacity");
         BoundsCheck(kMaxPageIndex == 0x100000u,"exclusive bound");
-        BoundsMerge(0xFFC00000u,false); BoundsMerge(0xFFC00000u,true);
+        BoundsMerge(0xFFC00000ull,0x100000000ull,false); BoundsMerge(0xFFC00000ull,0x100000000ull,true);
     } else if (std::strcmp(mode,"separate") == 0) {
         BoundsSeparateReservations();
     } else BoundsFail("unknown test case");
