@@ -1,0 +1,54 @@
+name: PR225 exact-head x86 build
+run-name: pr225-exact-x86-20261101
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact PR225 head
+        required: true
+        default: c0ff226f607193af662a50245dbff4ae6905b292
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: pr225-exact-x86-20261101
+  cancel-in-progress: false
+jobs:
+  windows:
+    if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && github.run_attempt == 1 && github.ref == 'refs/heads/ci/pr225-exact-x86-20261101'
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Validate reviewed source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          if ($env:SOURCE_SHA -cne 'c0ff226f607193af662a50245dbff4ae6905b292') { throw 'Unexpected source' }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /ci/pr225-check/**
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: c0ff226f607193af662a50245dbff4ae6905b292
+          path: target-source
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+      - name: Parse scripts before provisioning
+        run: |
+          foreach ($name in @('run.ps1','accept-phase.ps1')) {
+            $tokens = $null; $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE/ci/pr225-check/$name", [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw ($errors | Out-String) }
+          }
+      - name: Build exact PR225 and run native tests
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: ./ci/pr225-check/run.ps1 -SourceSha $env:SOURCE_SHA -ApprovalDate '2026-11-01'
