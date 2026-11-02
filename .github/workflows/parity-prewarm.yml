@@ -24,6 +24,8 @@ on:
       parallel:
         description: Replay buckets fetched at once (each one request a second to FAF)
         default: "4"
+  schedule:
+    - cron: "23 4 * * 1"
 
 permissions:
   contents: read
