@@ -219,13 +219,43 @@ if ($PullRequest -ceq '224') {
     $scroller = "$source/src/moho/entity/CTextureScroller.cpp"
     $candidateBytes = [IO.File]::ReadAllBytes($scroller)
     $candidateExeHash = (Get-FileHash -LiteralPath $initialTestExe -Algorithm SHA256).Hash
+    if ($objects.Count -ne 1) { throw 'PR224 requires exactly one discovered scroller object' }
+    $buildRoot = [IO.Path]::GetFullPath($build).TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar
+    $scrollerObject = [IO.Path]::GetFullPath((Join-Path $build $objects[0]))
+    $testBinary = [IO.Path]::GetFullPath($initialTestExe)
+    foreach ($output in @($scrollerObject, $testBinary)) {
+        if (!$output.StartsWith($buildRoot, [StringComparison]::OrdinalIgnoreCase) -or
+            !(Test-Path -LiteralPath $output -PathType Leaf)) { throw 'Expected generated output beneath this build only' }
+    }
+    if (!$scrollerObject.EndsWith('CTextureScroller.cpp.obj', [StringComparison]::Ordinal) -or
+        (Split-Path -Leaf $testBinary) -cne 'faf_tread_rotation_tests.exe') { throw 'Unexpected generated output identity' }
+    $candidateObjectHash = (Get-FileHash -LiteralPath $scrollerObject -Algorithm SHA256).Hash
+    function InvalidateScrollerOutputs([string]$Stage) {
+        # Copy-Item can preserve the old source timestamp. Ninja must not reuse its object.
+        # Delete exactly two known generated files, never source, a directory or a reparse point.
+        foreach ($output in @($scrollerObject, $testBinary)) {
+            if (Test-Path -LiteralPath $output) {
+                $item = Get-Item -LiteralPath $output -Force
+                if ($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                    throw 'Refusing unexpected generated-output type'
+                }
+                Remove-Item -LiteralPath $output -Force
+            }
+            if (Test-Path -LiteralPath $output) { throw 'Generated output invalidation failed' }
+            Write-Host "Invalidated $Stage generated output: $output"
+        }
+    }
     try {
         Copy-Item -LiteralPath "$PSScriptRoot/old-CTextureScroller.cpp" -Destination $scroller -Force
         SourceHashIs $scroller $contract.old_scroller.sha256
         $changed = @(& git diff --name-only --ignore-submodules=all)
         if ($LASTEXITCODE -or $changed.Count -ne 1 -or $changed[0] -cne 'src/moho/entity/CTextureScroller.cpp') { throw 'Negative control changed more than old scroller' }
         # Same cleaned test, only the implementation differs. No A/B selector.
+        InvalidateScrollerOutputs 'old-scroller'
         Checked cmake @('--build',$build,'--parallel','2','--target',$specificTarget)
+        $oldObjectHash = (Get-FileHash -LiteralPath $scrollerObject -Algorithm SHA256).Hash
+        if ($oldObjectHash -ceq $candidateObjectHash) { throw 'Old-scroller object did not change' }
+        Write-Host "Rebuilt old-scroller object SHA256=$oldObjectHash; candidate SHA256=$candidateObjectHash"
         if ((Get-FileHash -LiteralPath $initialTestExe -Algorithm SHA256).Hash -ceq $candidateExeHash) { throw 'Old-scroller test executable did not change' }
         $stdout = "$root/old-scroller.stdout.txt"
         $stderr = "$root/old-scroller.stderr.txt"
@@ -242,6 +272,7 @@ if ($PullRequest -ceq '224') {
         Write-Host 'PASS negative control: old scroller fails exactly at yaw left tread, exit 1'
     } finally {
         [IO.File]::WriteAllBytes($scroller, $candidateBytes)
+        InvalidateScrollerOutputs 'candidate-restoration'
     }
     # Finish on the exact candidate and rerun after restoration, not on the control.
     Checked cmake (@('--build',$build,'--parallel','2','--target') + $targets)

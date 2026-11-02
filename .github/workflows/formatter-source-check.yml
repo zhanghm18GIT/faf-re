@@ -1,4 +1,4 @@
-name: PR223 and PR224 review checks (bounded x64)
+name: PR224 review control recheck (bounded x64)
 on:
   workflow_dispatch:
     inputs:
@@ -25,9 +25,9 @@ jobs:
     if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/formatter-windows-x64'
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
-        pr: ['223', '224']
+        pr: ['224']
     runs-on: windows-2022
     timeout-minutes: 60
     defaults:
