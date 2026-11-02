@@ -1,18 +1,18 @@
-name: Formatter source check (bounded x64)
+name: PR223 and PR224 review checks (bounded x64)
 on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact reviewed CI-branch source commit (40 hex digits)
+        description: Exact reviewed CI-driver commit on ci/formatter-windows-x64
         required: true
         type: string
       sdk_public_build_approved:
-        description: Owner approved this one public ephemeral SDK and DXSDK build (no uploads)
+        description: Owner approved these two public ephemeral SDK builds (no uploads)
         required: true
         default: false
         type: boolean
       approval_date:
-        description: UTC date of scoped owner approval (YYYY-MM-DD)
+        description: UTC date of the scoped owner approval
         required: true
         type: string
 permissions:
@@ -23,32 +23,56 @@ concurrency:
 jobs:
   windows:
     if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/formatter-windows-x64'
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        pr: ['223', '224']
     runs-on: windows-2022
     timeout-minutes: 60
     defaults:
       run:
         shell: pwsh
     steps:
-      - name: Check exact input (never shell-interpolate user text)
+      - name: Check exact inputs before checkout or provisioning
         env:
           SOURCE_SHA: ${{ inputs.source_sha }}
           APPROVAL_DATE: ${{ inputs.approval_date }}
         run: |
-          if ($env:SOURCE_SHA -notmatch '^[0-9a-f]{40}$') { throw 'Exact SHA required' }
-          if ($env:APPROVAL_DATE -notmatch '^2026-10-30$') { throw 'Reviewed approval date required' }
+          if ($env:SOURCE_SHA -cnotmatch '^[0-9a-f]{40}$' -or $env:SOURCE_SHA -cne $env:GITHUB_SHA) { throw 'Exact reviewed CI-driver SHA required' }
+          if ($env:APPROVAL_DATE -cne '2026-11-02') { throw 'Current scoped approval date required' }
+          if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted') { throw 'Standard GitHub-hosted runner required' }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.source_sha }}
+          path: ci-driver
           persist-credentials: false
           fetch-depth: 1
           submodules: false
-      - name: Parse scripts before any provisioning
+      - name: Parse driver and load fixed source pin
+        id: pin
+        env:
+          PR_NUMBER: ${{ matrix.pr }}
         run: |
           $tokens = $null; $errors = $null
-          $null = [System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE/ci/source-check/run.ps1", [ref]$tokens, [ref]$errors)
+          $path = "$env:GITHUB_WORKSPACE/ci-driver/ci/source-check/run.ps1"
+          $null = [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors)
           if ($errors.Count) { throw ($errors | Out-String) }
-      - name: Compile and test only the reviewed source
+          $contract = Get-Content "$env:GITHUB_WORKSPACE/ci-driver/ci/source-check/contract.json" -Raw | ConvertFrom-Json
+          if ($contract.schema_version -ne 1 -or $contract.status -cne 'ready' -or $contract.approval_date -cne '2026-11-02' -or $contract.repository -cne 'zhanghm18GIT/faf-re') { throw 'Reviewed source contract required' }
+          $pin = $contract.sources.PSObject.Properties[$env:PR_NUMBER].Value
+          if ($null -eq $pin -or $pin.sha -cnotmatch '^[0-9a-f]{40}$') { throw 'Exact source pin required' }
+          "sha=$($pin.sha)" | Add-Content -LiteralPath $env:GITHUB_OUTPUT
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.pin.outputs.sha }}
+          path: target-source
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+      - name: Build and test the separate reviewed PR source
         env:
           SOURCE_SHA: ${{ inputs.source_sha }}
           APPROVAL_DATE: ${{ inputs.approval_date }}
-        run: ./ci/source-check/run.ps1 -SourceSha $env:SOURCE_SHA -ApprovalDate $env:APPROVAL_DATE
+          PR_NUMBER: ${{ matrix.pr }}
+        run: ./ci-driver/ci/source-check/run.ps1 -SourceSha $env:SOURCE_SHA -PullRequest $env:PR_NUMBER -ApprovalDate $env:APPROVAL_DATE

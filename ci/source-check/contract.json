@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "status": "ready",
+  "approval_date": "2026-11-02",
+  "repository": "zhanghm18GIT/faf-re",
+  "base_sha": "c65fc75f41f295a6a079098ac7c84172983a6dfd",
+  "sources": {
+    "223": {
+      "sha": "86b8b36daef07ed8f506b42564ad86e5c9c504fd",
+      "tree": "fd834d1682957a9891176ae10b5428841625f3f9",
+      "files": [
+        [
+          ".gitmodules",
+          "8777f05826e811b5d0fb3ae7b3fbb30500cdda8e",
+          "1a9da3812d426e1d02daf69e121c1bbf27bf7da8fc30f1ea3bbf4601cf998b05"
+        ],
+        [
+          "CMakeLists.txt",
+          "d12af9c50624180fbc5dc808c02e595ec37e940b",
+          "8d13d20ee80d03780baaadedb842e9e9787cec858fa5bae003fa423667a17b68"
+        ],
+        [
+          "cmake/FafCodegen.cmake",
+          "a3df5fa8e7a3462b245cbee56a32dc0f13d2c2bf",
+          "38cd1d38dbd0e70e3aab07ea4be09c72f682a505039993080d898905fb9ed78e"
+        ],
+        [
+          "cmake/FafDependencies.cmake",
+          "39c419ba39c1e8860625b5e08a92eb6383709930",
+          "30a4f79fe8d384b2084003814d8933d867e05bc0ad786a355bff9ee36819afea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-common.cmake",
+          "41b52146a682966934c5d490673a72b2eab7f282",
+          "ae7f798ec54d9c693823b98d54e64abcac21e08b6dd743706991d23cbe316cea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x64.cmake",
+          "69c09b528767cb2dd3753ca59c726438cfd19185",
+          "c94f12f9a8e00121f56f0c7431ff52bce75ef3b3568bc606f33ebedfc0f3a2c8"
+        ],
+        [
+          "src/CMakeLists.txt",
+          "f2a6920db51c71d5fe5d6764183d9bcaba08dda4",
+          "2a225e7b207095e844ac683b37f0dfd53617e613e86997e6fcd20d47b713129f"
+        ],
+        [
+          "src/moho/sim/ReconBlip.cpp",
+          "bb9fef65139e95a217a60d446b7cc7ba50a8d6ae",
+          "071be4748be37e487edf1eb94880d5fc646db07e8d606df47242871a697fd78e"
+        ],
+        [
+          "src/moho/sim/UnitUpdateFill.cpp",
+          "34bd192f27bdd2200f8ee7f79a784c27a6968a5e",
+          "74530572a89d323df2cb2e0be7007cabbd09e64e140cba8944ac77a347e80e26"
+        ],
+        [
+          "src/moho/sim/UnitUpdateFill.h",
+          "a014bf4777802a5d56103530fce8067c7c47ef59",
+          "aca088ca5a7299eb8b590addea04c9ebf4d41b43f889be5099f7fcc1b600c66d"
+        ],
+        [
+          "src/remote/ViewPackets.cpp",
+          "d4eee559e7679415928810bbecbb99062250d441",
+          "c0df1afae5fd5cd9ae0dc3132219b5d93e234fed25b728afa6a108f352d96a58"
+        ],
+        [
+          "tests/CMakeLists.txt",
+          "01cec774d77849c3da68a75c9e64f1a3d69866a6",
+          "88d91647a0eda3a51c0b4c7b4934f0280aaa9f8ac68b735d503aff1ba49b8c64"
+        ],
+        [
+          "tests/sim/ReconScrollPacketTests.cpp",
+          "ab129327ad3fcabade4c79579741e62a9404e872",
+          "0f371b65f93374f5b1d86fe4f9da7ce3622004f70c0dd64e2e6b036c06e17c21"
+        ]
+      ],
+      "dependencies": [
+        [
+          "dependencies/FX11",
+          "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+        ],
+        [
+          "dependencies/WildMagic3p8",
+          "9baf054aea272090e0df3289e24cf436fb92c78c"
+        ],
+        [
+          "dependencies/ffmpeg",
+          "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+        ],
+        [
+          "dependencies/patches",
+          "4783e28d8270a2b0a4b30576abae48741500eee6"
+        ],
+        [
+          "dependencies/vulkan",
+          "d4a196d8c84e032d27f999adcea3075517c1c97f"
+        ],
+        [
+          "dependencies/zlib-1.2.3",
+          "abf180a067223611620dd97dd5681df7c7fa7c9b"
+        ]
+      ],
+      "server_mode": "ON"
+    },
+    "224": {
+      "sha": "6e9597b68aafb8b00fd2372c68c794446fbea27a",
+      "tree": "fedd906a67d1478873fcefb5b2ddf4f53ac09eac",
+      "files": [
+        [
+          ".gitmodules",
+          "8777f05826e811b5d0fb3ae7b3fbb30500cdda8e",
+          "1a9da3812d426e1d02daf69e121c1bbf27bf7da8fc30f1ea3bbf4601cf998b05"
+        ],
+        [
+          "CMakeLists.txt",
+          "d12af9c50624180fbc5dc808c02e595ec37e940b",
+          "8d13d20ee80d03780baaadedb842e9e9787cec858fa5bae003fa423667a17b68"
+        ],
+        [
+          "cmake/FafCodegen.cmake",
+          "a3df5fa8e7a3462b245cbee56a32dc0f13d2c2bf",
+          "38cd1d38dbd0e70e3aab07ea4be09c72f682a505039993080d898905fb9ed78e"
+        ],
+        [
+          "cmake/FafDependencies.cmake",
+          "39c419ba39c1e8860625b5e08a92eb6383709930",
+          "30a4f79fe8d384b2084003814d8933d867e05bc0ad786a355bff9ee36819afea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-common.cmake",
+          "41b52146a682966934c5d490673a72b2eab7f282",
+          "ae7f798ec54d9c693823b98d54e64abcac21e08b6dd743706991d23cbe316cea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x64.cmake",
+          "69c09b528767cb2dd3753ca59c726438cfd19185",
+          "c94f12f9a8e00121f56f0c7431ff52bce75ef3b3568bc606f33ebedfc0f3a2c8"
+        ],
+        [
+          "src/CMakeLists.txt",
+          "f2a6920db51c71d5fe5d6764183d9bcaba08dda4",
+          "2a225e7b207095e844ac683b37f0dfd53617e613e86997e6fcd20d47b713129f"
+        ],
+        [
+          "src/moho/entity/CTextureScroller.cpp",
+          "1bd25eb1adf190291a4b6f379e1e13037e647617",
+          "e2767faa083d261032e6876e0d0d59a7b6e9602fa95900ab9058ceb92c2d0914"
+        ],
+        [
+          "tests/CMakeLists.txt",
+          "9f19f06a25650fa8adaf6f4077593826fb1926da",
+          "861830c9b31fa6c0201142bf479b3b863a65b2c8a7379f0164284bbdbe4acceb"
+        ],
+        [
+          "tests/tread_rotation/CMakeLists.txt",
+          "2962bfcfa40b2d4db056b63739deadb9b7dc83e6",
+          "23bba1a89bc45f55cbd68f8901e09d6148547724b29cdf45a8f00e4d6499499f"
+        ],
+        [
+          "tests/tread_rotation/RotationRepairTests.cpp",
+          "a23a0b13cd81fdd2c9418e02d16d9df4cd404739",
+          "123f587c0c3b2a3e4baeba9e6578016d3566d9f9d664d0e91ddfcdff3399989a"
+        ]
+      ],
+      "dependencies": [
+        [
+          "dependencies/FX11",
+          "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+        ],
+        [
+          "dependencies/WildMagic3p8",
+          "9baf054aea272090e0df3289e24cf436fb92c78c"
+        ],
+        [
+          "dependencies/ffmpeg",
+          "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+        ],
+        [
+          "dependencies/patches",
+          "4783e28d8270a2b0a4b30576abae48741500eee6"
+        ],
+        [
+          "dependencies/vulkan",
+          "d4a196d8c84e032d27f999adcea3075517c1c97f"
+        ],
+        [
+          "dependencies/zlib-1.2.3",
+          "abf180a067223611620dd97dd5681df7c7fa7c9b"
+        ]
+      ],
+      "server_mode": "OFF"
+    }
+  },
+  "old_scroller": {
+    "source_sha": "c65fc75f41f295a6a079098ac7c84172983a6dfd",
+    "blob": "f6271154e1aa1442258d384377456f14d9da2864",
+    "sha256": "293e469b5e959e5dfeafb7692e05f24c33b0f5086904910f5c0ad7f89870acb1"
+  }
+}
