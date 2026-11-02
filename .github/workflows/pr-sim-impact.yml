@@ -5,8 +5,7 @@ name: PR sim impact
 # pull_request_target checks out the base branch, so the PR cannot change the
 # check it is held to; no code from the PR is run.
 on:
-  pull_request_target:
-    types: [opened, edited, reopened, synchronize]
+  workflow_dispatch:
 
 permissions:
   contents: read

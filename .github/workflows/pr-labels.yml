@@ -10,10 +10,7 @@ name: PR labels
 # A push to master can make open PRs conflict (or stop conflicting), so it
 # rechecks "merge conflict" on every open PR into master.
 on:
-  pull_request_target:
-    types: [opened, edited, reopened, synchronize, ready_for_review]
-  push:
-    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: read

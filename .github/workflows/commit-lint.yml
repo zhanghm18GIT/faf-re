@@ -6,10 +6,7 @@ name: Commit titles
 # check it is held to; no code from the PR is run. "edited" reruns it after a
 # title change.
 on:
-  pull_request_target:
-    types: [opened, edited, reopened, synchronize]
-  push:
-    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: read
