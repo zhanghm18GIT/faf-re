@@ -1,0 +1,163 @@
+name: Rendering source checks (pilot then five)
+'on':
+  workflow_dispatch:
+    inputs:
+      driver_sha:
+        description: Exact independently reviewed CI-driver commit
+        required: true
+        type: string
+      sdk_public_build_approved:
+        description: 'New scoped approval: one D3D12 x64 pilot, then five jobs only after pilot success; no reruns/uploads'
+        required: true
+        default: false
+        type: boolean
+      authorization_reference:
+        description: Public-safe scoped approval label for this bounded run
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: render-source-check-20261103-fix1-once
+  cancel-in-progress: false
+jobs:
+  pilot:
+    if: github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private == false && github.event_name == 'workflow_dispatch'
+      && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/render-source-check-20261103-fix1' && github.run_attempt
+      == 1
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+    - name: Check exact dispatch before checkout or provisioning
+      env:
+        DRIVER_SHA: ${{ inputs.driver_sha }}
+        AUTHORIZATION_REFERENCE: ${{ inputs.authorization_reference }}
+      run: |
+        if ($env:DRIVER_SHA -cnotmatch '^[0-9a-f]{40}$' -or $env:DRIVER_SHA -cne $env:GITHUB_SHA) { throw 'Exact reviewed CI-driver SHA required' }
+        if ([string]::IsNullOrWhiteSpace($env:AUTHORIZATION_REFERENCE)) { throw 'Fresh scoped owner approval required' }
+        if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or $env:ImageOS -cne 'win22' -or $env:RUNNER_ARCH -cne 'X64') { throw 'Standard GitHub-hosted windows-2022 runner required' }
+        if ($env:GITHUB_RUN_ATTEMPT -cne '1') { throw 'Reruns are not authorized' }
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: zhanghm18GIT/faf-re
+        ref: ${{ inputs.driver_sha }}
+        path: ci-driver
+        persist-credentials: false
+        fetch-depth: 1
+        submodules: false
+    - name: Parse driver and load immutable source pin
+      id: pin
+      env:
+        CASE_NAME: d3d12
+        AUTHORIZATION_REFERENCE: ${{ inputs.authorization_reference }}
+      run: |
+        $scripts = @(Get-ChildItem "$env:GITHUB_WORKSPACE/ci-driver/ci/render-check" -Filter '*.ps1' -File -Recurse)
+        if ($scripts.Count -ne 2) { throw 'Expected exactly the reviewed main/WARP scripts' }
+        foreach ($script in $scripts) {
+          $tokens = $null; $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | Out-String) }
+        }
+        $contract = Get-Content "$env:GITHUB_WORKSPACE/ci-driver/ci/render-check/contract.json" -Raw | ConvertFrom-Json
+        if ($contract.schema_version -ne 1 -or $contract.status -cne 'frozen-authorized' -or $contract.authorization_reference -cne $env:AUTHORIZATION_REFERENCE -or $contract.repository -cne 'zhanghm18GIT/faf-re') { throw 'Reviewed, frozen and newly authorized contract required' }
+        $property = $contract.sources.PSObject.Properties[$env:CASE_NAME]
+        if ($null -eq $property -or $property.Value.sha -cnotmatch '^[0-9a-f]{40}$' -or $property.Value.tree -cnotmatch '^[0-9a-f]{40}$') { throw 'Exact source pin required' }
+        "sha=$($property.Value.sha)" | Add-Content -LiteralPath $env:GITHUB_OUTPUT
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: zhanghm18GIT/faf-re
+        ref: ${{ steps.pin.outputs.sha }}
+        path: target-source
+        persist-credentials: false
+        fetch-depth: 1
+        submodules: false
+    - name: Compile changed object, full client and native tests
+      env:
+        DRIVER_SHA: ${{ inputs.driver_sha }}
+        AUTHORIZATION_REFERENCE: ${{ inputs.authorization_reference }}
+        CASE_NAME: d3d12
+        TARGET_ARCH: x64
+      run: ./ci-driver/ci/render-check/run.ps1 -DriverSha $env:DRIVER_SHA -Case $env:CASE_NAME -Arch $env:TARGET_ARCH -AuthorizationReference
+        $env:AUTHORIZATION_REFERENCE
+    name: Pilot D3D12 x64
+  remaining:
+    if: needs.pilot.result == 'success' && github.repository == 'zhanghm18GIT/faf-re' && github.event.repository.private ==
+      false && github.event_name == 'workflow_dispatch' && inputs.sdk_public_build_approved == true && github.ref == 'refs/heads/ci/render-source-check-20261103-fix1'
+      && github.run_attempt == 1
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+        - case: particle
+          arch: x64
+        - case: particle
+          arch: x86
+        - case: shadow
+          arch: x64
+        - case: shadow
+          arch: x86
+        - case: d3d12
+          arch: x86
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+    - name: Check exact dispatch before checkout or provisioning
+      env:
+        DRIVER_SHA: ${{ inputs.driver_sha }}
+        AUTHORIZATION_REFERENCE: ${{ inputs.authorization_reference }}
+      run: |
+        if ($env:DRIVER_SHA -cnotmatch '^[0-9a-f]{40}$' -or $env:DRIVER_SHA -cne $env:GITHUB_SHA) { throw 'Exact reviewed CI-driver SHA required' }
+        if ([string]::IsNullOrWhiteSpace($env:AUTHORIZATION_REFERENCE)) { throw 'Fresh scoped owner approval required' }
+        if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or $env:ImageOS -cne 'win22' -or $env:RUNNER_ARCH -cne 'X64') { throw 'Standard GitHub-hosted windows-2022 runner required' }
+        if ($env:GITHUB_RUN_ATTEMPT -cne '1') { throw 'Reruns are not authorized' }
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: zhanghm18GIT/faf-re
+        ref: ${{ inputs.driver_sha }}
+        path: ci-driver
+        persist-credentials: false
+        fetch-depth: 1
+        submodules: false
+    - name: Parse driver and load immutable source pin
+      id: pin
+      env:
+        CASE_NAME: ${{ matrix.case }}
+        AUTHORIZATION_REFERENCE: ${{ inputs.authorization_reference }}
+      run: |
+        $scripts = @(Get-ChildItem "$env:GITHUB_WORKSPACE/ci-driver/ci/render-check" -Filter '*.ps1' -File -Recurse)
+        if ($scripts.Count -ne 2) { throw 'Expected exactly the reviewed main/WARP scripts' }
+        foreach ($script in $scripts) {
+          $tokens = $null; $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { throw ($errors | Out-String) }
+        }
+        $contract = Get-Content "$env:GITHUB_WORKSPACE/ci-driver/ci/render-check/contract.json" -Raw | ConvertFrom-Json
+        if ($contract.schema_version -ne 1 -or $contract.status -cne 'frozen-authorized' -or $contract.authorization_reference -cne $env:AUTHORIZATION_REFERENCE -or $contract.repository -cne 'zhanghm18GIT/faf-re') { throw 'Reviewed, frozen and newly authorized contract required' }
+        $property = $contract.sources.PSObject.Properties[$env:CASE_NAME]
+        if ($null -eq $property -or $property.Value.sha -cnotmatch '^[0-9a-f]{40}$' -or $property.Value.tree -cnotmatch '^[0-9a-f]{40}$') { throw 'Exact source pin required' }
+        "sha=$($property.Value.sha)" | Add-Content -LiteralPath $env:GITHUB_OUTPUT
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: zhanghm18GIT/faf-re
+        ref: ${{ steps.pin.outputs.sha }}
+        path: target-source
+        persist-credentials: false
+        fetch-depth: 1
+        submodules: false
+    - name: Compile changed object, full client and native tests
+      env:
+        DRIVER_SHA: ${{ inputs.driver_sha }}
+        AUTHORIZATION_REFERENCE: ${{ inputs.authorization_reference }}
+        CASE_NAME: ${{ matrix.case }}
+        TARGET_ARCH: ${{ matrix.arch }}
+      run: ./ci-driver/ci/render-check/run.ps1 -DriverSha $env:DRIVER_SHA -Case $env:CASE_NAME -Arch $env:TARGET_ARCH -AuthorizationReference
+        $env:AUTHORIZATION_REFERENCE
+    name: Remaining ${{ matrix.case }} ${{ matrix.arch }}
+    needs: pilot

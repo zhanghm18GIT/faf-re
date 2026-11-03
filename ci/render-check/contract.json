@@ -1,0 +1,490 @@
+{
+  "schema_version": 1,
+  "status": "frozen-authorized",
+  "repository": "zhanghm18GIT/faf-re",
+  "driver_branch": "ci/render-source-check-20261103-fix1",
+  "base_sha": "1fff92773cd918b274b91ace8e6e6d5a790c8ae3",
+  "base_tree": "e4951b21d8f519f9d4b84da45ae1c270f2476c6f",
+  "review_evidence": "5d22437cbdc4bd06a418c028c96dcb6bbb503b5886e1e67df3249125359a0858",
+  "authorization_reference": "render-check-20261103-fix1-approved",
+  "limits": {
+    "source_count": 3,
+    "job_count": 6,
+    "architectures": [
+      "x64",
+      "x86"
+    ],
+    "max_parallel": 2,
+    "timeout_minutes": 60,
+    "runner": "windows-2022",
+    "dispatches": 1,
+    "reruns": 0,
+    "pilot": {
+      "case": "d3d12",
+      "arch": "x64"
+    },
+    "remaining": [
+      {
+        "case": "particle",
+        "arch": "x64"
+      },
+      {
+        "case": "particle",
+        "arch": "x86"
+      },
+      {
+        "case": "shadow",
+        "arch": "x64"
+      },
+      {
+        "case": "shadow",
+        "arch": "x86"
+      },
+      {
+        "case": "d3d12",
+        "arch": "x86"
+      }
+    ],
+    "remaining_requires_pilot_success": true
+  },
+  "sources": {
+    "d3d12": {
+      "sha": "41840bd3236ad7dcf8bda9ccd9fc6059d3692cc4",
+      "tree": "fc0de3e270d9a09ca0c0132d53f81d59d4c9992c",
+      "changed_files": [
+        "src/gpg/gal/backends/d3d12/DeviceD3D12.cpp"
+      ],
+      "files": [
+        [
+          ".gitmodules",
+          "8777f05826e811b5d0fb3ae7b3fbb30500cdda8e",
+          "1a9da3812d426e1d02daf69e121c1bbf27bf7da8fc30f1ea3bbf4601cf998b05"
+        ],
+        [
+          "CMakeLists.txt",
+          "5cb276fa17615adcb9dcd5ecad7da2b75c531e49",
+          "2281894ebe09bf0c0b390071032393d69f33fb71af53a468bd3dd20a9cabfe56"
+        ],
+        [
+          "CMakePresets.json",
+          "ed18bea18e092b4afff9c72b46eab3f26a6a95f7",
+          "827ddd0553c171bc7af7fa5041b06948db7b1f494c5c200330915b89fedef649"
+        ],
+        [
+          "cmake/FafCodegen.cmake",
+          "a3df5fa8e7a3462b245cbee56a32dc0f13d2c2bf",
+          "38cd1d38dbd0e70e3aab07ea4be09c72f682a505039993080d898905fb9ed78e"
+        ],
+        [
+          "cmake/FafDependencies.cmake",
+          "39c419ba39c1e8860625b5e08a92eb6383709930",
+          "30a4f79fe8d384b2084003814d8933d867e05bc0ad786a355bff9ee36819afea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-common.cmake",
+          "41b52146a682966934c5d490673a72b2eab7f282",
+          "ae7f798ec54d9c693823b98d54e64abcac21e08b6dd743706991d23cbe316cea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x64.cmake",
+          "69c09b528767cb2dd3753ca59c726438cfd19185",
+          "c94f12f9a8e00121f56f0c7431ff52bce75ef3b3568bc606f33ebedfc0f3a2c8"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x86.cmake",
+          "af823fcf6427d3d400f8dfe9c2605a09c47f227b",
+          "12c94da6bafc19b6993f8f33b59a46c95ec3c3871e4379f35c8e26b99e0a33c1"
+        ],
+        [
+          "src/CMakeLists.txt",
+          "7add5c6c9e5083763b4fb15eab5948f9875f5325",
+          "e683b224b855aeaef85fd1800421a364a6e31b16145365b783bf065d561bdc53"
+        ],
+        [
+          "src/gpg/gal/backends/d3d12/DeviceD3D12.cpp",
+          "16eec18197654c826714c822ae2d94af960bc590",
+          "bbc568ea1ce26148b38ca6cd70938bb29b65145d14144373bfa5236f4d103d79"
+        ],
+        [
+          "tests/CMakeLists.txt",
+          "6a465ef505d8eda3c93e16fc92c77f806a6a0f21",
+          "9daffabec4598f228f4c5208809fad94a0a3e323fc58c4143d28d4de3f4bc255"
+        ],
+        [
+          "tests/sim_math/SimMathTests.cpp",
+          "96b5b5f20c65aac9bd9f853184dc1006ac4ce11a",
+          "8639b7d859dc56f2b8bdc0dc366891c09bf69af2c5e906973e60bd64b5d07a9d"
+        ],
+        [
+          "tests/sim_math/golden.txt",
+          "700b203604dc033d84e06995fb79ba0b306c8017",
+          "6cf57e01f1b0b1305d5f395064f1fc21a5d24cd2ec4772d858fe4c581a048c13"
+        ],
+        [
+          "tests/sim_math/known_windows-x86.txt",
+          "428b83b940332481bfb478919bdb18c260e6bedc",
+          "7b75349bb0d97a121da1367fec6ac79182e2b6f49680a79cb7d7c3c21b29546f"
+        ]
+      ],
+      "dependencies": [
+        [
+          "dependencies/FX11",
+          "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+        ],
+        [
+          "dependencies/WildMagic3p8",
+          "9baf054aea272090e0df3289e24cf436fb92c78c"
+        ],
+        [
+          "dependencies/ffmpeg",
+          "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+        ],
+        [
+          "dependencies/patches",
+          "4783e28d8270a2b0a4b30576abae48741500eee6"
+        ],
+        [
+          "dependencies/vulkan",
+          "d4a196d8c84e032d27f999adcea3075517c1c97f"
+        ],
+        [
+          "dependencies/zlib-1.2.3",
+          "abf180a067223611620dd97dd5681df7c7fa7c9b"
+        ]
+      ],
+      "protected_trees": [
+        [
+          "cmake",
+          "6ba2a8e14001053fcf3d63c14f0a4d00d160c981"
+        ],
+        [
+          "tests",
+          "2aade3411426aaed11afd8927d458fb66aba3a04"
+        ],
+        [
+          "tools",
+          "a2d3457a24435ad08d73124563853b15658ab7b0"
+        ],
+        [
+          "dependencies",
+          "87998831e06b299a98bfc1eb24e0a96b2e5836b8"
+        ]
+      ],
+      "server_mode": "OFF"
+    },
+    "particle": {
+      "sha": "2b58ceb9329b7a7cb37f049e18e054651dd20fa1",
+      "tree": "2fed12ecd643343061c358b39c271aba44a80da6",
+      "changed_files": [
+        "src/moho/particles/BeamRenderHelpers.cpp"
+      ],
+      "files": [
+        [
+          ".gitmodules",
+          "8777f05826e811b5d0fb3ae7b3fbb30500cdda8e",
+          "1a9da3812d426e1d02daf69e121c1bbf27bf7da8fc30f1ea3bbf4601cf998b05"
+        ],
+        [
+          "CMakeLists.txt",
+          "5cb276fa17615adcb9dcd5ecad7da2b75c531e49",
+          "2281894ebe09bf0c0b390071032393d69f33fb71af53a468bd3dd20a9cabfe56"
+        ],
+        [
+          "CMakePresets.json",
+          "ed18bea18e092b4afff9c72b46eab3f26a6a95f7",
+          "827ddd0553c171bc7af7fa5041b06948db7b1f494c5c200330915b89fedef649"
+        ],
+        [
+          "cmake/FafCodegen.cmake",
+          "a3df5fa8e7a3462b245cbee56a32dc0f13d2c2bf",
+          "38cd1d38dbd0e70e3aab07ea4be09c72f682a505039993080d898905fb9ed78e"
+        ],
+        [
+          "cmake/FafDependencies.cmake",
+          "39c419ba39c1e8860625b5e08a92eb6383709930",
+          "30a4f79fe8d384b2084003814d8933d867e05bc0ad786a355bff9ee36819afea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-common.cmake",
+          "41b52146a682966934c5d490673a72b2eab7f282",
+          "ae7f798ec54d9c693823b98d54e64abcac21e08b6dd743706991d23cbe316cea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x64.cmake",
+          "69c09b528767cb2dd3753ca59c726438cfd19185",
+          "c94f12f9a8e00121f56f0c7431ff52bce75ef3b3568bc606f33ebedfc0f3a2c8"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x86.cmake",
+          "af823fcf6427d3d400f8dfe9c2605a09c47f227b",
+          "12c94da6bafc19b6993f8f33b59a46c95ec3c3871e4379f35c8e26b99e0a33c1"
+        ],
+        [
+          "src/CMakeLists.txt",
+          "7add5c6c9e5083763b4fb15eab5948f9875f5325",
+          "e683b224b855aeaef85fd1800421a364a6e31b16145365b783bf065d561bdc53"
+        ],
+        [
+          "src/moho/particles/BeamRenderHelpers.cpp",
+          "9cf9ab0f85495989265398e8cd9b7b95dee1f94b",
+          "514e090d3ba90d97ee563d151034c05fff499b267c6b1cfe8205d551cebedcf6"
+        ],
+        [
+          "tests/CMakeLists.txt",
+          "6a465ef505d8eda3c93e16fc92c77f806a6a0f21",
+          "9daffabec4598f228f4c5208809fad94a0a3e323fc58c4143d28d4de3f4bc255"
+        ],
+        [
+          "tests/sim_math/SimMathTests.cpp",
+          "96b5b5f20c65aac9bd9f853184dc1006ac4ce11a",
+          "8639b7d859dc56f2b8bdc0dc366891c09bf69af2c5e906973e60bd64b5d07a9d"
+        ],
+        [
+          "tests/sim_math/golden.txt",
+          "700b203604dc033d84e06995fb79ba0b306c8017",
+          "6cf57e01f1b0b1305d5f395064f1fc21a5d24cd2ec4772d858fe4c581a048c13"
+        ],
+        [
+          "tests/sim_math/known_windows-x86.txt",
+          "428b83b940332481bfb478919bdb18c260e6bedc",
+          "7b75349bb0d97a121da1367fec6ac79182e2b6f49680a79cb7d7c3c21b29546f"
+        ]
+      ],
+      "dependencies": [
+        [
+          "dependencies/FX11",
+          "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+        ],
+        [
+          "dependencies/WildMagic3p8",
+          "9baf054aea272090e0df3289e24cf436fb92c78c"
+        ],
+        [
+          "dependencies/ffmpeg",
+          "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+        ],
+        [
+          "dependencies/patches",
+          "4783e28d8270a2b0a4b30576abae48741500eee6"
+        ],
+        [
+          "dependencies/vulkan",
+          "d4a196d8c84e032d27f999adcea3075517c1c97f"
+        ],
+        [
+          "dependencies/zlib-1.2.3",
+          "abf180a067223611620dd97dd5681df7c7fa7c9b"
+        ]
+      ],
+      "protected_trees": [
+        [
+          "cmake",
+          "6ba2a8e14001053fcf3d63c14f0a4d00d160c981"
+        ],
+        [
+          "tests",
+          "2aade3411426aaed11afd8927d458fb66aba3a04"
+        ],
+        [
+          "tools",
+          "a2d3457a24435ad08d73124563853b15658ab7b0"
+        ],
+        [
+          "dependencies",
+          "87998831e06b299a98bfc1eb24e0a96b2e5836b8"
+        ]
+      ],
+      "server_mode": "OFF"
+    },
+    "shadow": {
+      "sha": "ba7b8d4dd7b0f1c9dd50ba2011fb581445a463b6",
+      "tree": "18fd793226c715aba752649b1bad2e206b0414cb",
+      "changed_files": [
+        "src/moho/render/Shadow.cpp"
+      ],
+      "files": [
+        [
+          ".gitmodules",
+          "8777f05826e811b5d0fb3ae7b3fbb30500cdda8e",
+          "1a9da3812d426e1d02daf69e121c1bbf27bf7da8fc30f1ea3bbf4601cf998b05"
+        ],
+        [
+          "CMakeLists.txt",
+          "5cb276fa17615adcb9dcd5ecad7da2b75c531e49",
+          "2281894ebe09bf0c0b390071032393d69f33fb71af53a468bd3dd20a9cabfe56"
+        ],
+        [
+          "CMakePresets.json",
+          "ed18bea18e092b4afff9c72b46eab3f26a6a95f7",
+          "827ddd0553c171bc7af7fa5041b06948db7b1f494c5c200330915b89fedef649"
+        ],
+        [
+          "cmake/FafCodegen.cmake",
+          "a3df5fa8e7a3462b245cbee56a32dc0f13d2c2bf",
+          "38cd1d38dbd0e70e3aab07ea4be09c72f682a505039993080d898905fb9ed78e"
+        ],
+        [
+          "cmake/FafDependencies.cmake",
+          "39c419ba39c1e8860625b5e08a92eb6383709930",
+          "30a4f79fe8d384b2084003814d8933d867e05bc0ad786a355bff9ee36819afea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-common.cmake",
+          "41b52146a682966934c5d490673a72b2eab7f282",
+          "ae7f798ec54d9c693823b98d54e64abcac21e08b6dd743706991d23cbe316cea"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x64.cmake",
+          "69c09b528767cb2dd3753ca59c726438cfd19185",
+          "c94f12f9a8e00121f56f0c7431ff52bce75ef3b3568bc606f33ebedfc0f3a2c8"
+        ],
+        [
+          "cmake/toolchains/clang-cl-x86.cmake",
+          "af823fcf6427d3d400f8dfe9c2605a09c47f227b",
+          "12c94da6bafc19b6993f8f33b59a46c95ec3c3871e4379f35c8e26b99e0a33c1"
+        ],
+        [
+          "src/CMakeLists.txt",
+          "7add5c6c9e5083763b4fb15eab5948f9875f5325",
+          "e683b224b855aeaef85fd1800421a364a6e31b16145365b783bf065d561bdc53"
+        ],
+        [
+          "src/moho/render/Shadow.cpp",
+          "90a62286f46f12ec78d59a751512b03bf391d382",
+          "2435a94375c95eb372978f039971cd54a337370f9a28abf4ca006515dc2d6b17"
+        ],
+        [
+          "tests/CMakeLists.txt",
+          "6a465ef505d8eda3c93e16fc92c77f806a6a0f21",
+          "9daffabec4598f228f4c5208809fad94a0a3e323fc58c4143d28d4de3f4bc255"
+        ],
+        [
+          "tests/sim_math/SimMathTests.cpp",
+          "96b5b5f20c65aac9bd9f853184dc1006ac4ce11a",
+          "8639b7d859dc56f2b8bdc0dc366891c09bf69af2c5e906973e60bd64b5d07a9d"
+        ],
+        [
+          "tests/sim_math/golden.txt",
+          "700b203604dc033d84e06995fb79ba0b306c8017",
+          "6cf57e01f1b0b1305d5f395064f1fc21a5d24cd2ec4772d858fe4c581a048c13"
+        ],
+        [
+          "tests/sim_math/known_windows-x86.txt",
+          "428b83b940332481bfb478919bdb18c260e6bedc",
+          "7b75349bb0d97a121da1367fec6ac79182e2b6f49680a79cb7d7c3c21b29546f"
+        ]
+      ],
+      "dependencies": [
+        [
+          "dependencies/FX11",
+          "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+        ],
+        [
+          "dependencies/WildMagic3p8",
+          "9baf054aea272090e0df3289e24cf436fb92c78c"
+        ],
+        [
+          "dependencies/ffmpeg",
+          "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+        ],
+        [
+          "dependencies/patches",
+          "4783e28d8270a2b0a4b30576abae48741500eee6"
+        ],
+        [
+          "dependencies/vulkan",
+          "d4a196d8c84e032d27f999adcea3075517c1c97f"
+        ],
+        [
+          "dependencies/zlib-1.2.3",
+          "abf180a067223611620dd97dd5681df7c7fa7c9b"
+        ]
+      ],
+      "protected_trees": [
+        [
+          "cmake",
+          "6ba2a8e14001053fcf3d63c14f0a4d00d160c981"
+        ],
+        [
+          "tests",
+          "2aade3411426aaed11afd8927d458fb66aba3a04"
+        ],
+        [
+          "tools",
+          "a2d3457a24435ad08d73124563853b15658ab7b0"
+        ],
+        [
+          "dependencies",
+          "87998831e06b299a98bfc1eb24e0a96b2e5836b8"
+        ]
+      ],
+      "server_mode": "OFF"
+    }
+  },
+  "warp": {
+    "source_sha": "41840bd3236ad7dcf8bda9ccd9fc6059d3692cc4",
+    "base_sha": "1fff92773cd918b274b91ace8e6e6d5a790c8ae3",
+    "job": {
+      "case": "d3d12",
+      "architecture": "x64",
+      "extra_jobs": 0
+    },
+    "baseline": {
+      "path": "src/gpg/gal/backends/d3d12/DeviceD3D12.cpp",
+      "driver_file": "warp/baseline-DeviceD3D12.cpp",
+      "blob": "b3ba08d1997ddd37a40daed7577af38ec499f5c5",
+      "sha256": "a2e387a88d5a209694d07a76a88ae3d8e6e5b6f8312a55fe797f913f7c95649f"
+    },
+    "fixture_files": [
+      [
+        "warp.ps1",
+        "9a853b757ed9738bb8b7ca1ed15644e6d9f546dbc202b7611ef16af9ff7e86b2"
+      ],
+      [
+        "warp-runtime.cmake",
+        "a17fb2da18b7cb3761b7b9723ba1438e96cfe8713006d9a428c84069a71abc06"
+      ],
+      [
+        "warp/attach.cmake",
+        "4b4f3fdf1a30fcbcb9a29999bc8688794bd38f5a9fbbe42f830ddfcb70ebf30c"
+      ],
+      [
+        "warp/CMakeLists.txt",
+        "6d948dcac2d636c99df7c857bd49b3d0dc83b32bedeeef2095e4aed979244c2c"
+      ],
+      [
+        "warp/D3D12WarpRegression.cpp",
+        "33eb3c948044807f356f57c7b5fa3c985c4fe4dd6a38b4d7f4a252a8313035fa"
+      ],
+      [
+        "warp/SyntheticEffect.h",
+        "cfe2127834345c91f6ea08a4dcedd5018cba1e4a9da6fa927241b9ea48fdd24d"
+      ]
+    ],
+    "baseline_cases": [
+      "rollover-invalid",
+      "rollover-boundary",
+      "no-rollover",
+      "no-poison",
+      "same-page-carry"
+    ],
+    "candidate_cases": [
+      "rollover-invalid",
+      "rollover-boundary",
+      "no-rollover",
+      "no-poison",
+      "same-page-carry",
+      "threshold-only",
+      "rollover-threshold"
+    ],
+    "process_timeout_seconds": 120,
+    "process_count": 12,
+    "expected_baseline_failure_exit": 42,
+    "skip_exit": 77,
+    "skip_is_pass": false,
+    "sdk_archive_sha256": "705271dc83bfee54d9b94e028426e288d5f070784b7446d164f48ecfbb2a02cb",
+    "extra_sdk_cabinet": "DXSDK/Redist/Jun2010_d3dx11_43_x64.cab",
+    "extra_sdk_dll": "d3dx11_43.dll",
+    "extra_sdk_provenance": "Exact members of verified whole Microsoft archive; measured cabinet/DLL hashes recorded at runtime, no installer execution"
+  }
+}
