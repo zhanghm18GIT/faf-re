@@ -1,27 +1,33 @@
-# Experimental dependency checkpoint
+# Fixed-public-source dependency cache
 
-This archive contains only the exact selected public-source-derived dependency objects/static libraries, necessary generated headers and structured Ninja state, plus corresponding public source and notices. It is not a client package and does not establish a successful RE executable, math/coroutine/effect test, or gameplay result.
+This is an intermediate dependency checkpoint, not a runnable client or proof of client test completion. Both execution contracts remain inactive until separately reviewed and authorized.
 
-The consumer must independently reconstruct the identical reviewed product, use the pinned toolchain and stable layout, verify the exact producer job/file/byte count/SHA-256, validate all source/external input and command identities, restore only explicit owned paths and verified timestamps, and prove no dependency compilation/archive work is pending. Missing or stale state stops the consumer; there is no cold-build fallback. Microsoft SDK/UCRT originals, tool binaries, raw console logs, and commercial game/user files are not included.
+## Contents and provenance
 
-The accompanying source/notices and REBUILD.md describe the public build inputs. No root repository LICENSE or blanket license/official upstream endorsement is implied. Redistribution obligations remain those of the individual included components. This experimental state is temporary CI transfer, not durable release storage.
+The checkpoint contains only the admitted dependency objects/libraries, exactly validated `.ninja_log` and `.ninja_deps`, generated public headers, and the previously reviewed public source/notice materials. SDKs, compiler installations, generic logs, credentials, user game files and arbitrary workspace content are not included. Public source/material hashes and fixed product/tool identities remain mandatory. No paid service, user computer, system ACL or network-setting change is required by this design.
 
-## Explicit source-material selection
+This is a fixed reviewed public-source and official-tool workflow in a new owned workspace. It does not claim to isolate arbitrary malicious source or compiler file reads. No user private data is supplied to the build. Expanded compiler commands use a closed option grammar and exact translation-unit/output binding; unknown options stop before dependency compilation.
 
-SOURCE_MATERIAL_POLICY.json records all 16 exact hash-bound omissions of optional test/sample data, sample bytecode, an IDE placeholder and a historical benchmark spreadsheet. These are not inputs to the selected dependency compilation, x64 relink mechanism or component notices. The original immutable checkout remains intact and actual compile inputs must stay inside the admitted source/generated closure. Four exact OpenVMS text build scripts are retained as source and are never executed. No executable/archive/database signature is allowed by this text classification. Full original public archive/commit identities are included for independent reconstruction; no further material is silently omitted to meet size or time limits.
+## Structured object admission
 
-## Object and archive validation
+Object and archive bytes are checked as COFF/BigObj and regular COFF archives. Machine instructions, ordinary constant data and typed archive index numbers are not interpreted as path strings. Parsed debug path carriers (including filenames, string IDs and build commands), linker directives, symbol/string tables and archive text retain bounded structure and path checks. Checksum and other typed numeric debug fields are not scanned as text. Supported CodeView kinds are finite; unknown kinds fail. This is not complete semantic decoding of every nested CodeView type.
 
-Only structurally checked AMD64 relocatable COFF/BigObj and regular COFF archives are admitted; PE images, import objects and unrelated binary formats remain rejected. Linker symbol tables require the exact declared number of nonempty terminated names, with only the optional parity-correct internal NUL alignment used by LLVM.
+Every library's names, count and object hashes must match the independently admitted standalone graph objects. Only Windows slash spelling is normalized; basename or case-insensitive fallback is not allowed. Synthetic canary negatives test the guard chain; these tests do not prove operating-system read isolation. The former wx-only literal exception is not active in this mode.
 
-LLVM 22 can escape Windows backslashes in the CodeView compiler command line. The validator recognizes only a structurally parsed `.debug$T` type stream whose five-argument `LF_BUILDINFO` references the expected `LF_STRING_ID` command field. Its quoting/escaping must round-trip exactly to LLVM's canonical form. Decoded paths must satisfy the same approved roots, including normalized traversal checks. Only that validated command string is masked for the subsequent raw path scan; all other object bytes, CodeView fields, archive headers and metadata remain scanned. This also applies to objects inside a library. No general binary unescaping or expanded path-root permission exists.
+## Native cache transport
 
-Failures report fixed structural/path rule codes and bounded numeric offsets or header fields, not raw paths or arbitrary binary contents. The real-worker format pilot remains mandatory before the full dependency build, and a subset PASS never substitutes for the complete checkpoint seal or restore rehearsal.
+A and B use the same single-job AppVeyor project, branch, image, platform and configuration. Only the exact recipe-specific `checkpoint.zip` is configured for native caching. This is not a published artifact. Cache confidentiality/access guarantees, account quota headroom and A/B cache-key behavior have not yet been verified. Treat its contents as approved public build material rather than relying on privacy. Free account quota is not increased; any quota/save/restore failure stops with no fallback upload or new build.
 
-### Reviewed public literal exception
+A skips cache restoration and starts with cache saving disabled. After sealing, complete restore rehearsal and owned-work cleanup, the driver commits the bounded checkpoint file. A separate readiness check verifies current producer identity and bytes. Only then does the wrapper enable successful native cache finalization. `READY_FOR_NATIVE_CACHE_NOT_CONFIRMED_SAVED` means prepared, not saved: the coordinator must verify provider terminal success and cache-save result before enabling B.
 
-The wxWindows 2.4.2 Windows PostScript AFM default is a public source constant, not a worker path. The only enabled rule binds the pinned `cmndata.cpp` bytes, its admitted wxmswu Ninja object and CMake library paths, an exact immutable UTF-16 string COMDAT with canonical symbols, and its full NUL boundary. Other bytes and paths remain scanned. This proves exact public-literal admission, not compiler-origin authenticity or runtime testing. The early format pilot includes this wx object as well as the existing Monocypher object/archive and uses the same shared build deadline. Unknown source/layout/symbol variants fail closed.
+B never saves cache. Its contract separately pins A's producer, size and SHA-256. Restored bytes must match before parsing; the recipe, source/tool identity, exact members, object/library relationships, generated headers and Ninja state are then verified. A cache miss or mismatch stops. Source timestamps are restored only after content equality; the dependency dry run must show no rebuild. B then builds all five required targets, retains both math gates and runs all four CTests before preparing the final client package.
 
-### COFF archive numeric fields
+The final executable package remains an explicit public artifact under the existing material and test requirements. No automatic B start, retry, broader cache or fallback publication is configured.
 
-The parsed linker-member counts, object offsets and symbol-to-object indices are numeric fields. Their bytes can accidentally resemble UTF-16 paths. Only their exact bounded prefixes are excluded from text-path scanning after the complete archive has passed offset/index/name-count checks. Symbol-name tails, member names, longnames, headers and every object remain scanned. Rejections identify a fixed region label and numeric object-relative offset without printing contents. The complete wx archive is validated early, within the original shared dependency build deadline, before unrelated dependency targets are built.
+## Validation status
+
+Local unit/negative tests and official LLVM local fixtures are not native-Windows full-build acceptance. Native cache save/restore, real worker archive spelling, the full dependency command/debug dialect, timing and capacity must still be established on the approved Windows worker. The worker executes the synthetic admission tests before dependency compilation. A change to any unrecognized mode, metadata dialect or command requires review, not automatic relaxation.
+
+Official references:
+- https://www.appveyor.com/docs/build-cache/
+- https://www.appveyor.com/docs/environment-variables/

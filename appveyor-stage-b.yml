@@ -14,7 +14,8 @@ shallow_clone: false
 build: off
 test: off
 deploy: off
-cache: []
+cache:
+  - 'C:\faf-re-cache\5fb894074022e72f344b6f41\checkpoint.zip -> ci/dependency-recipe.json'
 artifacts: []
 notifications: []
 services: []
@@ -24,6 +25,10 @@ dotnet_csproj:
   patch: false
 environment:
   APPVEYOR_SKIP_FINALIZE_ON_EXIT: 'true'
+  APPVEYOR_CACHE_SKIP_SAVE: 'true'
+  APPVEYOR_CACHE_SKIP_RESTORE: 'false'
+  APPVEYOR_SAVE_CACHE_ON_ERROR: 'false'
+  APPVEYOR_CACHE_ENTRY_UPLOAD_DOWNLOAD_TIMEOUT: '300'
   APPVEYOR_ARTIFACT_UPLOAD_TIMEOUT: '300'
   CMAKE_BUILD_PARALLEL_LEVEL: '2'
   GIT_TERMINAL_PROMPT: '0'

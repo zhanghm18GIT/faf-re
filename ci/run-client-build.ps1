@@ -13,7 +13,7 @@ $driverDir = $PSScriptRoot
 $python = 'C:\Python312-x64\python.exe'
 $entry = Join-Path $driverDir 'staged_driver.py'
 $contract = Join-Path $driverDir ('execution-stage-' + $Stage.ToLowerInvariant() + '.json')
-if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '14a46cc54d2a237a1d3e4b210c05960633583d01c6ff00d20bf6d67d33056d08') {
+if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6a1ebc7301d2b58729af3bcedf1f3129328478d1a5f49e7c110420a5345d2336') {
     throw 'Driver entry SHA-256 mismatch'
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw 'Documented installed x64 Python missing; no fallback or installation' }
@@ -69,7 +69,18 @@ try {
 }
 & $python '-I' '-B' $entry '--contract' $contract '--execute'
 if ($LASTEXITCODE -ne 0) { throw "Bounded RE driver failed with exit code $LASTEXITCODE. No retry or artifact fallback." }
-# Driver already performed all build/test/package gates and the single explicit upload.
-# Skip later default phases; finalize skip is required even though project handlers are empty.
+# A enables only the exact native cache file after the independent readiness gate.
+# A failed driver, incomplete cleanup or missing gate always leaves cache disabled.
+if ($Stage -eq 'A') {
+    $c = Get-Content -Raw -LiteralPath $contract | ConvertFrom-Json
+    $recipe = [string]$c.dependency_recipe_sha256
+    if ($recipe -notmatch '^[a-f0-9]{64}$') { throw 'Invalid cache recipe' }
+    $cacheDir = 'C:\faf-re-cache\' + $recipe.Substring(0, 24)
+    & $python '-I' '-B' (Join-Path $driverDir 'cache_ready.py') '--directory' $cacheDir '--recipe' $recipe
+    if ($LASTEXITCODE -ne 0) { throw 'Native cache readiness gate failed; save remains disabled' }
+    $env:APPVEYOR_CACHE_SKIP_SAVE = 'false'
+    $env:APPVEYOR_SKIP_FINALIZE_ON_EXIT = 'false'
+}
+# B retains finalizer skip after its exact tested-client upload. No matrix/fallback.
 Exit-AppveyorBuild
 throw 'Exit-AppveyorBuild returned unexpectedly; do not continue pipeline'

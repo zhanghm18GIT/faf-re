@@ -287,7 +287,10 @@ class Build:
         require(c.get("schema") == 1 and c.get("state") == "APPROVED_FOR_ONE_MANUAL_BUILD", "Draft contract is intentionally inert")
         require(c.get("root_go_reference") and "REQUIRED" not in c["root_go_reference"], "Final root GO missing")
         require(c.get("parallelism") in [1, 2] and 0 < c.get("max_total_seconds", 0) <= 3300, "Build resource bounds invalid")
-        require(c.get("upload_exact_package") is True, "Exact public package upload not enabled")
+        if c.get("checkpoint_transport") == "native-project-cache-v1" and c.get("stage") == "A":
+            require(c.get("upload_exact_package") is False, "Native cache producer must not publish artifact")
+        else:
+            require(c.get("upload_exact_package") is True, "Exact public package upload not enabled")
         require(c.get("artifact_basename") == "faf-re-x64-293153-282-284", "Artifact basename must be exact reviewed value")
         require(os.environ.get("APPVEYOR", "").lower() == "true", "Not an AppVeyor worker")
         require(os.environ.get("APPVEYOR_ACCOUNT_NAME", "").lower() == c["account"].lower(), "AppVeyor account mismatch")

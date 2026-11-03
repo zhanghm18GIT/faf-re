@@ -12,6 +12,8 @@ import build_graph
 import owned_cleanup
 # Pure helpers are hash-bound by the finished driver manifest before execution.
 import checkpoint
+import cache_transport
+import command_admission
 import toolchain_fingerprint as fp
 
 need=core.require
@@ -90,6 +92,12 @@ class StagedBuild(core.Build):
  def validate_contract(self):
   super().validate_contract()
   need(self.stage_name in STAGES,'Unknown reviewed stage')
+  need(self.c.get('checkpoint_transport')=='native-project-cache-v1','Unreviewed checkpoint transport')
+  need(self.c.get('object_admission_mode')=='fixed-public-source-structured-v1','Unreviewed object admission')
+  need(os.environ.get('APPVEYOR_CACHE_SKIP_SAVE','').lower()=='true','Cache must start non-saving')
+  need(os.environ.get('APPVEYOR_CACHE_SKIP_RESTORE','').lower()==('true' if self.stage_name=='A' else 'false'),'Unexpected native cache restore policy')
+  self.cache_dir=Path('C:/faf-re-cache')/self.c['dependency_recipe_sha256'][:24]
+  self.canaries=(b'REFAF_SYNTHETIC_PRIVATE_CANARY_V1_'+os.urandom(24).hex().encode(),)
   self.material_selection=validate_material_selection(core.read_json(self.here/MATERIAL_POLICY_FILE))
   self.material_selection_sha=core.sha(self.here/MATERIAL_POLICY_FILE)
   need(self.distribution.get('material_selection_sha256')==self.material_selection_sha,'Distribution material selection is not bound')
@@ -114,7 +122,7 @@ class StagedBuild(core.Build):
    need(re.fullmatch('[a-f0-9]{40}',p['configuration_commit']) and re.fullmatch('[a-f0-9]{64}',p['sha256']),'Invalid producer hashes')
    need(re.fullmatch(r'faf-re-deps-[a-f0-9]{16}-[0-9]+-[a-z0-9]+\.zip',p['filename']),'Unexpected checkpoint filename')
    need(0<p.get('size',0)<=400_000_000,'Checkpoint size outside bound')
-  self.receipt.update(stage=self.stage_name,dependency_recipe_key=self.recipe_key,cross_product_reuse=False,checkpoint_format='v1',build_instrumentation={'cmake_suppress_regeneration':'ON','source_glob_immutability_required':True,'product_source_modified_by_instrumentation':False})
+  self.receipt.update(stage=self.stage_name,dependency_recipe_key=self.recipe_key,cross_product_reuse=False,checkpoint_format='v1-structured-fixed-public-source',checkpoint_transport='native-project-cache-v1',build_instrumentation={'cmake_suppress_regeneration':'ON','source_glob_immutability_required':True,'product_source_modified_by_instrumentation':False})
  def remaining(self,cap):
   n=super().remaining(cap)
   if self.phase_end is not None:n=min(n,int(self.phase_end-time.monotonic()));need(n>0,'Current stage phase allowance exhausted')
@@ -164,8 +172,8 @@ class StagedBuild(core.Build):
   # Only locator/version/acquisition commands precede the controlled build environment.
   if self.stage_name=='B':
    p=self.c['checkpoint_input'];self.checkpoint_path=root/'out'/p['filename']
-   url='https://ci.appveyor.com/api/buildjobs/'+p['job_id']+'/artifacts/'+urllib.parse.quote(p['filename'],safe='')
-   self.download_fixed(url,self.checkpoint_path,p['size'],300);core.checked_hash(self.checkpoint_path,p['sha256'])
+   cache_transport.receive(self.cache_dir/'checkpoint.zip',self.checkpoint_path,{'size':p['size'],'sha256':p['sha256']})
+   self.receipt['cache_receive']='PINNED_BYTES_ONLY_SEMANTIC_ADMISSION_PENDING'
  def windows_cleanup_fixture(self):
   self.phase='owned-cleanup-fixture'
   need(os.name=='nt','Windows cleanup fixture requires actual Windows')
@@ -221,7 +229,8 @@ class StagedBuild(core.Build):
   for e in expanded:
    if e['output'] not in objects:continue
    result=build_graph.validate_compile_argv(build_graph.windows_argv(e['command']),self.llvm/'bin/clang-cl.exe',self.build,roots,{'/vctoolsdir':self.msvc,'/winsdkdir':self.sdk,'/winsdkversion':v})
-   seen.append({'output':e['output'],'argv_sha256':result['argv_sha256']})
+   strict=command_admission.validate(build_graph.windows_argv(e['command']),compiler=str(self.llvm/'bin/clang-cl.exe'),cwd=str(self.build),source=e['file'],output=e['output'],read_roots=[str(x) for x in roots],write_root=str(self.build),sysroots={'/vctoolsdir':str(self.msvc),'/winsdkdir':str(self.sdk),'/winsdkversion':v})
+   seen.append({'output':e['output'],'argv_sha256':result['argv_sha256'],'closed_grammar_sha256':strict['argv_sha256']})
    for k,n in result['sysroot_occurrences'].items():occurrences[k].add(n)
   need(len(seen)==len(objects),'Compile input reconciliation incomplete')
   value=json_hash(sorted(seen,key=lambda x:x['output']))
@@ -324,7 +333,11 @@ class StagedBuild(core.Build):
    spec=checkpoint.FileSpec(label,p.relative_to(roots[label]).as_posix(),'header');inputs.append(spec);headers.append(spec)
   payloads=[checkpoint.FileSpec('build',x,'lib' if x.endswith('.lib') else 'obj') for x in self.graph['outputs']]
   payloads += [checkpoint.FileSpec('build','.ninja_log','ninja_log'),checkpoint.FileSpec('build','.ninja_deps','ninja_deps')]+headers
+  # Cache visibility is not proven private; retain the reviewed public-source/license distribution materials.
   payloads += [checkpoint.FileSpec('material',x,'material') for x in sorted(self.material_hashes)]
+  archive_members={}
+  for target,record in self.target_data.items():
+   archive_members['build/'+record['artifact']]={r['output']:'build/'+r['output'] for r in self.graph['records'] if r['target']==target and r['output'].endswith('.obj')}
   allowed=set();approved={str(self.root),str(self.msvc),str(Path(self.c['windows_sdk_root'])),str(self.llvm),str(self.cmake.parent.parent),str(Path(sys.executable).parent)}
   def add(p):
    p=Path(p);allowed.add(str(p));allowed.add(os.path.relpath(p,self.build))
@@ -348,14 +361,14 @@ class StagedBuild(core.Build):
   # Bind the reviewed public source literal to the actual admitted Ninja edge
   # and CMake artifact. Any graph/layout change fails before dependency build.
   validate_public_literal_graph(self.graph,self.target_data,self.source,self.build)
-  return checkpoint.Policy(public_literal_rules=(checkpoint.WX_LITERAL_RULE,),material_text_pins=text_pins,owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),approved_path_files=(str(self.ninja),),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472,manifest_bytes=25_165_824))
+  return checkpoint.Policy(object_mode='fixed-public-source-structured-v1',archive_members=archive_members,canaries=self.canaries,public_literal_rules=(),material_text_pins=text_pins,owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),approved_path_files=(str(self.ninja),),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472,manifest_bytes=25_165_824))
  def metadata(self):
   if self.stage_name=='A':
    a=self.receipt['appveyor'];producer={'account':a['account'],'project_slug':a['project_slug'],'build_id':a['build_id'],'job_id':a['job_id'],'configuration_commit':a['provider_commit']}
   else:
    p=self.c['checkpoint_input'];producer={'account':self.c['account'],'project_slug':self.c['project_slug'],**{k:p[k] for k in ['build_id','job_id','configuration_commit']}}
   external=self.external_before.public_summary();external.pop('duration_seconds',None)
-  return {'schema':1,'public_material_policy_sha256':self.material_selection_sha,'product_base':BASE,'product_tree':TREE,'dependency_recipe_key':self.recipe_key,'dependency_command_identity':self.graph['identity'],'compile_argv_identity':self.compile_argv_identity,'dependency_outputs':self.graph['outputs'],'owned_source_identity':self.owned_baseline['sha256'],'actual_glob_membership':self.owned_baseline['mbedtls_actual_glob'],'controlled_environment':self.effective_env_identity,'external_inputs':external,'producer':producer,'dependency_build_complete':True,'final_client_tests':'NOT_RUN_IN_PRODUCER','not_a_client_package':True}
+  return {'schema':1,'public_material_policy_sha256':self.material_selection_sha,'product_base':BASE,'product_tree':TREE,'dependency_recipe_key':self.recipe_key,'dependency_command_identity':self.graph['identity'],'compile_argv_identity':self.compile_argv_identity,'dependency_outputs':self.graph['outputs'],'owned_source_identity':self.owned_baseline['sha256'],'actual_glob_membership':self.owned_baseline['mbedtls_actual_glob'],'controlled_environment':self.effective_env_identity,'external_inputs':external,'producer':producer,'dependency_build_complete':True,'final_client_tests':'NOT_RUN_IN_PRODUCER','not_a_client_package':True,'object_admission_mode':'fixed-public-source-structured-v1','checkpoint_transport':'native-project-cache-v1'}
  def checkpoint_boundary(self,phase,spec,data):
   self.remaining(120)
   if phase in {'manifest','preflight-begin','preflight-end'}:self.assert_owned()
@@ -475,7 +488,30 @@ class StagedBuild(core.Build):
   self.command([self.appveyor,'PushArtifact',self.artifact,'-FileName',self.artifact.name],env=dict(os.environ),cap=330,name='upload',started_callback=lambda:setattr(self,'upload_attempted',True))
   self.upload_accepted=True;self.receipt['state']='UPLOAD_ACCEPTED_RETRIEVAL_NOT_VERIFIED'
   print('PUBLIC_ARTIFACT_RECEIPT '+json.dumps({'appveyor':self.receipt['appveyor'],'artifact':self.receipt['artifact'],'stage':self.stage_name,'state':self.receipt['state']},sort_keys=True),flush=True)
+ def cache_precompile_tests(self):
+  # Synthetic-only: verifies the integrated guard chain, not filesystem isolation.
+  for pattern in ['test_cache_transport.py','test_cache_ready.py','test_command_admission.py','test_structured_checkpoint.py','test_structured_objects.py']:
+   self.command([sys.executable,'-I','-B','-m','unittest','discover','-s',self.here/'tests','-p',pattern,'-q'],cap=90,name='precompile-'+pattern[:-3])
+  self.receipt['cache_precompile_tests']='PASS_SYNTHETIC_GUARD_CHAIN_NOT_READ_ISOLATION'
+ def stage_native_cache(self):
+  need(self.stage_name=='A' and not self.child_uncertain,'Producer success required')
+  need(self.receipt.get('checkpoint_rehearsal')=='PASS_ON_PRODUCER_WORKER','Producer restore proof missing')
+  need(self.receipt.get('owned_cleanup_before_upload')=='VERIFIED_ONLY_EXACT_ARTIFACT_REMAINS','Prehandoff cleanup missing')
+  need(self.remaining(390)>=390,'Native cache finalization reserve unavailable')
+  self.cache_dir.parent.mkdir(exist_ok=True)
+  self.cache_pin={'size':self.receipt['artifact']['size'],'sha256':self.receipt['artifact']['sha256']}
+  cache_transport.stage(self.artifact,self.cache_dir,self.cache_pin)
+  self.receipt['state']='CACHE_PENDING_CLEANUP_NOT_ELIGIBLE'
+ def commit_native_cache(self):
+  need(self.stage_name=='A' and not self.child_uncertain,'Producer only')
+  need(not self.owned_root.exists(),'Owned work still present')
+  r=cache_transport.commit(self.cache_dir,self.cache_pin,owned_cleanup_verified=True)
+  r.update(recipe=self.recipe_key,producer=self.receipt['appveyor'],artifact=self.receipt['artifact'])
+  core.write_json(self.cache_dir/'CACHE_READY.json',r)
+  self.receipt['state']=r['state']
+  print('NATIVE_CACHE_READY '+json.dumps(r,sort_keys=True),flush=True)
  def run(self):
+  result=1
   try:
    self.validate_contract();self.verify_configuration_checkout();self.start_workspace();self.windows_cleanup_fixture()
    for method in [self.tools_and_runtime,self.source_assembly,self.configure]:
@@ -485,6 +521,7 @@ class StagedBuild(core.Build):
    self.receipt['external_input_fingerprint']=self.external_before.public_summary()
    self.receipt['checkpoint_policy_preflight']=checkpoint.validate_policy(self.checkpoint_policy(),self.metadata())
    print('CHECKPOINT_POLICY_PREFLIGHT '+json.dumps(self.receipt['checkpoint_policy_preflight'],sort_keys=True),flush=True)
+   self.cache_precompile_tests()
    self.phase='precompile-content-acceptance'
    self.receipt['checkpoint_content_preflight']=checkpoint.preflight_available_content(self.checkpoint_policy(),self.metadata(),self.checkpoint_boundary)
    self.receipt['public_material_selection']={'policy_sha256':self.material_selection_sha,'omitted_exact_non_build_files':len(self.material_selection['omitted_non_build_material']),'retained_exact_vms_text_files':len(self.material_selection['retained_vms_text']),'original_checkout_unchanged':True}
@@ -492,17 +529,24 @@ class StagedBuild(core.Build):
    self.remove_junctions(read_only=True)
    self.receipt['owned_tree_preflight']=owned_cleanup.preflight_owned_tree(self.root,self.root,owner_check=self.verify_owner,verified_junctions=tuple(self.junctions),max_seconds=self.remaining(60),emit=lambda k,v:print(k+' '+json.dumps(v,sort_keys=True),flush=True))
    print('OWNED_TREE_PREFLIGHT '+json.dumps(self.receipt['owned_tree_preflight'],sort_keys=True),flush=True)
-   (self.stage_a if self.stage_name=='A' else self.stage_b)();self.clean_before_upload();self.upload();return 0
+   (self.stage_a if self.stage_name=='A' else self.stage_b)();self.clean_before_upload()
+   if self.stage_name=='A':self.stage_native_cache()
+   else:self.upload()
+   result=0
   except Exception as e:
    self.receipt['state']='BLOCKED_UPLOAD_UNCERTAIN' if self.upload_attempted and not self.upload_accepted else 'BLOCKED'
-   print('BUILD_BLOCKED '+json.dumps({'state':self.receipt['state'],'stage':self.stage_name,'phase':self.phase,'reason':build_capture.safe_text(str(e),[(self.owned_root or '<none>','<owned-work>')]),'upload_attempted':self.upload_attempted}),flush=True);return 1
+   print('BUILD_BLOCKED '+json.dumps({'state':self.receipt['state'],'stage':self.stage_name,'phase':self.phase,'reason':build_capture.safe_text(str(e),[(self.owned_root or '<none>','<owned-work>')]),'upload_attempted':self.upload_attempted}),flush=True);result=1
   finally:
    if self.owned_root:
-    if self.child_uncertain:print('CLEANUP_UNCERTAIN no artifact fallback; owned ephemeral work retained for provider teardown',flush=True)
+    if self.child_uncertain:result=1;print('CLEANUP_UNCERTAIN no artifact fallback; owned ephemeral work retained for provider teardown',flush=True)
     else:
      try:self.cleanup_operation='verify-owned-marker';self.verify_owner();self.remove_junctions();self.remove_owned(self.owned_root);print('CLEANUP owned work removed',flush=True)
-     except Exception as e:print('CLEANUP_INCOMPLETE '+json.dumps({'operation':getattr(self,'cleanup_operation','unknown'),'error_type':type(e).__name__,'reason_code':getattr(e,'reason_code',None),'errno':getattr(e,'errno',None),'winerror':getattr(e,'winerror',None),'artifact_fallback':False},sort_keys=True),flush=True)
-   print('FINALIZATION no cache, fallback artifact, deploy or retry',flush=True)
+     except Exception as e:result=1;print('CLEANUP_INCOMPLETE '+json.dumps({'operation':getattr(self,'cleanup_operation','unknown'),'error_type':type(e).__name__,'reason_code':getattr(e,'reason_code',None),'errno':getattr(e,'errno',None),'winerror':getattr(e,'winerror',None),'artifact_fallback':False},sort_keys=True),flush=True)
+   print('FINALIZATION cache disabled unless producer commits after complete cleanup; no fallback/deploy/retry',flush=True)
+  if result==0 and self.stage_name=='A':
+   try:self.commit_native_cache()
+   except Exception:print('CACHE_COMMIT_BLOCKED no native save eligibility',flush=True);result=1
+  return result
 
 def main():
  p=argparse.ArgumentParser(description=__doc__);p.add_argument('--contract',type=Path);p.add_argument('--execute',action='store_true');p.add_argument('--check-interpreter',action='store_true');a=p.parse_args()

@@ -255,5 +255,7 @@
     "FAF_ENABLE_TRACY": "OFF",
     "FAF_SERVER_MODE": "OFF",
     "FAF_CALL_HASH_BUILD": "OFF"
-  }
+  },
+  "checkpoint_protocol": "fixed-public-source-structured-native-cache-v1",
+  "cache_artifact_content": "admitted-objects-archives-reviewed-ninja-state-generated-headers-and-reviewed-public-distribution-material"
 }

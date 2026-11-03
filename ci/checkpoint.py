@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 import stat
 import struct
+import sys
 import tempfile
 import zipfile
 from contextlib import contextmanager
@@ -73,6 +74,10 @@ class Policy:
     limits: Limits = field(default_factory=Limits)
     approved_path_files: tuple[str, ...] = ()  # Exact logical-path admission only, never a directory/payload grant.
     material_text_pins: Mapping[str, str] = field(default_factory=dict)
+    object_mode: str = 'legacy-path-scan'
+    archive_members: Mapping[str, Mapping[str, str]] = field(default_factory=dict) # lib member -> archive name -> admitted obj member
+    object_hashes: Mapping[str, str] = field(default_factory=dict) # trusted caller or pinned manifest, not archive declarations
+    canaries: tuple[bytes, ...] = ()
     public_literal_rules: tuple[str, ...] = ()  # Reviewed IDs only; no caller-provided strings, roots, offsets or hashes.
 
 
@@ -327,6 +332,18 @@ def _safe_path(policy, spec, *, allow_missing=False):
 
 
 def _policy(policy):
+    require(policy.object_mode in {'legacy-path-scan','fixed-public-source-structured-v1'}, 'unknown object admission mode')
+    if policy.object_mode == 'fixed-public-source-structured-v1':
+        require(type(policy.canaries) is tuple and policy.canaries and all(type(x) is bytes and len(x)>=8 for x in policy.canaries), 'missing synthetic canary controls')
+        declared={x.member:x.kind for x in policy.payloads}
+        for lib,members in policy.archive_members.items():
+            require(declared.get(lib)=='lib' and isinstance(members,Mapping) and members, 'archive graph membership missing')
+            require(len(set(members.values()))==len(members), 'duplicate archive graph object')
+            for name,obj in members.items():
+                relative_name(name.replace('\\','/'))
+                require(declared.get(obj)=='obj', 'archive references undeclared object')
+        require(set(policy.archive_members)=={x.member for x in policy.payloads if x.kind=='lib'}, 'archive graph closure incomplete')
+        require(all(declared.get(k)=='obj' and re.fullmatch('[a-f0-9]{64}',v) for k,v in policy.object_hashes.items()), 'untrusted object hash map')
     _public_literal_provenance(policy)
     require(set(policy.owned_roots) == set(policy.root_kinds), 'root-kind mismatch')
     require(policy.owned_roots and policy.approved_path_roots and absolute(policy.log_base_root), 'missing root boundaries')
@@ -749,9 +766,9 @@ def _cv_padding(data, used, *, section, offset, rule):
 def _validated_codeview_ranges(data, policy):
     """Only LF_BUILDINFO's command LF_STRING_ID bytes may bypass raw re-scan.
 
-    The caller has already validated this object's COFF layout. Everything
-    outside these proven string spans, including other CodeView fields, still
-    passes the unchanged recognizable-path scan. No payload bytes are changed.
+    The caller has already validated this object's COFF layout. Legacy mode
+    scans remaining bytes; structured mode separately validates semantic path
+    fields and does not classify numeric debug fields as strings. No bytes change.
     """
     big = data[:4] == b'\0\0\xff\xff'
     header = 56 if big else 20
@@ -836,6 +853,19 @@ def _material_bytes(data):
 
 def _content(spec, data, policy):
     require(len(data) <= policy.limits.member_bytes, 'member content byte bound')
+    if policy.object_mode == 'fixed-public-source-structured-v1' and spec.kind in {'obj','lib'}:
+        import structured_objects
+        if spec.kind == 'obj':
+            require(Path(spec.relpath).suffix.lower()=='.obj','object suffix')
+            if spec.member in policy.object_hashes:require(hashlib.sha256(data).hexdigest()==policy.object_hashes[spec.member],'Standalone object drift after identity capture')
+            structured_objects.validate_object(data,policy=policy,backend=sys.modules[__name__],canaries=policy.canaries)
+        else:
+            require(Path(spec.relpath).suffix.lower()=='.lib','library suffix')
+            bindings=policy.archive_members.get(spec.member)
+            require(bindings and all(obj in policy.object_hashes for obj in bindings.values()),'archive standalone-object evidence missing')
+            expected={name:policy.object_hashes[obj] for name,obj in bindings.items()}
+            structured_objects.validate_archive(data,expected_objects=expected,policy=policy,backend=sys.modules[__name__],canaries=policy.canaries)
+        return
     suffix = Path(spec.relpath).suffix.lower()
     if spec.kind == 'obj':
         require(suffix == '.obj', 'object suffix')
@@ -1049,6 +1079,7 @@ def validate_built_subset(policy, members, boundary_check=None):
         restricted = replace(policy, allowed_log_outputs=frozenset(outputs))
         _policy(restricted)
     _baseline_callback('built-subset-begin', boundary_check, {'selected_count': len(selected)})
+    restricted = _standalone_hash_policy(restricted,members)
     records, counts, total = [], {kind: 0 for kind in sorted(DEFERRED_KINDS)}, 0
     for spec in selected:
         entry, data = _checked_file(spec, restricted, 'built-subset', boundary_check)
@@ -1096,6 +1127,18 @@ def _zip_info(name):
     return info
 
 
+def _standalone_hash_policy(policy, selected=None):
+    if policy.object_mode != 'fixed-public-source-structured-v1': return policy
+    names=set(selected) if selected is not None else None
+    hashes={}
+    for spec in policy.payloads:
+        if spec.kind=='obj' and (names is None or spec.member in names):
+            entry,data=_read(spec,policy)
+            _content(spec,data,policy)
+            hashes[spec.member]=entry['sha256']
+    return replace(policy,object_hashes=hashes)
+
+
 def seal_checkpoint(path, policy, metadata, boundary_check: BoundaryCheck | None = None):
     """Seal only explicit payloads. Callback may raise to enforce material receipts."""
     with _member_guard('seal-declarations', None):
@@ -1104,6 +1147,7 @@ def seal_checkpoint(path, policy, metadata, boundary_check: BoundaryCheck | None
     path = _outer_path(path, missing=True)
     require(not path.exists() and not path.is_symlink(), 'checkpoint destination already exists')
     require(path.parent.is_dir() and not path.parent.is_symlink(), 'checkpoint parent missing/link')
+    policy = _standalone_hash_policy(policy)
     manifest = {'schema': 1, 'metadata': metadata, 'owned_roots': {k: str(v) for k, v in policy.owned_roots.items()}, 'inputs': [], 'payloads': []}
     total = 0
     for spec in policy.inputs:
@@ -1204,6 +1248,13 @@ def validate_checkpoint(path, policy, expected_sha256, expected_size, expected_m
         require(manifest['metadata'] == expected_metadata, 'immutable metadata drift')
         with _member_guard('validate-metadata', None):
             metadata_paths(manifest['metadata'], policy)
+        if policy.object_mode == 'fixed-public-source-structured-v1':
+            require(type(manifest['payloads']) is list and len(manifest['payloads'])==len(policy.payloads),'manifest object inventory length')
+            hashes={}
+            for entry,spec in zip(manifest['payloads'],policy.payloads):
+                _entry(entry,spec,policy)
+                if spec.kind=='obj':hashes[spec.member]=entry['sha256']
+            policy=replace(policy,object_hashes=hashes)
         for label, specs in [('inputs', policy.inputs), ('payloads', policy.payloads)]:
             require(isinstance(manifest[label], list) and len(manifest[label]) == len(specs), 'manifest allowlist length mismatch')
             for entry, spec in zip(manifest[label], specs):
