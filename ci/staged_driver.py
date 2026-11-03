@@ -9,6 +9,7 @@ import argparse,hashlib,json,os,re,shutil,stat,time,urllib.parse
 import driver as core
 import build_capture
 import build_graph
+import owned_cleanup
 # Pure helpers are hash-bound by the finished driver manifest before execution.
 import checkpoint
 import toolchain_fingerprint as fp
@@ -82,7 +83,7 @@ class StagedBuild(core.Build):
   try:return super().command(args,cwd,cap,env if env is not None else self.child_env,name,binary,permit_failure,started_callback)
   except BaseException:
    # Conservative: no snapshot/promotion follows any failed child or uncertain teardown.
-   if self.phase in {'dependency-compile','build-and-goldens'}:self.child_uncertain=True
+   self.child_uncertain=True
    raise
  def start_workspace(self):
   root=Path('C:/faf-re-staged')/self.recipe_key[:24]
@@ -137,15 +138,18 @@ class StagedBuild(core.Build):
   roots=[self.source,*generated,*external]
   for t in targets.values():
    for x in t['includes']:need(any(Path(x).is_relative_to(p) for p in roots),'CMake exposes an undeclared include root')
-  objects=set(x for x in graph['outputs'] if x.endswith('.obj'));seen=[]
+  objects=set(x for x in graph['outputs'] if x.endswith('.obj'));seen=[];occurrences={k:set() for k in ['/vctoolsdir','/winsdkdir','/winsdkversion']}
   for e in expanded:
    if e['output'] not in objects:continue
    result=build_graph.validate_compile_argv(build_graph.windows_argv(e['command']),self.llvm/'bin/clang-cl.exe',self.build,roots,{'/vctoolsdir':self.msvc,'/winsdkdir':self.sdk,'/winsdkversion':v})
    seen.append({'output':e['output'],'argv_sha256':result['argv_sha256']})
+   for k,n in result['sysroot_occurrences'].items():occurrences[k].add(n)
   need(len(seen)==len(objects),'Compile input reconciliation incomplete')
   value=json_hash(sorted(seen,key=lambda x:x['output']))
   if hasattr(self,'compile_argv_identity'):need(value==self.compile_argv_identity,'Fresh expanded argv identity differs')
   self.compile_argv_identity=value
+  self.receipt['compiler_sysroot_occurrences']={k:sorted(v) for k,v in occurrences.items()}
+  print('COMPILER_SYSROOT_COUNTS '+json.dumps(self.receipt['compiler_sysroot_occurrences'],sort_keys=True),flush=True)
   self.compile_sources=[Path(e['file']) if Path(e['file']).is_absolute() else self.build/e['file'] for e in expanded if e['output'] in objects]
  def source_inputs(self):
   files={self.source/x['path'] for x in core.read_json(self.here/'public-source-allowlist.json')['files']}
@@ -281,7 +285,7 @@ class StagedBuild(core.Build):
    need(p.is_relative_to(self.source) and not p.is_symlink(),'Rehearsal refuses external/source links')
    os.utime(p,ns=(newer,newer));need(p.stat().st_mtime_ns==newer,'Fresh-source timestamp simulation failed')
   # Fresh generated graph at identical stable paths; no source/tool download is repeated.
-  shutil.rmtree(self.build);self.build.mkdir();self.configure();self.assert_owned()
+  self.remove_owned(self.build);self.build.mkdir();self.configure();self.assert_owned()
   policy=self.checkpoint_policy();checkpoint.restore_checkpoint(path,policy,sealed['sha256'],sealed['bytes'],meta,self.checkpoint_boundary)
   self.clean_dependency_plan();self.assert_owned()
   self.receipt['checkpoint_rehearsal']='PASS_ON_PRODUCER_WORKER';self.receipt['ctest_result']='NOT_RUN_IN_PRODUCER';self.receipt['build_targets']=list(build_graph.TARGETS)
@@ -293,11 +297,29 @@ class StagedBuild(core.Build):
   self.compile_and_test();self.assert_owned();self.external_identity().assert_matches(self.external_before)
   self.stage_package()
  def verify_owner(self):
-  need(self.owned_root and self.owned_root.parent==Path('C:/faf-re-staged'),'Unexpected cleanup root')
+  need(self.owned_root==Path('C:/faf-re-staged')/self.recipe_key[:24],'Unexpected cleanup root')
+  for p in [self.owned_root.parent,self.owned_root,self.owned_root/'OWNED_WORK.json']:
+   st=p.lstat();need(not p.is_symlink() and not(getattr(st,'st_file_attributes',0)&stat.FILE_ATTRIBUTE_REPARSE_POINT),'Unexpected cleanup ownership reparse point')
+  need((self.owned_root/'OWNED_WORK.json').is_file(),'Cleanup ownership marker is not a regular file')
   need(core.read_json(self.owned_root/'OWNED_WORK.json')=={'recipe':self.recipe_key,'job_id':self.receipt['appveyor']['job_id']},'Cleanup ownership mismatch')
+ def remove_owned(self,target):
+  need(not self.child_uncertain,'Uncertain child forbids owned cleanup')
+  self.cleanup_operation='remove-owned-path'
+  limit=self.remaining(60)
+  owned_cleanup.remove_owned_path(self.owned_root,target,owner_check=self.verify_owner,max_seconds=limit,emit=lambda k,v:print(k+' '+json.dumps(v,sort_keys=True),flush=True))
  def remove_junctions(self):
+  self.cleanup_operation='unlink-sdk-junctions'
+  allowed={self.owned_root/'sdk-overlay/Include',self.owned_root/'sdk-overlay/Lib'/self.c['windows_sdk_headers_version']}
   for p in reversed(self.junctions):
-   if os.path.lexists(p):need(p.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT,'Unexpected overlay entry');os.rmdir(p)
+   need(p in allowed,'Unrecognized SDK junction cleanup target')
+   if os.path.lexists(p):
+    st=p.lstat();need(st.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT and getattr(st,'st_reparse_tag',None)==0xa0000003,'Unexpected overlay entry')
+    for parent in [self.owned_root,self.owned_root/'sdk-overlay',p.parent]:need(not(parent.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT),'SDK junction parent is a reparse point')
+    target=Path(self.c['windows_sdk_root'])/('Include' if p.name=='Include' else 'Lib/'+self.c['windows_sdk_headers_version'])
+    need(p.resolve()==target.resolve(),'SDK junction target changed')
+    try:os.rmdir(p)
+    except OSError as e:
+     print('CLEANUP_DETAIL '+json.dumps({'operation':'unlink-sdk-junction','relative_path':p.relative_to(self.owned_root).as_posix(),'error_type':type(e).__name__,'errno':e.errno,'winerror':getattr(e,'winerror',None)},sort_keys=True),flush=True);raise
   self.junctions=[]
  def clean_before_upload(self):
   self.phase='owned-cleanup-before-upload';need(not self.child_uncertain,'Uncertain child forbids artifact promotion');self.verify_owner();self.remove_junctions()
@@ -305,9 +327,9 @@ class StagedBuild(core.Build):
   for p in list(self.owned_root.iterdir()):
    if p.name in {'OWNED_WORK.json','out'}:continue
    need(not(p.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT),'Unexpected work reparse entry')
-   shutil.rmtree(p) if p.is_dir() else p.unlink()
+   self.remove_owned(p)
   for p in (self.owned_root/'out').iterdir():
-   if p!=self.artifact:need(p.is_file() and not p.is_symlink(),'Unexpected handoff directory');p.unlink()
+   if p!=self.artifact:need(p.is_file() and not p.is_symlink(),'Unexpected handoff directory');self.remove_owned(p)
   need(set(p.name for p in self.owned_root.iterdir())=={'OWNED_WORK.json','out'},'Owned cleanup incomplete')
   need(list((self.owned_root/'out').iterdir())==[self.artifact],'Handoff contains extra files')
   self.receipt['owned_cleanup_before_upload']='VERIFIED_ONLY_EXACT_ARTIFACT_REMAINS';self.phase_end=None
@@ -337,8 +359,8 @@ class StagedBuild(core.Build):
    if self.owned_root:
     if self.child_uncertain:print('CLEANUP_UNCERTAIN no artifact fallback; owned ephemeral work retained for provider teardown',flush=True)
     else:
-     try:self.verify_owner();self.remove_junctions();shutil.rmtree(self.owned_root);print('CLEANUP owned work removed',flush=True)
-     except Exception as e:print('CLEANUP_INCOMPLETE '+type(e).__name__+'; no artifact fallback',flush=True)
+     try:self.cleanup_operation='verify-owned-marker';self.verify_owner();self.remove_junctions();self.remove_owned(self.owned_root);print('CLEANUP owned work removed',flush=True)
+     except Exception as e:print('CLEANUP_INCOMPLETE '+json.dumps({'operation':getattr(self,'cleanup_operation','unknown'),'error_type':type(e).__name__,'errno':getattr(e,'errno',None),'winerror':getattr(e,'winerror',None),'artifact_fallback':False},sort_keys=True),flush=True)
    print('FINALIZATION no cache, fallback artifact, deploy or retry',flush=True)
 
 def main():

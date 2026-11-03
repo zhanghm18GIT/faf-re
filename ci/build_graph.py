@@ -85,7 +85,7 @@ def validate_compile_argv(argv,compiler,build,allowed_roots,sysroots):
   need(any(p==r or p.startswith(r+'\\') for r in roots),'Compiler input root is not fingerprinted')
   return p
  need(argv and norm(argv[0])==norm(compiler),'Dependency object compiler is not the pinned clang-cl')
- seen={};includes=[];i=1
+ seen={};occurrences={};includes=[];i=1
  forward={'-ffp-contract=off','-fno-strict-aliasing','-fwrapv','-fno-delete-null-pointer-checks','-fno-strict-float-cast-overflow','-fno-finite-loops','-fno-strict-return'}
  while i<len(argv):
   a=argv[i];low=a.lower()
@@ -99,7 +99,11 @@ def validate_compile_argv(argv,compiler,build,allowed_roots,sysroots):
    if low==opt or low.startswith(opt+':'):
     if low==opt:i+=1;need(i<len(argv),'Missing sysroot value');v=argv[i]
     else:v=a[len(opt)+1:]
-    need(opt not in seen,'Duplicate sysroot override');seen[opt]=v;match=True;break
+    occurrences[opt]=occurrences.get(opt,0)+1
+    expected=sysroots.get(opt)
+    same=(v==str(expected)) if opt=='/winsdkversion' else (norm(v)==norm(expected))
+    need(expected is not None and same,'Conflicting sysroot selection: '+opt+' occurrence '+str(occurrences[opt]))
+    seen[opt]=v;match=True;break
   if match:i+=1;continue
   for opt in ['/external:i','/imsvc','-imsvc','-isystem-after','-isystem','-idirafter','-iquote','-include','/fi','/i','-i']:
    # -I is case-sensitive; other lowercase -i prefixes are explicitly enumerated.
@@ -113,4 +117,4 @@ def validate_compile_argv(argv,compiler,build,allowed_roots,sysroots):
   i+=1
  need(set(seen)==set(sysroots),'Missing explicit compiler toolset/SDK selection')
  for k,v in sysroots.items():need(norm(seen[k])==norm(v),'Compiler toolset/SDK selection differs')
- return {'argv_sha256':digest(argv),'include_paths':sorted(set(includes))}
+ return {'argv_sha256':digest(argv),'include_paths':sorted(set(includes)),'sysroot_occurrences':occurrences}

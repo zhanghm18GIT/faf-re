@@ -30,6 +30,26 @@ class CompilerInputs(unittest.TestCase):
    with self.assertRaises(graph.GraphError):self.run_args(args)
  def test_argv_identity_tracks_flags(self):self.assertNotEqual(self.run_args(self.argv)['argv_sha256'],self.run_args(self.argv+['/DNEW=1'])['argv_sha256'])
 
+ def test_same_sysroot_repeated_groups(self):
+  args=self.argv+self.argv[1:7]
+  result=self.run_args(args)
+  self.assertEqual(result['sysroot_occurrences'],dict.fromkeys(self.sysroots,2))
+  self.assertNotEqual(result['argv_sha256'],self.run_args(self.argv)['argv_sha256'])
+ def test_equivalent_path_case_slash_and_colon_repeats(self):
+  args=self.argv+['/vctoolsdir:c:/VC/','/winsdkdir:C:/SDK','/winsdkversion:10.0.26100.0']
+  self.assertEqual(self.run_args(args)['sysroot_occurrences'],dict.fromkeys(self.sysroots,2))
+ def test_conflict_then_expected_still_rejected(self):
+  for opt in self.sysroots:
+   wrong='10.0.22000.0' if opt=='/winsdkversion' else r'C:\wrong'
+   for suffix in [[opt,wrong,opt,str(self.sysroots[opt])],[opt+':'+wrong]]:
+    with self.assertRaisesRegex(graph.GraphError,'Conflicting sysroot selection'):self.run_args(self.argv+suffix)
+ def test_wrong_first_selection_cannot_be_masked(self):
+  args=list(self.argv);args[2]=r'C:\wrong'
+  with self.assertRaisesRegex(graph.GraphError,'Conflicting sysroot selection'):self.run_args(args+self.argv[1:7])
+ def test_empty_missing_and_malformed_version(self):
+  for suffix in [['/winsdkdir:'],['/vctoolsdir'],['/winsdkversion','10.0.26100.0/'],['/winsdkversion:10.0.26100.0x']]:
+   with self.assertRaises(graph.GraphError):self.run_args(self.argv+suffix)
+
 class GraphChecks(unittest.TestCase):
  def fixture(self):
   targets={t:{'artifact':t+'.lib'} for t in graph.TARGETS};entries=[]
@@ -76,9 +96,17 @@ class StageChecks(unittest.TestCase):
    with self.assertRaises(driver.Blocked):driver.validate_actual_links(text[-16000:],root,ucrt)
  def test_rehearsal_timestamp_change_precedes_fresh_configure(self):
   tree=ast.parse((CI/'staged_driver.py').read_text());f=next(x for x in ast.walk(tree) if isinstance(x,ast.FunctionDef) and x.name=='stage_a');s=ast.unparse(f)
-  self.assertLess(s.index('os.utime('),s.index('shutil.rmtree(self.build)'));self.assertIn('p.is_relative_to(self.source)',s);self.assertIn('checkpoint.restore_checkpoint',s)
+  self.assertLess(s.index('os.utime('),s.index('self.remove_owned(self.build)'));self.assertIn('p.is_relative_to(self.source)',s);self.assertIn('checkpoint.restore_checkpoint',s)
  def test_no_mutable_build_lib_in_external_inventory(self):
   tree=ast.parse((CI/'staged_driver.py').read_text());f=next(x for x in ast.walk(tree) if isinstance(x,ast.FunctionDef) and x.name=='external_identity');self.assertNotIn('build-cwd',ast.unparse(f))
+ def test_any_command_exception_suppresses_cleanup(self):
+  b=staged.StagedBuild(CI,{'stage':'A','max_total_seconds':3300});b.phase='configure'
+  with mock.patch.object(driver.Build,'command',side_effect=driver.Blocked('fixture child failure')):
+   with self.assertRaises(driver.Blocked):b.command(['fixture'],name='configure')
+  self.assertTrue(b.child_uncertain)
+  with mock.patch.object(staged.owned_cleanup,'remove_owned_path') as remove:
+   with self.assertRaises(driver.Blocked):b.remove_owned(Path('unused'))
+   remove.assert_not_called()
  def test_manifest_bytes(self):
   for e in json.loads((CI/'driver-manifest.json').read_text())['files']:
    data=(CI/e['path']).read_bytes();self.assertEqual(hashlib.sha256(data).hexdigest(),e['sha256'],e['path']);self.assertEqual(len(data),e['size'])
