@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "status": "REVIEWED_FOR_THIS_PUBLIC_EXPERIMENT",
+  "review_reference": "staged-material-review-20261103-1359",
+  "composite_tree": "9ea76a3f4509052ca6ac116581d95b0d42e6384f",
+  "public_source_allowlist_sha256": "bd0a080f8fd151fc8325e762bbb8e5ab3bcb947fc1b08a75edc47b7e7ec77d18",
+  "root_license_absence_recorded": true,
+  "distribution_scope": "Public experimental RE source build only; no official release or upstream endorsement",
+  "material_policy": "exact-engine-allowlist-plus-pinned-dependency-source-v1",
+  "required_components": [
+    "luaplus",
+    "WildMagic3p8",
+    "zlib-1.2.3",
+    "FX11",
+    "vulkan",
+    "ffmpeg",
+    "boost_1_34_1",
+    "wxWindows-2.4.2",
+    "libjuice",
+    "libdatachannel",
+    "usrsctp",
+    "plog",
+    "mbedtls",
+    "monocypher",
+    "dxc"
+  ],
+  "additional_notice_paths": {
+    "WildMagic3p8": [
+      "License/WildMagic3License.pdf"
+    ],
+    "zlib-1.2.3": [
+      "README"
+    ]
+  }
+}

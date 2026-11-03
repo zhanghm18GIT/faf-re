@@ -1,0 +1,12 @@
+{
+  "schema": 2,
+  "status": "BLOCKED_MISSING_APPROVED_UCRT",
+  "account": "zhanghm18GIT",
+  "project_slug": "faf-re",
+  "build_id": "55017328",
+  "job_id": "qlqx8h7gn2uc63yi",
+  "public_artifact_round_trip": "NOT_RUN",
+  "native_attachment_preparation": "NOT_RUN",
+  "documented_route_limit_bytes": 500000000,
+  "documented_route_limit_source": "Configured delivery ceiling; actual full artifact retrieval is checked after upload, not proven by this historical result."
+}

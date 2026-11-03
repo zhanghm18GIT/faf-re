@@ -1,0 +1,239 @@
+{
+  "base_commit": "302eb87072249a4ac2195d3a30cb5475df30f31a",
+  "base_tree": "667c4a8a308c829c71c7275838c6b2511a1b9c7a",
+  "planned_integrated_tree": "9ea76a3f4509052ca6ac116581d95b0d42e6384f",
+  "submodule_gitlinks": [
+    {
+      "path": "dependencies/FX11",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+    },
+    {
+      "path": "dependencies/WildMagic3p8",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "9baf054aea272090e0df3289e24cf436fb92c78c"
+    },
+    {
+      "path": "dependencies/ffmpeg",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+    },
+    {
+      "path": "dependencies/vulkan",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "d4a196d8c84e032d27f999adcea3075517c1c97f"
+    },
+    {
+      "path": "dependencies/zlib-1.2.3",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "abf180a067223611620dd97dd5681df7c7fa7c9b"
+    }
+  ],
+  "download_dependencies": [
+    {
+      "name": "boost_1_34_1",
+      "url": "https://downloads.sourceforge.net/project/boost/boost/1.34.1/boost_1_34_1.tar.bz2",
+      "sha256": "0f866c75b025a4f1340117a106595cc0675f48ba1e5a9b5c221ec7f19e96ec4c"
+    },
+    {
+      "name": "wxWindows-2.4.2",
+      "url": "https://github.com/wxWidgets/wxWidgets/releases/download/v2.4.2/wxMSW-2.4.2.zip",
+      "sha256": "081cb30347ed9092a50c39311b46586f4264fb125942652db168851be96ebf33"
+    },
+    {
+      "name": "libjuice",
+      "url": "https://github.com/paullouisageneau/libjuice/archive/refs/tags/v1.7.4.tar.gz",
+      "sha256": "95c088862aa1b88b73d62aa99577135010eb768fcafb252d13aa85a8515ef798"
+    },
+    {
+      "name": "libdatachannel",
+      "url": "https://github.com/paullouisageneau/libdatachannel/archive/refs/tags/v0.24.6.tar.gz",
+      "sha256": "22a66aebebd8dae561d8e5181da96f2fcc203e067c5b2186c07b39af913464c0"
+    },
+    {
+      "name": "usrsctp",
+      "url": "https://github.com/sctplab/usrsctp/archive/fec583d54493f879d2ae44a743423bf8a04371ab.tar.gz",
+      "sha256": "e5c114afe73c9a0ec419fab5f5b3f63f3ce57b09b90d06ea85e63dca8aed3e7c"
+    },
+    {
+      "name": "plog",
+      "url": "https://github.com/SergiusTheBest/plog/archive/94899e0b926ac1b0f4750bfbd495167b4a6ae9ef.tar.gz",
+      "sha256": "92a08bce559b5f28aa88d3fd9071567414b9f43a83fe2a05a6dd14f1da536072"
+    },
+    {
+      "name": "mbedtls",
+      "url": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2",
+      "sha256": "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6"
+    },
+    {
+      "name": "dxc",
+      "url": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/dxc_2026_09_29.zip",
+      "sha256": "ad31b1fc8443175d204f77a611fdb3ef2ec42759bdc2f1167368de24a4a7e7f1"
+    },
+    {
+      "name": "monocypher",
+      "url": "https://github.com/LoupVaillant/Monocypher/archive/refs/tags/4.0.2.tar.gz",
+      "sha256": "bc1ca30b1b2654e4e7daf2492c0d204200e55137f23fda6b7142fd7d523bd6b4"
+    }
+  ],
+  "directx_sdk": {
+    "url": "https://download.microsoft.com/download/A/E/7/AE743F1F-632B-4809-87A9-AA1BB3458E31/DXSDK_Jun10.exe",
+    "sha256": "705271dc83bfee54d9b94e028426e288d5f070784b7446d164f48ecfbb2a02cb",
+    "package": "Headers/libraries build only; exclude SDK from distribution"
+  },
+  "build_file_sha256": {
+    "README.md": "20e2875516b73732e42e5b025f7d2348c8922466658de36e54dd18b67b084221",
+    "CONTRIBUTING.md": "fe838973d5eb6b25ee36417a4d7870b815689c5fc305c878ffa495e2eb6ced60",
+    "CMakeLists.txt": "a6a9a64a319c6ddf169ceaf0f48443b37e7c42328f9d98a1fbf3bc1b71b0d198",
+    "CMakePresets.json": "827ddd0553c171bc7af7fa5041b06948db7b1f494c5c200330915b89fedef649",
+    "build.ps1": "bbfeebd239bfcabdca784a23c9ea501931aebf29b47681f89415ebce7261010d",
+    "cmake/toolchains/clang-cl-common.cmake": "ae7f798ec54d9c693823b98d54e64abcac21e08b6dd743706991d23cbe316cea",
+    "cmake/FafDependencies.cmake": "30a4f79fe8d384b2084003814d8933d867e05bc0ad786a355bff9ee36819afea",
+    "src/CMakeLists.txt": "c93a900b5f80c80177bebaba4045bd15d6a5fb5c5521c25119ef8f4279fb4b32",
+    "docs/FAF_SFD_COMPATIBILITY.md": "39053e1a80f880801581e79b9618a8015e09da63899eb8cee71625915ffd42f5",
+    ".gitmodules": "1a9da3812d426e1d02daf69e121c1bbf27bf7da8fc30f1ea3bbf4601cf998b05",
+    "tests/CMakeLists.txt": "5ddae03371f8d2c9b12df012d9bc6d6549d9de43bafdaff807c581a6999c282a",
+    "tests/lua/CoroutineTests.cpp": "d062cc39ec0db875374db41fcc7a170f8ee5f93f4273465cfc28cbe5b0fbb4e3",
+    "tools/difffuzz/dump.cmake": "c0e56008b121fb6f29814d2af65dda0fafeec821f2310a4d51ef795ef5f37ed1",
+    "cmake/FafBuildInfo.cmake": "577fcb7c69e401d7d55860f69df275e4e878a3c95ab118380f6f56bc94e24b63",
+    "tests/effect_scan/EffectScanTests.cpp": "c32ca0c39a75ebd92915dc064483cadac976e9bdea50f654900d4e7a1de59ec1",
+    "src/gpg/gal/backends/d3d11/EffectScan.h": "ed844a1045d01f2576b821ef79fa7267ae204e2ed2665690ddd38776f57ec955",
+    "src/gpg/gal/backends/d3d11/EffectSourceD3D11.cpp": "09c852b157aa699f795b82292f2dfeb4c242cb1a1197cc2ece345fd0ecd9f461",
+    "src/gpg/gal/backends/d3d11/EffectSourceD3D11.h": "58e5c1d102121530180216a25f8fc2d91fd07e215b854dfc3a3714595089e0e0",
+    "src/moho/render/GpuPathSettings.cpp": "63be29eb74b36d30040b5b9790f192ebc786117960ac380763e21480921829de"
+  },
+  "hook_files": [
+    {
+      "path": "data/fafengine/lua/options/options.lua",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aaf91014e64afc484f563d74fdf3097ba1760f8a",
+      "size": 1892,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/aaf91014e64afc484f563d74fdf3097ba1760f8a"
+    }
+  ],
+  "dependency_patch_blobs": [
+    {
+      "path": "dependencies/patches/boost_1_34_1_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d6982b4c044ecf18f98981e8c6fed933d06f0c7b",
+      "size": 2840,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/d6982b4c044ecf18f98981e8c6fed933d06f0c7b"
+    },
+    {
+      "path": "dependencies/patches/boost_1_34_1_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41791f8a30b441643313ef631fdf54346f1ce30a",
+      "size": 7629,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/41791f8a30b441643313ef631fdf54346f1ce30a"
+    },
+    {
+      "path": "dependencies/patches/wildmagic3p8_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66eac903f1958c19f2c5ab6d76e1da2ef0617454",
+      "size": 8604,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/66eac903f1958c19f2c5ab6d76e1da2ef0617454"
+    },
+    {
+      "path": "dependencies/patches/wildmagic3p8_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0312651f3b9407796f1010bef2fbe82a5528fa7b",
+      "size": 26521,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/0312651f3b9407796f1010bef2fbe82a5528fa7b"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0750c5dc1435f15f05d714df18aa0b2db0c6c695",
+      "size": 5131,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/0750c5dc1435f15f05d714df18aa0b2db0c6c695"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "782f2fb836c4b188283715b5822d223459fbe408",
+      "size": 191050,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/782f2fb836c4b188283715b5822d223459fbe408"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_x64.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0dd74619d9a117c39106ffe6ac26d7f5bc9d7924",
+      "size": 4286,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/0dd74619d9a117c39106ffe6ac26d7f5bc9d7924"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_x64.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57f4a6ce3bf067302dac5fbc78a609eeb9e9cea2",
+      "size": 12105,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/57f4a6ce3bf067302dac5fbc78a609eeb9e9cea2"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_x64_pointers.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e18a260ab81b0cd12747b5a38c4c7495dec7398b",
+      "size": 26616,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/e18a260ab81b0cd12747b5a38c4c7495dec7398b"
+    },
+    {
+      "path": "dependencies/patches/zlib_1_2_3_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7db88b5d56562ffd47203934871b6065d2025456",
+      "size": 1131,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/7db88b5d56562ffd47203934871b6065d2025456"
+    },
+    {
+      "path": "dependencies/patches/zlib_1_2_3_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ec0df9727e86dd43a93456ee9db9ffae4d308fc",
+      "size": 487,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/7ec0df9727e86dd43a93456ee9db9ffae4d308fc"
+    }
+  ],
+  "changed_files": [
+    {
+      "pr": 282,
+      "head": "2b58ceb9329b7a7cb37f049e18e054651dd20fa1",
+      "path": "src/moho/particles/BeamRenderHelpers.cpp",
+      "before_blob": "f1cc0ee5f77e8c4b2645a6c1259c4ff1268a2a3f",
+      "after_blob": "9cf9ab0f85495989265398e8cd9b7b95dee1f94b",
+      "before_sha256": "50923efbbc2382cfe924ec82d00103c6a04f61bd6891771ac8e0a1863a6533f7",
+      "after_sha256": "514e090d3ba90d97ee563d151034c05fff499b267c6b1cfe8205d551cebedcf6"
+    },
+    {
+      "pr": 283,
+      "head": "ba7b8d4dd7b0f1c9dd50ba2011fb581445a463b6",
+      "path": "src/moho/render/Shadow.cpp",
+      "before_blob": "e75e9557b1d6e1b20f327f986b5d6ad9bfdd3e82",
+      "after_blob": "90a62286f46f12ec78d59a751512b03bf391d382",
+      "before_sha256": "34e93fddff1bcdf78b2304ce6868eb940aa7524b80881ee268d47ada4c837e20",
+      "after_sha256": "2435a94375c95eb372978f039971cd54a337370f9a28abf4ca006515dc2d6b17"
+    },
+    {
+      "pr": 284,
+      "head": "41840bd3236ad7dcf8bda9ccd9fc6059d3692cc4",
+      "path": "src/gpg/gal/backends/d3d12/DeviceD3D12.cpp",
+      "before_blob": "b3ba08d1997ddd37a40daed7577af38ec499f5c5",
+      "after_blob": "16eec18197654c826714c822ae2d94af960bc590",
+      "before_sha256": "a2e387a88d5a209694d07a76a88ae3d8e6e5b6f8312a55fe797f913f7c95649f",
+      "after_sha256": "bbc568ea1ce26148b38ca6cd70938bb29b65145d14144373bfa5236f4d103d79"
+    }
+  ]
+}

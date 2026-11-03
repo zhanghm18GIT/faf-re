@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "package_id": "Microsoft.Windows.SDK.CPP.x64",
+  "package_version": "10.0.22000.194",
+  "url": "https://api.nuget.org/v3-flatcontainer/microsoft.windows.sdk.cpp.x64/10.0.22000.194/microsoft.windows.sdk.cpp.x64.10.0.22000.194.nupkg",
+  "package_size": 51316315,
+  "sha512_base64": "nXLjeIJjVayo+mDJpD5ijiXwm6b7dOp3KBZqdAGd5Bu7684qT9uW9vQAmpDbrbyDLN46RBs1VeTDTRTeVepYrQ==",
+  "entry_name": "c/ucrt/x64/libucrt.lib",
+  "entry_size": 39778014,
+  "entry_sha256": "56378d8598e3134d5c7e844079e07c1a56ad7c138f74d5f398f7452e5abc6550",
+  "license_url": "https://aka.ms/WinSDKLicenseURL",
+  "license_acceptance": "APPROVED_FOR_THIS_TEMPORARY_BUILD",
+  "scope": "Exact regular static entry only; no package-manager installation, script execution, old SDK headers/system mutation or redistribution of SDK materials.",
+  "package_sha256": "039c4f5e2ad62494fa7fa6cafa2b6895fb3e2601491633c47256fbdca2e56f42",
+  "entry_crc32": "0b055ab7",
+  "coff_member_count": 736
+}

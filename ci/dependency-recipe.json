@@ -1,0 +1,259 @@
+{
+  "schema": 1,
+  "layout_schema": "stable-owned-dependency-v1",
+  "state_format": "Ninja-1.12.1-log-v6-deps-v4",
+  "cross_product_reuse": false,
+  "source_policy": "First pair requires identical separately pinned whole product; future cross-product reuse needs closure review",
+  "targets": [
+    "wxmswu",
+    "wx_regex",
+    "wx_png",
+    "wx_jpeg",
+    "wx_tiff",
+    "zlib123",
+    "ffmpeg_avutil",
+    "ffmpeg_swresample",
+    "ffmpeg_swscale",
+    "ffmpeg_avcodec",
+    "ffmpeg_avformat",
+    "faf_netlink",
+    "faf_netchannel",
+    "faf_monocypher",
+    "faf_datachannel",
+    "faf_usrsctp",
+    "faf_mbedtls",
+    "faf_juice"
+  ],
+  "dependency_gitlinks": [
+    {
+      "path": "dependencies/FX11",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+    },
+    {
+      "path": "dependencies/WildMagic3p8",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "9baf054aea272090e0df3289e24cf436fb92c78c"
+    },
+    {
+      "path": "dependencies/ffmpeg",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+    },
+    {
+      "path": "dependencies/vulkan",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "d4a196d8c84e032d27f999adcea3075517c1c97f"
+    },
+    {
+      "path": "dependencies/zlib-1.2.3",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "abf180a067223611620dd97dd5681df7c7fa7c9b"
+    }
+  ],
+  "dependency_archives": [
+    {
+      "name": "boost_1_34_1",
+      "url": "https://downloads.sourceforge.net/project/boost/boost/1.34.1/boost_1_34_1.tar.bz2",
+      "sha256": "0f866c75b025a4f1340117a106595cc0675f48ba1e5a9b5c221ec7f19e96ec4c"
+    },
+    {
+      "name": "wxWindows-2.4.2",
+      "url": "https://github.com/wxWidgets/wxWidgets/releases/download/v2.4.2/wxMSW-2.4.2.zip",
+      "sha256": "081cb30347ed9092a50c39311b46586f4264fb125942652db168851be96ebf33"
+    },
+    {
+      "name": "libjuice",
+      "url": "https://github.com/paullouisageneau/libjuice/archive/refs/tags/v1.7.4.tar.gz",
+      "sha256": "95c088862aa1b88b73d62aa99577135010eb768fcafb252d13aa85a8515ef798"
+    },
+    {
+      "name": "libdatachannel",
+      "url": "https://github.com/paullouisageneau/libdatachannel/archive/refs/tags/v0.24.6.tar.gz",
+      "sha256": "22a66aebebd8dae561d8e5181da96f2fcc203e067c5b2186c07b39af913464c0"
+    },
+    {
+      "name": "usrsctp",
+      "url": "https://github.com/sctplab/usrsctp/archive/fec583d54493f879d2ae44a743423bf8a04371ab.tar.gz",
+      "sha256": "e5c114afe73c9a0ec419fab5f5b3f63f3ce57b09b90d06ea85e63dca8aed3e7c"
+    },
+    {
+      "name": "plog",
+      "url": "https://github.com/SergiusTheBest/plog/archive/94899e0b926ac1b0f4750bfbd495167b4a6ae9ef.tar.gz",
+      "sha256": "92a08bce559b5f28aa88d3fd9071567414b9f43a83fe2a05a6dd14f1da536072"
+    },
+    {
+      "name": "mbedtls",
+      "url": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2",
+      "sha256": "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6"
+    },
+    {
+      "name": "dxc",
+      "url": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/dxc_2026_09_29.zip",
+      "sha256": "ad31b1fc8443175d204f77a611fdb3ef2ec42759bdc2f1167368de24a4a7e7f1"
+    },
+    {
+      "name": "monocypher",
+      "url": "https://github.com/LoupVaillant/Monocypher/archive/refs/tags/4.0.2.tar.gz",
+      "sha256": "bc1ca30b1b2654e4e7daf2492c0d204200e55137f23fda6b7142fd7d523bd6b4"
+    }
+  ],
+  "dependency_patch_blobs": [
+    {
+      "path": "dependencies/patches/boost_1_34_1_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d6982b4c044ecf18f98981e8c6fed933d06f0c7b",
+      "size": 2840,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/d6982b4c044ecf18f98981e8c6fed933d06f0c7b"
+    },
+    {
+      "path": "dependencies/patches/boost_1_34_1_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "41791f8a30b441643313ef631fdf54346f1ce30a",
+      "size": 7629,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/41791f8a30b441643313ef631fdf54346f1ce30a"
+    },
+    {
+      "path": "dependencies/patches/wildmagic3p8_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "66eac903f1958c19f2c5ab6d76e1da2ef0617454",
+      "size": 8604,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/66eac903f1958c19f2c5ab6d76e1da2ef0617454"
+    },
+    {
+      "path": "dependencies/patches/wildmagic3p8_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0312651f3b9407796f1010bef2fbe82a5528fa7b",
+      "size": 26521,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/0312651f3b9407796f1010bef2fbe82a5528fa7b"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0750c5dc1435f15f05d714df18aa0b2db0c6c695",
+      "size": 5131,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/0750c5dc1435f15f05d714df18aa0b2db0c6c695"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "782f2fb836c4b188283715b5822d223459fbe408",
+      "size": 191050,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/782f2fb836c4b188283715b5822d223459fbe408"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_x64.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0dd74619d9a117c39106ffe6ac26d7f5bc9d7924",
+      "size": 4286,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/0dd74619d9a117c39106ffe6ac26d7f5bc9d7924"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_x64.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "57f4a6ce3bf067302dac5fbc78a609eeb9e9cea2",
+      "size": 12105,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/57f4a6ce3bf067302dac5fbc78a609eeb9e9cea2"
+    },
+    {
+      "path": "dependencies/patches/wxwindows_2_4_2_faf_x64_pointers.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e18a260ab81b0cd12747b5a38c4c7495dec7398b",
+      "size": 26616,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/e18a260ab81b0cd12747b5a38c4c7495dec7398b"
+    },
+    {
+      "path": "dependencies/patches/zlib_1_2_3_faf_required.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7db88b5d56562ffd47203934871b6065d2025456",
+      "size": 1131,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/7db88b5d56562ffd47203934871b6065d2025456"
+    },
+    {
+      "path": "dependencies/patches/zlib_1_2_3_faf_required.patch",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ec0df9727e86dd43a93456ee9db9ffae4d308fc",
+      "size": 487,
+      "url": "https://api.github.com/repos/Draiget/faf-re/git/blobs/7ec0df9727e86dd43a93456ee9db9ffae4d308fc"
+    }
+  ],
+  "configuration_input_blobs": {
+    "CMakeLists.txt": "5515a3f67427c4f0d1fbcd308183755126123046",
+    "CMakePresets.json": "ed18bea18e092b4afff9c72b46eab3f26a6a95f7",
+    "cmake/FafCodegen.cmake": "a3df5fa8e7a3462b245cbee56a32dc0f13d2c2bf",
+    "cmake/FafDependencies.cmake": "39c419ba39c1e8860625b5e08a92eb6383709930",
+    "cmake/deps/libdatachannel": "c48a7ab7db35a10c313f3f81429bb0cdf9c735b4",
+    "cmake/deps/libdatachannel/CMakeLists.txt": "8348ea06ff20e1d720a2f9e66a16b5b3657b1a6f",
+    "cmake/deps/libdatachannel/faf_mbedtls_config.h": "328991b86d9c608cc4dabfd04862990e65ce059f",
+    "cmake/deps/libjuice": "71f5d47b5be9043b629bc998270adec02ed89f56",
+    "cmake/deps/libjuice/CMakeLists.txt": "e77853e22254bb5b19a6aabeccab565c1058153a",
+    "cmake/deps/monocypher": "570cc96e5c309389c0f330941cfc9f655b2126c8",
+    "cmake/deps/monocypher/CMakeLists.txt": "2cce4b7f30bbfbc747880b6cf70c310395b7469d",
+    "cmake/deps/wildmagic": "049358a333b4fcc8e20328c73f02a009303dc19e",
+    "cmake/deps/wildmagic/CMakeLists.txt": "4149553ef224ea4f1e84e053746f047b89983671",
+    "cmake/deps/wxwindows": "85ecb614eb160b02c600744faa81d3dde3f70715",
+    "cmake/deps/wxwindows/CMakeLists.txt": "e89b92643f4f6193326ccce03799c6e245cc584d",
+    "cmake/deps/zlib": "80c0d526a8c36eacadcd53db579f9a99fc240b1d",
+    "cmake/deps/zlib/CMakeLists.txt": "6f4c80188bab73bb575ab033cd97032749e2e42c",
+    "cmake/toolchains/clang-cl-common.cmake": "41b52146a682966934c5d490673a72b2eab7f282",
+    "cmake/toolchains/clang-cl-x64.cmake": "69c09b528767cb2dd3753ca59c726438cfd19185",
+    "cmake/toolchains/clang-cl-x86.cmake": "af823fcf6427d3d400f8dfe9c2605a09c47f227b",
+    "cmake/toolchains/linux-clang-pins.cmake": "9204ea480abe51534044a4642e18ae0bb2892641",
+    "cmake/toolchains/linux-clang-x64.cmake": "6c6d7d76139291ad4bdc58e56a83e3633f1820d4",
+    "src/netlink/CMakeLists.txt": "d61856dac8a492cc10905d030c92d31228e96f3b",
+    "src/netlink/EngineLinks.h": "575dea2ba99a3dabe923c3d5badfec41134f9212",
+    "src/netlink/Json.cpp": "bc398d8df465072909f7adf8f0bfb0e1191781b3",
+    "src/netlink/Json.h": "c364e22c720c580640ae60883668fc6e9ac65449",
+    "src/netlink/Link.cpp": "caf3c43146e3893e126e7816e7e80a17352f3c80",
+    "src/netlink/Link.h": "203dbf78fa9911967fab1e3664515e7d0b1c7cc5",
+    "src/netlink/Signal.cpp": "e8be92a3d27b18701158f453028ec10f7866b5f3",
+    "src/netlink/Signal.h": "a41b1a925549234172619937f0dfe20410ba6f21",
+    "src/netlink/WebRtc.cpp": "4acf0d9d5529d3a1da44b17e8749b0498150bd88",
+    "src/netlink/WebRtc.h": "eac0c9b29a333b28094b3e89316fc35dc81d35fe",
+    "src/remote/net/CMakeLists.txt": "dc186a67a23e5df46c91186389002266f21d20ae",
+    "src/remote/net/Datagram.cpp": "8bc49c0404bab181d99164d42d466a1179c94dc3",
+    "src/remote/net/Datagram.h": "6f64a6f98fe2dee457af06556aaf787214703848",
+    "src/remote/net/DatagramCipher.cpp": "85ac5cea5d967439dcd85400cba2f64986339083",
+    "src/remote/net/DatagramCipher.h": "27a00f3c921ec7610e631e362cbbd25a83051464",
+    "src/remote/net/NetChannel.cpp": "3f40d9301d468c40ed9535378946c5b33a5e429b",
+    "src/remote/net/NetChannel.h": "a25d32ba0685e59b21cef00eef9dd4bf80de5cc5",
+    "src/remote/net/ReliableStream.cpp": "9b3c9f4e1b432c0f0e263cd307aa697f51a64c81",
+    "src/remote/net/ReliableStream.h": "cf77feeaa992a79da9b39a0b5e20bd7b0398b14b"
+  },
+  "toolchain": {
+    "llvm": "22.1.7",
+    "llvm_archive_sha256": "3b568b5be1443d1a04c63261fa3a7aed16e126a8ed2196a1032aa8ed602144bd",
+    "cmake": "3.31.6",
+    "ninja": "1.12.1",
+    "msvc_family": "14.44",
+    "sdk_headers": "10.0.26100.0",
+    "ucrt": "10.0.22000.0"
+  },
+  "flags": {
+    "configuration": "Release",
+    "arch": "x64",
+    "parallelism": 2,
+    "CMAKE_SUPPRESS_REGENERATION": "ON",
+    "FAF_SYNTAX_ONLY": "OFF",
+    "FAF_RETAIL_LAYOUT": "OFF",
+    "FAF_ENABLE_TRACY": "OFF",
+    "FAF_SERVER_MODE": "OFF",
+    "FAF_CALL_HASH_BUILD": "OFF"
+  }
+}
