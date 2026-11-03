@@ -1,0 +1,10 @@
+# Testing, privacy and rollback
+
+1. Keep the ordinary FAF executable and your existing installation untouched. Do not rename this experimental executable over main.exe or main_x64.exe. Use a separate test bin directory arranged with your legitimate installation's existing data paths and the provided dxcompiler.dll, dxil.dll and fafengine directory.
+2. Check the archive/file hashes and the actual imported-runtime inventory in BUILD_MANIFEST.json. The build verified x64 d3dx9_43.dll and X3DAudio1_7.dll on its worker. SDK headers are not runtime installation. Missing prerequisites on your PC need the official runtime provider; this package performs no installation.
+3. Start the experimental executable manually with /notelemetry. Upstream live-multiplayer telemetry is on by default and can send player names and sync-log/desync information to fafre-metrics.draiget.dev. /nobugreport is not a substitute for /notelemetry. No launcher is provided that silently modifies your defaults.
+4. Begin with a local/skirmish test. Select the renderer explicitly and verify the actual active backend in your local log. A /d3d12 request alone is not proof that D3D12 ran, because startup may fall back to D3D9.
+5. Compare against your untouched official/original executable using the same scenario, camera, graphics quality and renderer. Observe particles/drag, terrain contribution to shadows, and effect constants around heavy descriptor use. The three candidates are combined; a difference does not isolate which candidate caused it.
+6. Multiplayer/replay compatibility is not established by these arithmetic checks. Do not treat this build as a replacement for an accepted production client. Keep any local logs, maps, replays and game assets private unless you separately choose to share them.
+
+Rollback: close the experimental executable and launch your unchanged original executable. Remove only this separately staged test directory if no longer needed. Nothing in the build or package changes installed game files, launcher defaults or account settings.

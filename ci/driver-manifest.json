@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "state": "PUBLIC_CONFIGURATION_INPUTS",
+  "files": [
+    {
+      "path": "driver.py",
+      "sha256": "669b820ef5faa3b104ee58756c61730108b6946c1878dcbce3505527b4157d4f",
+      "size": 59083
+    },
+    {
+      "path": "run-client-build.ps1",
+      "sha256": "39b814e34e3f11084b889198b0d9fd3ca050f1602db6f0c5b3d32997259a39b6",
+      "size": 1316
+    },
+    {
+      "path": "integration-manifest.json",
+      "sha256": "d8af1a42626d93c2bb08d8f6b8e6bdc24c50be1273a4c306790c13088e9a49b4",
+      "size": 9937
+    },
+    {
+      "path": "public-source-allowlist.json",
+      "sha256": "c6eb4e0c6df6368d64e58060dc4ce172089f06c43445ab208f89a99835598274",
+      "size": 370230
+    },
+    {
+      "path": "ucrt-package.json",
+      "sha256": "6b5ecbd876b9eb4d4a73c94cee245f8d6dc835dec22d3809cfd99fe641d351b6",
+      "size": 970
+    },
+    {
+      "path": "README-PACKAGE.md",
+      "sha256": "571f097a67553a5b230d27279f15c23fd1056bcec959a7cf656596a0411b23b1",
+      "size": 2081
+    },
+    {
+      "path": "TESTING.md",
+      "sha256": "464dbbd836a564714159aaa55730d578f147966aa150c1bb8fa6bdfdcf15572f",
+      "size": 2057
+    },
+    {
+      "path": "REBUILD.md",
+      "sha256": "6a0d381dad22dde388dfb74e5296e7655041c3221a142ffa2d9857360ce50ad7",
+      "size": 5570
+    }
+  ]
+}

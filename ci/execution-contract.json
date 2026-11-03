@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
+  "root_go_reference": "public-x64-config-20261103-1017",
+  "reviewed_driver_manifest_sha256": "6fb679aab8b1d7fc6ef37874dbee9eb39e02c5202be5eca3778044019b397119",
+  "account": "zhanghm18GIT",
+  "project_slug": "faf-re",
+  "expected_image": "Visual Studio 2022",
+  "preflight_receipt": "preflight-receipt.json",
+  "preflight_receipt_sha256": "ab6ded7934c8031cc15851595188da75eb7832d170a50a249ca2b3104b170bdb",
+  "distribution_review": "distribution-review.json",
+  "distribution_review_sha256": "c8f4902fcd88aecb70b3f5acfbf17ce216b7fad334d633ebe8cb28d4044731a7",
+  "ucrt": {
+    "version": "10.0.22000.0",
+    "source": "pinned-official-nuget",
+    "sha256": "56378d8598e3134d5c7e844079e07c1a56ad7c138f74d5f398f7452e5abc6550"
+  },
+  "windows_sdk_root": "C:/Program Files (x86)/Windows Kits/10",
+  "windows_sdk_headers_version": "10.0.26100.0",
+  "max_artifact_bytes": 400000000,
+  "max_total_seconds": 3300,
+  "parallelism": 2,
+  "artifact_basename": "faf-re-x64-b620-282-284",
+  "upload_exact_package": true,
+  "provider_configuration": {
+    "repository": "zhanghm18GIT/faf-re",
+    "branch": "ci/public-client-b620-20261103",
+    "parent_commit": "e266d19c1ceed8315866a2b874df31b244876035",
+    "tracked_files": [
+      ".gitattributes",
+      "README.md",
+      "appveyor.yml",
+      "ci/README-PACKAGE.md",
+      "ci/REBUILD.md",
+      "ci/TESTING.md",
+      "ci/distribution-review.json",
+      "ci/driver-manifest.json",
+      "ci/driver.py",
+      "ci/execution-contract.json",
+      "ci/integration-manifest.json",
+      "ci/preflight-receipt.json",
+      "ci/public-source-allowlist.json",
+      "ci/run-client-build.ps1",
+      "ci/ucrt-package.json"
+    ]
+  }
+}
