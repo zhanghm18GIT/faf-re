@@ -802,3 +802,73 @@ class CodeViewAndArchiveFormatTests(unittest.TestCase):
         with mock.patch.object(c,'IO_CHUNK_BYTES',3):
             c._archive_symbol_names(b'long-name\0aa\0\0',2)
             with self.assertRaises(c.CheckpointError):c._archive_symbol_names(b'long-name\0aa\0\0X',2)
+
+class ArchiveNumericFieldTests(unittest.TestCase):
+    """Numeric linker references are typed fields; names and objects stay scanned."""
+    def setUp(self):
+        self.policy=c.Policy({}, {}, (), (),frozenset(),frozenset(),(r'C:\faf-re-staged',),r'C:\faf-re-staged')
+    @staticmethod
+    def member(name,data):
+        return name.encode().ljust(16)+b'0'.ljust(12)+b'0'.ljust(6)+b'0'.ljust(6)+b'100644'.ljust(8)+str(len(data)).encode().ljust(10)+b'`\n'+data+(b'\n' if len(data)%2 else b'')
+    def fixture(self, private_names=False, private_object=False):
+        n=119;names={i:f'x{i:03}' for i in range(1,n+1)};names.update({99:'a',58:'b',92:'c',119:'d'})
+        ids=sorted(names,key=names.get)
+        objects=[]
+        for i in range(1,n+1):
+            data=coff()
+            if i==1 and private_object:data+=b'\0'+r'C:\private\secret'.encode('utf-16le')+b'\0\0'
+            objects.append(self.member(f'o{i}.obj/',data))
+        ns=[names[i].encode() for i in range(1,n+1)]
+        if private_names:ns[0]=b'C:\\private\\secret'
+        first_names=b'\0'.join(ns)+b'\0';second_names=b'\0'.join(names[i].encode() for i in ids)+b'\0'
+        fs=4+4*n+len(first_names);ss=8+6*n+len(second_names)
+        base=8+60+fs+fs%2+60+ss+ss%2;offsets=[];pos=base
+        for b in objects:offsets.append(pos);pos+=len(b)
+        first=struct.pack('>I',n)+struct.pack('>'+str(n)+'I',*offsets)+first_names
+        second=struct.pack('<I',n)+struct.pack('<'+str(n)+'I',*offsets)+struct.pack('<I',n)+struct.pack('<'+str(n)+'H',*ids)+second_names
+        start2=8+60+fs+fs%2+60;indices=start2+8+4*n
+        return bytearray(b'!<arch>\n'+self.member('/',first)+self.member('/',second)+b''.join(objects)),{'indices':indices,'start2':start2,'objects':base,'names1':68+4+4*n}
+    def check(self,data):c._content(c.FileSpec('build','synthetic.lib','lib'),bytes(data),self.policy)
+    def reject(self,data):
+        with self.assertRaises(c.CheckpointError):self.check(data)
+    def test_exact_numeric_array(self):
+        d,m=self.fixture();spans=[];c.inspect_archive(d,numeric_spans=spans)
+        self.assertEqual(d[m['indices']:m['indices']+8],b'c\0:\0\\\0w\0')
+        with self.assertRaises(c.CheckpointError):c.inspect_public_paths(d,self.policy)
+        self.check(d);self.assertEqual(len(spans),2)
+        self.assertEqual(spans[0][1],m['names1']);self.assertEqual(spans[1][1],m['indices']+238)
+    def test_zero_index_rejected(self):
+        d,m=self.fixture();struct.pack_into('<H',d,m['indices'],0);self.reject(d)
+    def test_out_of_bounds_index_rejected(self):
+        d,m=self.fixture();struct.pack_into('<H',d,m['indices'],120);self.reject(d)
+    def test_invalid_first_offset_rejected(self):
+        d,m=self.fixture();struct.pack_into('>I',d,72,1);self.reject(d)
+    def test_invalid_second_offset_rejected(self):
+        d,m=self.fixture();struct.pack_into('<I',d,m['start2']+4,m['objects']+1);self.reject(d)
+    def test_truncated_numeric_table_rejected(self):
+        d,m=self.fixture();struct.pack_into('<I',d,m['start2']+4+119*4,0xffffffff);self.reject(d)
+    def test_no_spans_exported_after_invalid_structure(self):
+        d,m=self.fixture();struct.pack_into('<H',d,m['indices'],0);spans=[]
+        with self.assertRaises(c.CheckpointError):c.inspect_archive(d,numeric_spans=spans)
+        self.assertEqual(spans,[])
+    def test_first_symbol_name_still_rejected(self):
+        d,m=self.fixture(private_names=True)
+        with self.assertRaises(c.CheckpointError) as got:self.check(d)
+        self.assertEqual(got.exception.details['archive_region'],'archive_symbol_names')
+    def test_object_still_rejected_and_diagnosed(self):
+        d,m=self.fixture(private_object=True)
+        with self.assertRaises(c.CheckpointError) as got:
+            with c._member_guard('seal',c.FileSpec('build','synthetic.lib','lib')):self.check(d)
+        details=got.exception.context['format_details'];self.assertEqual(details['archive_region'],'archive_object');self.assertEqual(details['archive_object_index'],1)
+        self.assertEqual(details['archive_object_offset'],len(coff())+1)
+        self.assertNotIn('secret',str(got.exception.context))
+    def test_longname_still_rejected(self):
+        name=b'C:\\private\\a.obj\0';d=b'!<arch>\n'+self.member('//',name)+self.member('/0',coff());self.reject(d)
+    def test_symbol_tail_is_never_numeric(self):
+        d,m=self.fixture();spans=[];regions=[];c.inspect_archive(d,numeric_spans=spans,regions=regions)
+        for a,b,kind,_ in regions:
+            if kind in {'archive_header','archive_symbol_names','archive_longnames','archive_object'}:
+                self.assertFalse(any(a<y and x<b for x,y in spans))
+    def test_multiple_chunks(self):
+        d,m=self.fixture()
+        with mock.patch.object(c,'SCAN_CHUNK_BYTES',31):self.check(d)

@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "root-go-staged-a-fix6-293153-20261103-1946",
-  "reviewed_driver_manifest_sha256": "278befbcb3aa4647873332f096052548bedfbff1d737f90d9eb66440cd34148f",
+  "root_go_reference": "root-go-staged-a-fix7-293153-20261103-2049",
+  "reviewed_driver_manifest_sha256": "f41c504845e9d21029deafef69024f991cf3d2ba2443ddd94fd3df1c30167a84",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": "41b02d12c17c2b974e0419107776732adf1e4df3",
+    "parent_commit": "299b57c6d1f4ad4e56fbfdc24ffde2218ffd018e",
     "tracked_files": [
       ".gitattributes",
       "README.md",

@@ -224,7 +224,7 @@ class ProducerPilot(unittest.TestCase):
  def setup_build(self,root):
   b=staged.StagedBuild(CI,{'stage':'A','max_total_seconds':3300,'stage_downstream_reserve_seconds':900,'stage_build_max_seconds':2100,'stage_min_build_window_seconds':1250})
   b.root=root;b.cmake=Path('cmake');b.build=root/'build';b.build.mkdir();b.source=root/'source';b.source.mkdir();(root/'logs').mkdir()
-  for name in ['dependency-pilot','dependencies-build']:(root/'logs'/(name+'.txt')).write_text('fixture log')
+  for name in ['dependency-pilot','dependency-archive-pilot','dependencies-build']:(root/'logs'/(name+'.txt')).write_text('fixture log')
   b.target_data={'faf_monocypher':{'depends':[],'artifact':'mono.lib'}}
   src=b.source/'dependencies/monocypher/src/monocypher.c';src.parent.mkdir(parents=True);src.write_text('int x;')
   b.graph={'outputs':['mono.obj','mono.lib','other.obj'],'records':[{'target':'faf_monocypher','output':'mono.obj','source':str(src)},{'target':'faf_monocypher','output':'mono.lib','source':'unused'}]}
@@ -232,6 +232,33 @@ class ProducerPilot(unittest.TestCase):
   b.graph['outputs'].append(wx);b.graph['records'].append({'target':'wxmswu','output':wx,'source':str(b.source/staged.checkpoint.WX_LITERAL_SOURCE)})
   (b.build/wx).parent.mkdir(parents=True)
   return b
+ def test_archive_pilot_shares_original_deadline(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d));b.started=0;b.dependency_compile_deadline=2200;b.phase_end=2200
+   with mock.patch.object(staged.build_capture,'run_build',return_value={'state':'SUCCESS'}) as run,mock.patch.object(staged.time,'monotonic',return_value=300):
+    b.command(['fixture'],name='dependency-archive-pilot');self.assertEqual(run.call_args.kwargs['timeout'],1900)
+   self.assertEqual(b.dependency_compile_deadline,2200);self.assertEqual(b.phase_end,2200)
+ def test_archive_pilot_validates_whole_library_before_other_targets(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d));c=staged.checkpoint;lib=c.WX_LITERAL_LIBRARY
+   b.target_data['wxmswu']={'depends':[],'artifact':lib};b.graph['outputs'].append(lib);b.graph['records'].append({'target':'wxmswu','output':lib,'source':'unused'})
+   for name in ['mono.obj','mono.lib',c.WX_LITERAL_OBJECT]:(b.build/name).write_bytes(b'fixture')
+   def produce(*a,**kw):
+    self.assertEqual(kw['name'],'dependency-archive-pilot');self.assertIn('wxmswu',a[0]);(b.build/lib).write_bytes(b'fixture')
+   with mock.patch.object(b,'command',side_effect=produce),mock.patch.object(b,'checkpoint_policy',return_value='policy'),mock.patch.object(staged.checkpoint,'validate_built_subset',return_value={'state':'PASS_BUILT_SUBSET_ONLY'}) as check:
+    b.dependency_archive_pilot();self.assertIn('build/'+lib,check.call_args.args[1]);self.assertNotIn('build/other.obj',check.call_args.args[1])
+ def test_archive_pilot_rejects_dependency_expansion(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d));b.target_data['wxmswu']={'depends':['ffmpeg_avcodec'],'artifact':staged.checkpoint.WX_LITERAL_LIBRARY}
+   with mock.patch.object(b,'command') as run:
+    with self.assertRaises(driver.Blocked):b.dependency_archive_pilot()
+   run.assert_not_called()
+ def test_archive_pilot_forbidden_in_b(self):
+  b=staged.StagedBuild(CI,{'stage':'B','max_total_seconds':3300})
+  with self.assertRaises(driver.Blocked):b.dependency_archive_pilot()
+ def test_archive_pilot_order(self):
+  import inspect
+  a=inspect.getsource(staged.StagedBuild.stage_a);self.assertLess(a.index('self.dependency_pilot()'),a.index('self.dependency_archive_pilot()'));self.assertLess(a.index('self.dependency_archive_pilot()'),a.index('*build_graph.TARGETS'))
  def test_shared_deadline_no_fresh_full_allowance(self):
   with tempfile.TemporaryDirectory() as d:
    b=self.setup_build(Path(d));b.started=0

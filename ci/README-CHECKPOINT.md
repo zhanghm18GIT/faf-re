@@ -21,3 +21,7 @@ Failures report fixed structural/path rule codes and bounded numeric offsets or 
 ### Reviewed public literal exception
 
 The wxWindows 2.4.2 Windows PostScript AFM default is a public source constant, not a worker path. The only enabled rule binds the pinned `cmndata.cpp` bytes, its admitted wxmswu Ninja object and CMake library paths, an exact immutable UTF-16 string COMDAT with canonical symbols, and its full NUL boundary. Other bytes and paths remain scanned. This proves exact public-literal admission, not compiler-origin authenticity or runtime testing. The early format pilot includes this wx object as well as the existing Monocypher object/archive and uses the same shared build deadline. Unknown source/layout/symbol variants fail closed.
+
+### COFF archive numeric fields
+
+The parsed linker-member counts, object offsets and symbol-to-object indices are numeric fields. Their bytes can accidentally resemble UTF-16 paths. Only their exact bounded prefixes are excluded from text-path scanning after the complete archive has passed offset/index/name-count checks. Symbol-name tails, member names, longnames, headers and every object remain scanned. Rejections identify a fixed region label and numeric object-relative offset without printing contents. The complete wx archive is validated early, within the original shared dependency build deadline, before unrelated dependency targets are built.

@@ -258,12 +258,13 @@ def _inspect_public_paths(data, policy, validated_ranges):
     wide_runs = re.compile(r'[^\x00-\x1f\x7f-\x9f\ufffd]{4,}')
     view = memoryview(data)
     ends = [b for a, b in validated_ranges]
-    require(all(0 <= a < b <= len(data) and (i == 0 or validated_ranges[i-1][1] <= a) for i, (a, b) in enumerate(validated_ranges)), "invalid validated CodeView spans")
+    require(all(0 <= a < b <= len(data) and (i == 0 or validated_ranges[i-1][1] <= a) for i, (a, b) in enumerate(validated_ranges)), "invalid validated format spans")
     for start in range(0, len(data), SCAN_CHUNK_BYTES):
         lo, hi = max(0, start-overlap), min(len(data), start+SCAN_CHUNK_BYTES+overlap)
         block = bytearray(view[lo:hi])
         # Mask only previously parsed, canonically decoded and root-checked
-        # CodeView command-string bytes. Never mask a whole record/object.
+        # CodeView command strings or fully checked archive numeric arrays.
+        # Never mask a whole record, object, symbol string or archive member.
         i = bisect_left(ends, lo+1)
         while i < len(validated_ranges) and validated_ranges[i][0] < hi:
             a, b = validated_ranges[i]
@@ -545,10 +546,11 @@ def _archive_symbol_names(body_tail, count):
     reject('archive_symbol_name_unterminated')
 
 
-def inspect_archive(data, *, object_spans=None, named_object_spans=None):
+def inspect_archive(data, *, object_spans=None, named_object_spans=None, numeric_spans=None, regions=None):
     require(data.startswith(b'!<arch>\n'), 'not a regular COFF archive')
     pos, objects, longnames, symbol_count = 8, 0, None, 0
     object_offsets, symbol_offset_views = set(), []
+    checked_numeric, checked_regions = [], []
     view = memoryview(data)
     while pos < len(data):
         _range(data, pos, 60, 'archive header')
@@ -559,6 +561,7 @@ def inspect_archive(data, *, object_spans=None, named_object_spans=None):
         at = pos+60
         _range(data, at, size, 'archive member')
         body = view[at:at+size]
+        checked_regions.append((pos, at, 'archive_header', 0))
         try:
             name = h[:16].decode('ascii').rstrip()
         except UnicodeError as exc:
@@ -567,6 +570,7 @@ def inspect_archive(data, *, object_spans=None, named_object_spans=None):
             require(longnames is None, 'duplicate archive longnames')
             require(len(body) <= 16 * 1024 * 1024, 'archive longname table bound')
             longnames = bytes(body)
+            checked_regions.append((at, at+size, 'archive_longnames', 0))
         elif name == '/':
             symbol_count += 1
             require(symbol_count <= 2 and size >= 4, 'unknown archive linker member')
@@ -578,6 +582,9 @@ def inspect_archive(data, *, object_spans=None, named_object_spans=None):
                 symbol_offset_views.append(('>I', body[4:4+count*4]))
                 rest = body[4+count*4:]
                 _archive_symbol_names(rest, count)
+                checked_numeric.append((at, at+4+count*4))
+                checked_regions.append((at, at+4+count*4, 'archive_first_linker_numbers', 0))
+                checked_regions.append((at+4+count*4, at+size, 'archive_symbol_names', 0))
             else:
                 count = struct.unpack_from('<I', body)[0]
                 _range(body, 4, count*4+4, 'second linker offsets')
@@ -589,6 +596,13 @@ def inspect_archive(data, *, object_spans=None, named_object_spans=None):
                 require(all(1 <= i[0] <= count for i in indices), 'bad archive symbol index')
                 rest = body[p+4+n*2:]
                 _archive_symbol_names(rest, n)
+                # These are typed counts/offsets/member references, not strings. Legal
+                # indices such as 99,58,92,100 happen to spell UTF16 c:\d.
+                # Admit only exact parsed numeric fields, after all archive checks.
+                checked_numeric.append((at, at+p+4+n*2))
+                checked_regions.append((at, at+p+4, 'archive_second_linker_numbers', 0))
+                checked_regions.append((at+p+4, at+p+4+n*2, 'archive_second_linker_indices', 0))
+                checked_regions.append((at+p+4+n*2, at+size, 'archive_symbol_names', 0))
         else:
             if name.startswith('/'):
                 require(name[1:].isdigit() and longnames is not None, 'unknown archive metadata')
@@ -608,6 +622,7 @@ def inspect_archive(data, *, object_spans=None, named_object_spans=None):
                 named_object_spans.append((at, at+size, name))
             object_offsets.add(pos)
             objects += 1
+            checked_regions.append((at, at+size, 'archive_object', objects))
         pos = at+size
         if size % 2:
             _range(data, pos, 1, 'archive padding')
@@ -615,6 +630,8 @@ def inspect_archive(data, *, object_spans=None, named_object_spans=None):
             pos += 1
     require(objects > 0 and pos == len(data), 'empty/truncated archive')
     require(all(offset[0] in object_offsets for fmt, offsets in symbol_offset_views for offset in struct.iter_unpack(fmt, offsets)), 'archive symbol points outside object member')
+    if numeric_spans is not None: numeric_spans.extend(checked_numeric)
+    if regions is not None: regions.extend(checked_regions)
     return {'format': 'coff-archive', 'machine': 'AMD64', 'objects': objects}
 
 
@@ -828,14 +845,14 @@ def _content(spec, data, policy):
         _inspect_public_paths(data, policy, sorted(spans))
     elif spec.kind == 'lib':
         require(suffix == '.lib', 'library suffix')
-        objects = []
+        objects, numeric_spans, regions = [], [], []
         try:
-            inspect_archive(data, named_object_spans=objects)
+            inspect_archive(data, named_object_spans=objects, numeric_spans=numeric_spans, regions=regions)
         except CheckpointError as exc:
             if exc.code:
                 raise
             raise CheckpointError('archive structure rejected', code='archive_structure_rejected', rule='archive_structure_rule') from None
-        spans = []
+        spans = list(numeric_spans)
         view = memoryview(data)
         literal_objects = 0
         for start, end, name in objects:
@@ -845,7 +862,20 @@ def _content(spec, data, policy):
             require(literal_objects <= 1, 'duplicate public literal archive object')
             ranges += literal_ranges
             spans.extend((start+a, start+b) for a,b in ranges)
-        _inspect_public_paths(data, policy, sorted(spans))
+        try:
+            _inspect_public_paths(data, policy, sorted(spans))
+        except CheckpointError as exc:
+            if exc.code == 'embedded_path_rejected' and isinstance(exc.details, dict):
+                off = exc.details.get('byte_offset')
+                if type(off) is int:
+                    for begin, end, region, index in regions:
+                        if begin <= off < end:
+                            exc.details['archive_region'] = region
+                            if region == 'archive_object':
+                                exc.details['archive_object_index'] = index
+                                exc.details['archive_object_offset'] = off - begin
+                            break
+            raise
     elif spec.kind == 'ninja_log':
         validate_ninja_log(data, policy)
     elif spec.kind == 'ninja_deps':
@@ -914,11 +944,11 @@ def _member_guard(phase, spec, state=None):
         details = getattr(exc, 'details', None)
         if isinstance(details, dict):
             safe = {}
-            for key in ['bytes', 'machine', 'version', 'sections', 'symbol_count', 'optional_header_bytes', 'section_index', 'record_offset', 'byte_offset', 'type_index']:
+            for key in ['bytes', 'machine', 'version', 'sections', 'symbol_count', 'optional_header_bytes', 'section_index', 'record_offset', 'byte_offset', 'type_index', 'archive_object_index', 'archive_object_offset']:
                 value = details.get(key)
                 if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 2**64-1:
                     safe[key] = value
-            for key, allowed in [('format', {'coff', 'bigobj_or_import'}), ('encoding', {'ascii', 'utf16le'})]:
+            for key, allowed in [('format', {'coff', 'bigobj_or_import'}), ('encoding', {'ascii', 'utf16le'}), ('archive_region', {'archive_header','archive_longnames','archive_first_linker_numbers','archive_second_linker_numbers','archive_second_linker_indices','archive_symbol_names','archive_object'})]:
                 if details.get(key) in allowed:
                     safe[key] = details[key]
             if safe:

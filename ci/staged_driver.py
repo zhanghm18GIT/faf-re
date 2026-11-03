@@ -120,9 +120,9 @@ class StagedBuild(core.Build):
   if self.phase_end is not None:n=min(n,int(self.phase_end-time.monotonic()));need(n>0,'Current stage phase allowance exhausted')
   return n
  def command(self,args,cwd=None,cap=120,env=None,name='command',binary=False,permit_failure=False,started_callback=None):
-  if name in {'build','dependencies-build','dependency-pilot'}:
+  if name in {'build','dependencies-build','dependency-pilot','dependency-archive-pilot'}:
    available=super().remaining(3300);reserve=self.c['stage_downstream_reserve_seconds']
-   if name in {'dependencies-build','dependency-pilot'}:
+   if name in {'dependencies-build','dependency-pilot','dependency-archive-pilot'}:
     need(self.stage_name=='A','Dependency pilot/build is producer-only')
     if self.dependency_compile_deadline is None:
      limit=min(self.c['stage_build_max_seconds'],available-reserve)
@@ -143,7 +143,7 @@ class StagedBuild(core.Build):
    self.receipt['ninja_timing_summary']=build_capture.ninja_summary(self.build/'.ninja_log',[(self.root,'<owned-work>')])
    if result['state']!='SUCCESS':self.child_uncertain=True;raise core.Blocked('Bounded streamed build did not complete: '+result['state'])
    text=log.read_text(encoding='utf-8',errors='replace')
-   if name!='dependency-pilot':self.start_acceptance_window()
+   if name not in {'dependency-pilot','dependency-archive-pilot'}:self.start_acceptance_window()
    if name=='build':self.receipt['standalone_effect_scan_link']=validate_effect_link(text,self.build)
    return text
   try:return super().command(args,cwd,cap,env if env is not None else self.child_env,name,binary,permit_failure,started_callback)
@@ -383,8 +383,26 @@ class StagedBuild(core.Build):
   self.receipt['dependency_format_pilot']=checkpoint.validate_built_subset(self.checkpoint_policy(),members,self.checkpoint_boundary)
   need(self.remaining(1)>0,'Shared compile deadline exhausted during pilot inspection')
   print('DEPENDENCY_FORMAT_PILOT '+json.dumps(self.receipt['dependency_format_pilot'],sort_keys=True),flush=True)
+ def dependency_archive_pilot(self):
+  # Build and validate the actual complete wx archive before unrelated targets.
+  # This consumes the existing dependency deadline, never a fresh allowance.
+  need(self.stage_name=='A','Archive pilot cannot run in consumer')
+  target=self.target_data['wxmswu'];need(target['depends']==[],'Archive pilot has a concrete dependency')
+  need(target['artifact']==checkpoint.WX_LITERAL_LIBRARY,'Archive pilot artifact changed')
+  rows=[x for x in self.graph['records'] if x['target'] in {'faf_monocypher','wxmswu'}]
+  wx=[x for x in rows if x['target']=='wxmswu']
+  need(wx and any(x['output']==target['artifact'] for x in wx),'Archive pilot closure lacks library')
+  previous={x['output'] for x in rows if x['target']=='faf_monocypher'}|{checkpoint.WX_LITERAL_OBJECT}
+  need({x for x in self.graph['outputs'] if (self.build/x).exists()}==previous,'Unexpected outputs before archive pilot')
+  self.phase='dependency-archive-pilot'
+  self.command([self.cmake,'--build',self.build,'--target','wxmswu','--parallel','2','--verbose','--','-d','keeprsp'],name='dependency-archive-pilot')
+  need({x for x in self.graph['outputs'] if (self.build/x).exists()}=={x['output'] for x in rows},'Archive pilot output closure differs')
+  members=['build/'+x['output'] for x in rows]+['build/.ninja_log','build/.ninja_deps']
+  self.receipt['dependency_archive_pilot']=checkpoint.validate_built_subset(self.checkpoint_policy(),members,self.checkpoint_boundary)
+  need(self.remaining(1)>0,'Shared compile deadline exhausted during archive pilot inspection')
+  print('DEPENDENCY_ARCHIVE_PILOT '+json.dumps(self.receipt['dependency_archive_pilot'],sort_keys=True),flush=True)
  def stage_a(self):
-  self.phase='dependency-compile';self.assert_owned();self.dependency_pilot();self.phase='dependency-compile'
+  self.phase='dependency-compile';self.assert_owned();self.dependency_pilot();self.dependency_archive_pilot();self.phase='dependency-compile'
   self.command([self.cmake,'--build',self.build,'--target',*build_graph.TARGETS,'--parallel','2','--verbose','--','-d','keeprsp'],name='dependencies-build')
   self.start_acceptance_window();self.assert_owned();self.external_identity().assert_matches(self.external_before)
   self.phase='seal-checkpoint';policy=self.checkpoint_policy();meta=self.metadata()
