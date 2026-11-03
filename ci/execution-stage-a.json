@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "root-go-staged-a-fix3-293153-20261103-1710",
-  "reviewed_driver_manifest_sha256": "3d8b4c46a442d2167c5dbcf627511d80ccb816763f5910307b6e6a1294cda5a0",
+  "root_go_reference": "root-go-staged-a-fix4-293153-20261103-1825",
+  "reviewed_driver_manifest_sha256": "a2961671f8c8d1c4aef7b7dac525106bea7f9613f8d29ac5fc194595f8e3e5c0",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
   "preflight_receipt": "preflight-receipt.json",
   "preflight_receipt_sha256": "ab6ded7934c8031cc15851595188da75eb7832d170a50a249ca2b3104b170bdb",
   "distribution_review": "distribution-review.json",
-  "distribution_review_sha256": "b47553354fc7b19c181cf0ce854728413bf5c8cd5233d95d0a5d5d375196bd37",
+  "distribution_review_sha256": "1a975f3d9316fa9119a134357def5b0e0996df06462237840a60c470f9b7c037",
   "ucrt": {
     "version": "10.0.22000.0",
     "source": "pinned-official-nuget",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": "7496733f1b1830ae2d1875d8363f209871920438",
+    "parent_commit": "1db7a6aed3133674e7e9552051509905c5fec46b",
     "tracked_files": [
       ".gitattributes",
       "README.md",

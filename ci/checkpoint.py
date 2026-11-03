@@ -19,15 +19,18 @@ import struct
 import tempfile
 import zipfile
 from contextlib import contextmanager
+from bisect import bisect_left
 from dataclasses import dataclass, field, replace
 from typing import Callable, Mapping
 
 
 class CheckpointError(ValueError):
-    def __init__(self, message, *, code=None, signature_id=None):
+    def __init__(self, message, *, code=None, signature_id=None, rule=None, details=None):
         super().__init__(message)
         self.code = code
         self.signature_id = signature_id
+        self.rule = rule
+        self.details = details
 
 
 
@@ -117,6 +120,10 @@ IO_CHUNK_BYTES = 1024 * 1024
 
 
 def inspect_public_paths(data, policy):
+    return _inspect_public_paths(data, policy, ())
+
+
+def _inspect_public_paths(data, policy, validated_ranges):
     # This is a conservative recognizable-string gate, NOT proof of absence of
     # private paths. Source literals compiled into an object may also be paths.
     # The driver must separately establish source provenance and debug mapping.
@@ -131,9 +138,20 @@ def inspect_public_paths(data, policy):
     ascii_runs = re.compile(r'[\x20-\x7e]{4,}')
     wide_runs = re.compile(r'[^\x00-\x1f\x7f-\x9f\ufffd]{4,}')
     view = memoryview(data)
+    ends = [b for a, b in validated_ranges]
+    require(all(0 <= a < b <= len(data) and (i == 0 or validated_ranges[i-1][1] <= a) for i, (a, b) in enumerate(validated_ranges)), "invalid validated CodeView spans")
     for start in range(0, len(data), SCAN_CHUNK_BYTES):
         lo, hi = max(0, start-overlap), min(len(data), start+SCAN_CHUNK_BYTES+overlap)
-        block = bytes(view[lo:hi])
+        block = bytearray(view[lo:hi])
+        # Mask only previously parsed, canonically decoded and root-checked
+        # CodeView command-string bytes. Never mask a whole record/object.
+        i = bisect_left(ends, lo+1)
+        while i < len(validated_ranges) and validated_ranges[i][0] < hi:
+            a, b = validated_ranges[i]
+            left, right = max(a, lo)-lo, min(b, hi)-lo
+            block[left:right] = b"\0" * (right-left)
+            i += 1
+        block = bytes(block)
         # One bounded decoded view at a time. Both UTF16 alignments are checked;
         # replacement, rather than deletion, preserves invalid-byte boundaries.
         for encoding, offset, runs in [('latin1', 0, ascii_runs), ('utf-16le', 0, wide_runs), ('utf-16le', 1, wide_runs)]:
@@ -143,10 +161,12 @@ def inspect_public_paths(data, policy):
                 text = block[offset:len(block)-((len(block)-offset) % 2)].decode(encoding, errors='replace')
             for run in runs.finditer(text):
                 for match in pattern.finditer(text, run.start(), run.end()):
-                    if lo+offset > 0 and match.start() == 0:
-                        continue  # previous overlapping window owns this token boundary
+                    token_offset = lo+offset+match.start()*(1 if encoding=='latin1' else 2)
+                    if not start <= token_offset < min(len(data), start+SCAN_CHUNK_BYTES):
+                        continue  # Exactly one primary window owns the token; overlap is context only.
                     tail = text[match.start():min(run.end(), match.start()+span)].replace('/', '\\').casefold()
-                    require(any(tail.startswith(root + '\\') or tail == root for root in roots), 'unapproved embedded absolute path')
+                    if not any(tail.startswith(root + '\\') or tail == root for root in roots):
+                        raise CheckpointError('unapproved embedded absolute path', code='embedded_path_rejected', rule='absolute_path_outside_roots', details={'byte_offset': token_offset, 'encoding': 'ascii' if encoding=='latin1' else 'utf16le'})
             del text
 
 
@@ -273,7 +293,28 @@ def _range(data, offset, size, label):
     require(offset >= 0 and size >= 0 and offset <= len(data) and size <= len(data)-offset, 'truncated ' + label)
 
 
+_COFF_RULES = {'short COFF': 'coff_short_coff', 'short BigObj': 'coff_short_bigobj', 'unsupported BigObj/import object': 'coff_unsupported_bigobj_import_object', 'unsupported BigObj metadata': 'coff_unsupported_bigobj_metadata', 'not AMD64 relocatable COFF': 'coff_not_amd64_relocatable_coff', 'invalid COFF section count': 'coff_invalid_coff_section_count', 'truncated COFF section table': 'coff_truncated_coff_section_table', 'COFF data overlaps headers': 'coff_coff_data_overlaps_headers', 'truncated section': 'coff_truncated_section', 'truncated line table': 'coff_truncated_line_table', 'missing COFF data pointer': 'coff_missing_coff_data_pointer', 'invalid relocation overflow': 'coff_invalid_relocation_overflow', 'truncated relocation overflow': 'coff_truncated_relocation_overflow', 'invalid overflow count': 'coff_invalid_overflow_count', 'invalid relocation pointer': 'coff_invalid_relocation_pointer', 'truncated relocations': 'coff_truncated_relocations', 'unexpected relocation pointer': 'coff_unexpected_relocation_pointer', 'symbol table overlaps headers': 'coff_symbol_table_overlaps_headers', 'truncated COFF symbols/string table': 'coff_truncated_coff_symbols_string_table', 'invalid COFF string table': 'coff_invalid_coff_string_table', 'truncated COFF strings': 'coff_truncated_coff_strings', 'COFF auxiliary symbol overrun': 'coff_coff_auxiliary_symbol_overrun', 'symbol count without pointer': 'coff_symbol_count_without_pointer'}
+
+
 def inspect_coff(data):
+    try:
+        return _inspect_coff_structure(data)
+    except CheckpointError as exc:
+        summary = {'bytes': len(data)}
+        if len(data) >= 8:
+            if data[:4] == b'\0\0\xff\xff':
+                summary.update(format='bigobj_or_import', version=struct.unpack_from('<H', data, 4)[0], machine=struct.unpack_from('<H', data, 6)[0])
+                if len(data) >= 56:
+                    summary.update(sections=struct.unpack_from('<I', data, 44)[0], symbol_count=struct.unpack_from('<I', data, 52)[0])
+            else:
+                summary.update(format='coff', machine=struct.unpack_from('<H', data)[0], sections=struct.unpack_from('<H', data, 2)[0])
+                if len(data) >= 20:
+                    summary.update(symbol_count=struct.unpack_from('<I', data, 12)[0], optional_header_bytes=struct.unpack_from('<H', data, 16)[0])
+        rule = _COFF_RULES.get(str(exc), 'coff_structure_other')
+        raise CheckpointError(str(exc), code='coff_structure_rejected', rule=rule, details=summary) from None
+
+
+def _inspect_coff_structure(data):
     """Recognized AMD64 relocatable COFF/BigObj only; reject import objects/PE."""
     require(len(data) >= 20, 'short COFF')
     if data[:4] == b'\0\0\xff\xff':
@@ -331,7 +372,60 @@ def _null_count(view):
     return sum(bytes(view[i:i+IO_CHUNK_BYTES]).count(b'\0') for i in range(0, len(view), IO_CHUNK_BYTES))
 
 
-def inspect_archive(data):
+_ARCHIVE_SYMBOL_NAME_CODES = frozenset({
+    'archive_symbol_name_count',
+    'archive_symbol_name_empty',
+    'archive_symbol_name_unterminated',
+    'archive_symbol_name_padding',
+})
+
+
+def _archive_symbol_names(body_tail, count):
+    """Validate exactly count nonempty NUL names, then optional canonical pad.
+
+    Legacy unpadded name tails remain accepted. LLVM's single internal NUL pad
+    is accepted only after an odd-sized name area. The caller retains member
+    bounds, external newline alignment, offsets, indices, and object checks.
+    Scan in bounded chunks; never copy the whole member or expose its contents.
+    """
+    def reject(code):
+        raise CheckpointError(code, code=code)
+
+    if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+        reject('archive_symbol_name_count')
+    view = memoryview(body_tail).cast('B')
+    if count > len(view) // 2:
+        reject('archive_symbol_name_count')
+    if count == 0:
+        if len(view):
+            reject('archive_symbol_name_padding')
+        return
+    seen = pending = 0
+    for base in range(0, len(view), IO_CHUNK_BYTES):
+        chunk = bytes(view[base:base + IO_CHUNK_BYTES])
+        cursor = 0
+        while seen < count:
+            end = chunk.find(b'\0', cursor)
+            if end < 0:
+                pending += len(chunk) - cursor
+                break
+            if pending + end - cursor == 0:
+                reject('archive_symbol_name_empty')
+            seen += 1
+            pending = 0
+            cursor = end + 1
+        if seen == count:
+            consumed = base + cursor
+            remaining = len(view) - consumed
+            if remaining == 0:
+                return
+            if remaining == 1 and consumed % 2 == 1 and view[consumed] == 0:
+                return
+            reject('archive_symbol_name_padding')
+    reject('archive_symbol_name_unterminated')
+
+
+def inspect_archive(data, *, object_spans=None):
     require(data.startswith(b'!<arch>\n'), 'not a regular COFF archive')
     pos, objects, longnames, symbol_count = 8, 0, None, 0
     object_offsets, symbol_offset_views = set(), []
@@ -363,7 +457,7 @@ def inspect_archive(data):
                 _range(body, 4, count*4, 'first linker offsets')
                 symbol_offset_views.append(('>I', body[4:4+count*4]))
                 rest = body[4+count*4:]
-                require(_null_count(rest) == count and (not rest or rest[-1] == 0), 'first linker names')
+                _archive_symbol_names(rest, count)
             else:
                 count = struct.unpack_from('<I', body)[0]
                 _range(body, 4, count*4+4, 'second linker offsets')
@@ -374,7 +468,7 @@ def inspect_archive(data):
                 indices = struct.iter_unpack('<H', body[p+4:p+4+n*2])
                 require(all(1 <= i[0] <= count for i in indices), 'bad archive symbol index')
                 rest = body[p+4+n*2:]
-                require(_null_count(rest) == n and (not rest or rest[-1] == 0), 'second linker names')
+                _archive_symbol_names(rest, n)
         else:
             if name.startswith('/'):
                 require(name[1:].isdigit() and longnames is not None, 'unknown archive metadata')
@@ -388,6 +482,8 @@ def inspect_archive(data):
                 name = name[:-1]
             require(name.lower().endswith('.obj') and not any(c in name for c in '\r\n\0'), 'non-object archive member')
             inspect_coff(body)
+            if object_spans is not None:
+                object_spans.append((at, at+size))
             object_offsets.add(pos)
             objects += 1
         pos = at+size
@@ -455,6 +551,126 @@ def validate_ninja_deps(data, policy):
     return {'paths': len(paths), 'records': records, 'complete_include_inventory': False}
 
 
+_CODEVIEW_RULES = frozenset({'cv_section_signature','cv_record_bounds','cv_record_count','cv_record_alignment','cv_buildinfo_shape','cv_buildinfo_padding','cv_command_reference','cv_string_shape','cv_string_padding','cv_string_utf8','cv_command_quotes','cv_command_escape','cv_command_separator','cv_command_canonical','cv_command_frontend','cv_command_controls','cv_decoded_path','cv_external_type_server'})
+_SAFE_FORMAT_RULES = frozenset(_COFF_RULES.values()) | _CODEVIEW_RULES | {'coff_structure_other','archive_structure_rule','archive_symbol_names','absolute_path_outside_roots'}
+
+
+def _cv_fail(rule, *, section=0, offset=0, index=0):
+    raise CheckpointError('CodeView command validation rejected', code='codeview_command_rejected', rule=rule, details={'section_index':section, 'record_offset':offset, 'type_index':index})
+
+
+def _canonical_codeview_args(raw):
+    """Inverse of LLVM22 sys::printArg(Quote=true), not shell parsing."""
+    try:
+        text = raw.decode('utf-8', errors='strict')
+    except UnicodeError:
+        _cv_fail('cv_string_utf8')
+    if any(ord(c)<32 or ord(c)==127 for c in text):
+        _cv_fail('cv_command_controls')
+    args, i = [], 0
+    while i < len(text):
+        if text[i] != '"': _cv_fail('cv_command_quotes')
+        i += 1; value = []
+        while i < len(text) and text[i] != '"':
+            if text[i] == '\\':
+                i += 1
+                if i >= len(text) or text[i] not in '\\"$': _cv_fail('cv_command_escape')
+            value.append(text[i]); i += 1
+        if i >= len(text): _cv_fail('cv_command_quotes')
+        args.append(''.join(value)); i += 1
+        if i < len(text):
+            if text[i] != ' ' or i+1 == len(text): _cv_fail('cv_command_separator')
+            i += 1
+    def encode(arg):
+        return '"'+''.join(('\\'+c if c in '\\"$' else c) for c in arg)+'"'
+    if ' '.join(encode(x) for x in args).encode('utf-8') != raw: _cv_fail('cv_command_canonical')
+    if args and (args[0] != '-cc1' or any(not x for x in args)): _cv_fail('cv_command_frontend')
+    return args
+
+
+def _validate_codeview_args(args, policy):
+    # Recheck all decoded bytes with the original root scanner, then normalize
+    # Windows paths so an escaped approved-root/../outside path cannot hide.
+    for arg in args:
+        inspect_public_paths(arg.encode('utf-8'), policy)
+        for match in re.finditer(r'(?i)(?<![a-z0-9_+.-])[a-z]:[\\/]|\\\\[a-z0-9_.-]+[\\/]', arg):
+            value = arg[match.start():].split('"', 1)[0]
+            try:
+                approved_path(value, policy)
+            except CheckpointError:
+                _cv_fail('cv_decoded_path')
+
+
+def _cv_padding(data, used, *, section, offset, rule):
+    trailing = bytes(data[used:])
+    if len(trailing)>3 or trailing != bytes(range(0xf0+len(trailing),0xf0,-1)):
+        _cv_fail(rule, section=section, offset=offset)
+
+
+def _validated_codeview_ranges(data, policy):
+    """Only LF_BUILDINFO's command LF_STRING_ID bytes may bypass raw re-scan.
+
+    The caller has already validated this object's COFF layout. Everything
+    outside these proven string spans, including other CodeView fields, still
+    passes the unchanged recognizable-path scan. No payload bytes are changed.
+    """
+    big = data[:4] == b'\0\0\xff\xff'
+    header = 56 if big else 20
+    count = struct.unpack_from('<I' if big else '<H', data, 44 if big else 2)[0]
+    result = []
+    for section in range(count):
+        at = header+section*40
+        if bytes(data[at:at+8]) != b'.debug$T': continue
+        size, start = struct.unpack_from('<II', data, at+16)
+        if size < 4 or struct.unpack_from('<I',data,start)[0] != 4:
+            _cv_fail('cv_section_signature',section=section+1,offset=start)
+        pos, end, type_index = start+4, start+size, 0x1000
+        strings, commands = {}, []
+        while pos < end:
+            if pos+4>end: _cv_fail('cv_record_bounds',section=section+1,offset=pos,index=type_index)
+            length, kind = struct.unpack_from('<HH',data,pos)
+            stop = pos+2+length
+            if length<2 or stop>end: _cv_fail('cv_record_bounds',section=section+1,offset=pos,index=type_index)
+            if (stop-start)%4: _cv_fail('cv_record_alignment',section=section+1,offset=pos,index=type_index)
+            if type_index-0x1000 >= policy.limits.log_records: _cv_fail('cv_record_count',section=section+1,offset=pos,index=type_index)
+            if kind == 0x1605:
+                strings[type_index] = (pos,stop)
+            elif kind == 0x1603:
+                if length<24 or struct.unpack_from('<H',data,pos+4)[0] != 5:
+                    _cv_fail('cv_buildinfo_shape',section=section+1,offset=pos,index=type_index)
+                _cv_padding(data[pos+2:stop],24,section=section+1,offset=pos,rule='cv_buildinfo_padding')
+                refs = struct.unpack_from('<IIIII',data,pos+6)
+                commands.append((type_index,pos,refs))
+            pos = stop; type_index += 1
+        for owner, record, refs in commands:
+            if any(x not in strings or x >= owner for x in refs):
+                _cv_fail('cv_command_reference',section=section+1,offset=record,index=owner)
+            values = []
+            for ref in refs:
+                begin,stop = strings[ref]
+                if stop-begin<9 or struct.unpack_from('<I',data,begin+4)[0] != 0:
+                    _cv_fail('cv_string_shape',section=section+1,offset=begin,index=ref)
+                content = bytes(data[begin+8:stop]); nul = content.find(b'\0')
+                if nul<0: _cv_fail('cv_string_shape',section=section+1,offset=begin,index=ref)
+                _cv_padding(content,nul+1,section=section+1,offset=begin,rule='cv_string_padding')
+                values.append(content[:nul])
+            # The approved embedded (/Z7) route has no external type-server PDB.
+            if values[3]: _cv_fail('cv_external_type_server',section=section+1,offset=record,index=owner)
+            ref = refs[4]; begin,stop = strings[ref]
+            content = values[4]; nul = len(content)
+            try:
+                args = _canonical_codeview_args(content[:nul])
+                _validate_codeview_args(args,policy)
+            except CheckpointError as exc:
+                if exc.code=='embedded_path_rejected':
+                    exc.details={'section_index':section+1,'record_offset':begin,'type_index':ref}
+                elif exc.code=='codeview_command_rejected':
+                    exc.details={'section_index':section+1,'record_offset':begin,'type_index':ref}
+                raise
+            if nul: result.append((begin+8,begin+8+nul))
+    return sorted(set(result))
+
+
 MATERIAL_SIGNATURES = (
     ('dos_mz', 0, b'MZ'), ('coff_archive', 0, b'!<arch>\n'), ('thin_archive', 0, b'!<thin>\n'),
     ('elf', 0, b'\x7fELF'), ('zip_local', 0, b'PK\x03\x04'), ('zip_empty', 0, b'PK\x05\x06'),
@@ -485,11 +701,22 @@ def _content(spec, data, policy):
     if spec.kind == 'obj':
         require(suffix == '.obj', 'object suffix')
         inspect_coff(data)
-        inspect_public_paths(data, policy)
+        spans = _validated_codeview_ranges(data, policy)
+        _inspect_public_paths(data, policy, spans)
     elif spec.kind == 'lib':
         require(suffix == '.lib', 'library suffix')
-        inspect_archive(data)
-        inspect_public_paths(data, policy)
+        objects = []
+        try:
+            inspect_archive(data, object_spans=objects)
+        except CheckpointError as exc:
+            if exc.code:
+                raise
+            raise CheckpointError('archive structure rejected', code='archive_structure_rejected', rule='archive_structure_rule') from None
+        spans = []
+        view = memoryview(data)
+        for start, end in objects:
+            spans.extend((start+a, start+b) for a,b in _validated_codeview_ranges(view[start:end], policy))
+        _inspect_public_paths(data, policy, sorted(spans))
     elif spec.kind == 'ninja_log':
         validate_ninja_log(data, policy)
     elif spec.kind == 'ninja_deps':
@@ -536,8 +763,10 @@ def _read(spec, policy):
     return entry, data
 
 
-_SAFE_CODES = frozenset({'material_magic_candidate', 'coff_machine_candidate', 'material_text_pin_mismatch', 'material_text_encoding_rejected', 'material_text_size_rejected', 'source_drift', 'member_identity_mismatch', 'mtime_ns_not_preserved'})
+_SAFE_CODES = frozenset({'material_magic_candidate', 'coff_machine_candidate', 'material_text_pin_mismatch', 'material_text_encoding_rejected', 'material_text_size_rejected', 'source_drift', 'member_identity_mismatch', 'mtime_ns_not_preserved', 'coff_structure_rejected', 'archive_structure_rejected', 'archive_symbol_names_rejected', 'codeview_command_rejected', 'embedded_path_rejected'})
 
+
+_SAFE_CODES = _SAFE_CODES | _ARCHIVE_SYMBOL_NAME_CODES
 
 @contextmanager
 def _member_guard(phase, spec, state=None):
@@ -550,6 +779,21 @@ def _member_guard(phase, spec, state=None):
         operation = state.get('operation', 'content')
         fallback = {'read': 'member_read_failed', 'content': 'member_content_rejected', 'provenance': 'provenance_or_license_failed', 'identity': 'member_identity_mismatch', 'timestamp': 'mtime_ns_not_preserved', 'write': 'member_write_failed'}.get(operation, 'member_check_failed')
         report = {'phase': phase, 'member': spec.member if spec is not None else '<manifest>', 'kind': spec.kind if spec is not None else 'manifest', 'reason_code': code if code in _SAFE_CODES else fallback}
+        rule = getattr(exc, 'rule', None)
+        if rule in _SAFE_FORMAT_RULES:
+            report['format_rule'] = rule
+        details = getattr(exc, 'details', None)
+        if isinstance(details, dict):
+            safe = {}
+            for key in ['bytes', 'machine', 'version', 'sections', 'symbol_count', 'optional_header_bytes', 'section_index', 'record_offset', 'byte_offset', 'type_index']:
+                value = details.get(key)
+                if isinstance(value, int) and not isinstance(value, bool) and 0 <= value <= 2**64-1:
+                    safe[key] = value
+            for key, allowed in [('format', {'coff', 'bigobj_or_import'}), ('encoding', {'ascii', 'utf16le'})]:
+                if details.get(key) in allowed:
+                    safe[key] = details[key]
+            if safe:
+                report['format_details'] = safe
         entry = state.get('entry')
         if entry is not None:
             report.update(bytes=entry['size'], sha256=entry['sha256'])

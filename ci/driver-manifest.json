@@ -4,8 +4,8 @@
   "files": [
     {
       "path": "README-CHECKPOINT.md",
-      "sha256": "43a0429508a5d4a31bb65d224d5f9cb3a359317a19bf10a0b9c79de820fc60f3",
-      "size": 2018
+      "sha256": "369913ba61314f7bb4a2af176f8f37d57cb908c5e915c2f0f486c0b2e8d5f2c3",
+      "size": 3380
     },
     {
       "path": "README-PACKAGE.md",
@@ -34,8 +34,8 @@
     },
     {
       "path": "checkpoint.py",
-      "sha256": "b7a4c0705f8015c18dbdc50f2d6af690aabc9525782efc8fd83f90eced172f59",
-      "size": 50823
+      "sha256": "673d15bb2aa4cf912ef33c8345854b1a0eb91c7d54c9f7585142c57ae8801d94",
+      "size": 64730
     },
     {
       "path": "dependency-recipe.json",
@@ -89,8 +89,8 @@
     },
     {
       "path": "tests/test_checkpoint.py",
-      "sha256": "f0c84f189b22a3b8d1662315d9cc6d5602a3f654fd79eea14ad0f193ac8759fb",
-      "size": 40763
+      "sha256": "14e8748947edc6790386be93577aa170c1752192f3a8de291703ffc3f167663a",
+      "size": 48682
     },
     {
       "path": "tests/test_owned_cleanup.py",

@@ -34,7 +34,7 @@
   },
   "material_selection_sha256": "e956ca6f465f67b966392bea1ed7712d80234b756d96cca599470f2ee9b8292c",
   "material_selection_review_status": "REVIEWED",
-  "material_selection_review_reference": "material-fix3-293153-static-20261103-1727",
+  "material_selection_review_reference": "material-coff-fix4-static-20261103-1824",
   "product_source_review_reference": "source-293153-static-20261103-1722",
   "product_source_review_report_sha256": "f1def5a106f6832388bca1bed0321ff68240226b51a632176668af586d07c0a5",
   "product_source_review_scope": "Fixed Windows source selection only; final material-selection amendment remains separately gated"

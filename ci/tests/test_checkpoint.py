@@ -675,3 +675,130 @@ class TestCheckpoint(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
+
+class CodeViewAndArchiveFormatTests(unittest.TestCase):
+    """Synthetic records only; no copied worker/tool binaries or network."""
+    def setUp(self):
+        self.policy = c.Policy({}, {}, (), (), frozenset(), frozenset(), (r'C:\faf-re-staged', r'C:\Program Files\LLVM'), r'C:\faf-re-staged\recipe\build')
+
+    @staticmethod
+    def quoted(args):
+        return ' '.join('"'+''.join('\\'+x if x in '\\"$' else x for x in arg)+'"' for arg in args).encode()
+
+    @staticmethod
+    def record(kind, payload):
+        body = struct.pack('<H', kind)+payload
+        pad = (-(len(body)+2)) % 4
+        body += bytes(range(0xf0+pad, 0xf0, -1))
+        return struct.pack('<H',len(body))+body
+
+    def fixture(self, command=None, *, refs=None, parent=0, unknown_record=False, pdb=b''):
+        if command is None:
+            command=self.quoted(['-cc1',r'-fdebug-compilation-dir=C:\faf-re-staged\recipe\build','-internal-isystem',r'C:\Program Files\LLVM\include'])
+        values=[b'C:\\faf-re-staged\\recipe\\build',b'C:\\Program Files\\LLVM\\clang-cl.exe',b'a.c',pdb,command]
+        types=b'\x04\0\0\0';starts=[]
+        for i,value in enumerate(values):
+            starts.append(len(types));types += self.record(0x1605 if not (unknown_record and i==4) else 0x1606,struct.pack('<I',parent if i==4 else 0)+value+b'\0')
+        buildinfo=len(types);types += self.record(0x1603,struct.pack('<HIIIII',5,*(refs or [0x1000,0x1001,0x1002,0x1003,0x1004])))
+        header=struct.pack('<HHIIIHH',0x8664,2,0,0,0,0,0);start=101
+        text=b'.text\0\0\0'+struct.pack('<IIIIIIHHI',0,0,1,100,0,0,0,0,0x60000020)
+        debug=b'.debug$T'+struct.pack('<IIIIIIHHI',0,0,len(types),start,0,0,0,0,0x42300040)
+        return bytearray(header+text+debug+b'\xc3'+types),{'debug':start,'strings':[start+x for x in starts],'buildinfo':start+buildinfo}
+
+    def check(self,data,kind='obj'):
+        c._content(c.FileSpec('build','a.'+kind,kind),bytes(data),self.policy)
+
+    def reject(self,data,kind='obj'):
+        with self.assertRaises(c.CheckpointError):self.check(data,kind)
+
+    def test_known_codeview_only_escaped_path_passes(self):
+        data,meta=self.fixture();c.inspect_coff(data)
+        with self.assertRaisesRegex(c.CheckpointError,'unapproved embedded'):c.inspect_public_paths(data,self.policy)
+        spans=c._validated_codeview_ranges(data,self.policy)
+        self.assertEqual(len(spans),1);self.assertEqual(spans[0][0],meta['strings'][4]+8);self.check(data)
+
+    def test_same_field_in_archive_passes(self):
+        data,_=self.fixture();self.check(archive(bytes(data)),'lib')
+
+    def test_generic_scanner_never_unescapes(self):
+        raw=self.quoted(['-cc1',r'C:\faf-re-staged\source'])
+        with self.assertRaises(c.CheckpointError):c.inspect_public_paths(raw,self.policy)
+
+    def test_raw_private_paths_outside_mask_still_reject(self):
+        data,_=self.fixture()
+        for suffix in [b'\0C:\\private\\secret\0',b'\0'+r'C:\private\secret'.encode('utf-16le')+b'\0\0']:
+            self.reject(data+suffix);self.reject(archive(bytes(data+suffix)),'lib')
+
+    def test_unknown_and_traversal_decoded_paths_reject(self):
+        for path in [r'C:\private\secret',r'C:\faf-re-staged\..\private\secret',r'C:\faf-re-staged-other\secret',r'\\private-host\share\x',r'C:\\faf-re-staged\\secret']:
+            data,_=self.fixture(self.quoted(['-cc1',path]));self.reject(data);self.reject(archive(bytes(data)),'lib')
+
+    def test_spaces_quotes_dollar_and_unicode_canonical(self):
+        args=['-cc1',r'C:\Program Files\LLVM\include',r'-DVALUE="quoted"$', 'utf8-\u03bb']
+        raw=self.quoted(args);self.assertEqual(c._canonical_codeview_args(raw),args);data,_=self.fixture(raw);self.check(data)
+
+    def test_unknown_or_noncanonical_escapes_reject(self):
+        for raw in [b'"-cc1" "\\q"',b'"-cc1" "x\\n"',b'"-cc1" "bad$',b'"-cc1" "raw$"',b'"-cc1"  "x"',b'"-cc1" "x" ',b'"-cc1" x',b'"not-cc1" "x"',b'"-cc1" ""',b'"-cc1" "x\n"',b'"-cc1" "\xff"']:
+            data,_=self.fixture(raw);self.reject(data)
+
+    def test_bad_references_and_wrong_leaf_reject(self):
+        for index in [0,0xfff,0x1005,0x1006,0xffffffff]:
+            data,_=self.fixture(refs=[0x1000,0x1001,0x1002,0x1003,index]);self.reject(data)
+        data,_=self.fixture(unknown_record=True);self.reject(data)
+        data,_=self.fixture(parent=0x1000);self.reject(data)
+
+    def test_all_five_references_must_be_strings(self):
+        data,meta=self.fixture();struct.pack_into('<H',data,meta['strings'][0]+2,0x1606);self.reject(data)
+        data,meta=self.fixture();struct.pack_into('<I',data,meta['strings'][1]+4,1);self.reject(data)
+        data,_=self.fixture(pdb=b'C:\\faf-re-staged\\types.pdb');self.reject(data)
+
+    def test_buildinfo_shape_padding_and_section_signature(self):
+        data,meta=self.fixture();data[meta['debug']]=2;self.reject(data)
+        data,meta=self.fixture();struct.pack_into('<H',data,meta['buildinfo']+4,4);self.reject(data)
+        data,meta=self.fixture();data[-1]=0;self.reject(data)
+
+    def test_record_size_and_alignment_reject(self):
+        for length in [0,1,3,65535]:
+            data,meta=self.fixture();struct.pack_into('<H',data,meta['strings'][4],length);self.reject(data)
+        data,_=self.fixture();self.reject(data[:-1])
+
+    def test_command_nul_and_padding_reject(self):
+        data,meta=self.fixture(b'"-cc1"');at=meta['strings'][4];stop=at+2+struct.unpack_from('<H',data,at)[0]
+        for idx in range(at+8,stop):
+            if data[idx]==0:data[idx]=65
+        self.reject(data)
+        data,meta=self.fixture(b'"-cc1"');at=meta['strings'][4];stop=at+2+struct.unpack_from('<H',data,at)[0];data[stop-1]=0;self.reject(data)
+
+    def test_unreferenced_escaped_string_is_not_masked(self):
+        data,meta=self.fixture();struct.pack_into('<H',data,meta['buildinfo']+2,0x1500);self.reject(data)
+        data,meta=self.fixture();data[60:68]=b'.rdata\0\0';self.reject(data)
+
+    def test_mask_crosses_chunks_without_hiding_neighbors(self):
+        data,_=self.fixture()
+        with mock.patch.object(c,'SCAN_CHUNK_BYTES',31):self.check(data)
+        with mock.patch.object(c,'SCAN_CHUNK_BYTES',31):self.reject(data+b'\0C:\\private\\outside\0')
+
+    def test_record_count_bound_is_fail_closed(self):
+        data,_=self.fixture()
+        with self.assertRaises(c.CheckpointError):c._validated_codeview_ranges(data,dataclasses.replace(self.policy,limits=dataclasses.replace(self.policy.limits,log_records=2)))
+
+    def test_fixed_structural_and_path_diagnostics(self):
+        data,_=self.fixture();struct.pack_into('<H',data,0,0x14c)
+        with self.assertRaises(c.CheckpointError) as got:
+            with c._member_guard('built-subset',c.FileSpec('build','x.obj','obj')):self.check(data)
+        result=got.exception.context;self.assertEqual(result['reason_code'],'coff_structure_rejected');self.assertEqual(result['format_details']['machine'],0x14c)
+        data,_=self.fixture(self.quoted(['-cc1',r'C:\private\do-not-print']))
+        with self.assertRaises(c.CheckpointError) as got:
+            with c._member_guard('built-subset',c.FileSpec('build','x.obj','obj')):self.check(data)
+        self.assertNotIn('private',str(got.exception));self.assertIn('format_rule',got.exception.context)
+
+    def test_archive_name_tail_exact_padding(self):
+        for value,count in [(b'',0),(b'a\0',1),(b'aa\0',1),(b'aa\0\0',1),(b'a\0bbb\0',2),(b'a\0bb\0\0',2)]:c._archive_symbol_names(value,count)
+        for value,count in [(b'\0',0),(b'\0',1),(b'a\0\0',1),(b'aa\0X',1),(b'aa\0\0\0',1),(b'a\0b\0',1),(b'a\0',2),(b'aa',1)]:
+            with self.assertRaises(c.CheckpointError):c._archive_symbol_names(value,count)
+
+    def test_archive_names_across_chunk_boundary(self):
+        with mock.patch.object(c,'IO_CHUNK_BYTES',3):
+            c._archive_symbol_names(b'long-name\0aa\0\0',2)
+            with self.assertRaises(c.CheckpointError):c._archive_symbol_names(b'long-name\0aa\0\0X',2)
