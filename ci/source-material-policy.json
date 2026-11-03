@@ -1,0 +1,246 @@
+{
+  "schema": 1,
+  "scope": "Exact reviewed public dependency material selection only; production checkout is not deleted or changed",
+  "source_provenance": {
+    "gitlinks": [
+      {
+        "path": "dependencies/FX11",
+        "mode": "160000",
+        "type": "commit",
+        "sha": "bec3b8fcd8849fcfe0125fbd1a62927e2ada99cc"
+      },
+      {
+        "path": "dependencies/WildMagic3p8",
+        "mode": "160000",
+        "type": "commit",
+        "sha": "9baf054aea272090e0df3289e24cf436fb92c78c"
+      },
+      {
+        "path": "dependencies/ffmpeg",
+        "mode": "160000",
+        "type": "commit",
+        "sha": "8f9ea179334d8ff01292728b9704b7da1f712c5f"
+      },
+      {
+        "path": "dependencies/vulkan",
+        "mode": "160000",
+        "type": "commit",
+        "sha": "d4a196d8c84e032d27f999adcea3075517c1c97f"
+      },
+      {
+        "path": "dependencies/zlib-1.2.3",
+        "mode": "160000",
+        "type": "commit",
+        "sha": "abf180a067223611620dd97dd5681df7c7fa7c9b"
+      }
+    ],
+    "archives": [
+      {
+        "name": "boost_1_34_1",
+        "url": "https://downloads.sourceforge.net/project/boost/boost/1.34.1/boost_1_34_1.tar.bz2",
+        "sha256": "0f866c75b025a4f1340117a106595cc0675f48ba1e5a9b5c221ec7f19e96ec4c"
+      },
+      {
+        "name": "wxWindows-2.4.2",
+        "url": "https://github.com/wxWidgets/wxWidgets/releases/download/v2.4.2/wxMSW-2.4.2.zip",
+        "sha256": "081cb30347ed9092a50c39311b46586f4264fb125942652db168851be96ebf33"
+      },
+      {
+        "name": "libjuice",
+        "url": "https://github.com/paullouisageneau/libjuice/archive/refs/tags/v1.7.4.tar.gz",
+        "sha256": "95c088862aa1b88b73d62aa99577135010eb768fcafb252d13aa85a8515ef798"
+      },
+      {
+        "name": "libdatachannel",
+        "url": "https://github.com/paullouisageneau/libdatachannel/archive/refs/tags/v0.24.6.tar.gz",
+        "sha256": "22a66aebebd8dae561d8e5181da96f2fcc203e067c5b2186c07b39af913464c0"
+      },
+      {
+        "name": "usrsctp",
+        "url": "https://github.com/sctplab/usrsctp/archive/fec583d54493f879d2ae44a743423bf8a04371ab.tar.gz",
+        "sha256": "e5c114afe73c9a0ec419fab5f5b3f63f3ce57b09b90d06ea85e63dca8aed3e7c"
+      },
+      {
+        "name": "plog",
+        "url": "https://github.com/SergiusTheBest/plog/archive/94899e0b926ac1b0f4750bfbd495167b4a6ae9ef.tar.gz",
+        "sha256": "92a08bce559b5f28aa88d3fd9071567414b9f43a83fe2a05a6dd14f1da536072"
+      },
+      {
+        "name": "mbedtls",
+        "url": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2",
+        "sha256": "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6"
+      },
+      {
+        "name": "monocypher",
+        "url": "https://github.com/LoupVaillant/Monocypher/archive/refs/tags/4.0.2.tar.gz",
+        "sha256": "bc1ca30b1b2654e4e7daf2492c0d204200e55137f23fda6b7142fd7d523bd6b4"
+      }
+    ]
+  },
+  "omitted_non_build_material": [
+    {
+      "component": "boost_1_34_1",
+      "path": "libs/serialization/vc6ide/serialization.ncb",
+      "bytes": 38,
+      "sha256": "db408880db656525ded5d6d239c1895d17bb6aee86db05febdcb9ce7fa8b62fb",
+      "classification": "Unused IDE generated database placeholder, not source or license"
+    },
+    {
+      "component": "boost_1_34_1",
+      "path": "libs/statechart/example/Performance/Performance.xls",
+      "bytes": 38400,
+      "sha256": "8350bc69276fab21383ced4e3dde58a6903739c988af3b2fea954d0741e737e7",
+      "classification": "Historical benchmark spreadsheet, not compiled source, build instruction, or license"
+    },
+    {
+      "component": "mbedtls",
+      "path": "framework/data_files/base64/def_b64_ff.bin",
+      "bytes": 489,
+      "sha256": "6ddff1c9506617bd8ff835154841f1c4553608ad96adaf0757694f5b3b17d8e8",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "mbedtls",
+      "path": "framework/data_files/pkcs7_data.bin",
+      "bytes": 7,
+      "sha256": "05ade08fcfb104f40b2536a14dfcd6e916d643f5cf8044b19028b607ae8f4908",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "mbedtls",
+      "path": "framework/data_files/pkcs7_data_1.bin",
+      "bytes": 3,
+      "sha256": "df4e26a04a444901b95afef44e4a96cfae34690fff2ad2c66389c70079cdff2b",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "mbedtls",
+      "path": "framework/data_files/pkcs7_zerolendata.bin",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "usrsctp",
+      "path": "fuzzer/CORPUS_CONNECT/data-1.bin",
+      "bytes": 16,
+      "sha256": "f3095c40aff970766db4e2ec2e3eb947c59c9e1f2b7a71c7ba44b06bf50d8882",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "usrsctp",
+      "path": "fuzzer/CORPUS_CONNECT/init-ack-1.bin",
+      "bytes": 444,
+      "sha256": "f233f0a6a1e626c49df195ef3b45d8c61fce8e1d3587500296b6104ad8a41ee8",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "usrsctp",
+      "path": "fuzzer/CORPUS_CONNECT/shutdown-1.bin",
+      "bytes": 8,
+      "sha256": "597c80075f7784f325314475914ed88151422f214fe1e9c0a1d10094f83ee84e",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "usrsctp",
+      "path": "fuzzer/CORPUS_CONNECT/shutdown-ack-1.bin",
+      "bytes": 4,
+      "sha256": "ac8c607149481b038ca57ec6f24861872ae63093da6ca20114f1d3428946c237",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "usrsctp",
+      "path": "fuzzer/CORPUS_CONNECT/shutdown-complete-1.bin",
+      "bytes": 4,
+      "sha256": "ada2762de5001fa7cd4dc8dd7eb15b3372205fd76d9a97757f34a3e7c0a4b71f",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "usrsctp",
+      "path": "fuzzer/CORPUS_LISTEN/init-1.bin",
+      "bytes": 108,
+      "sha256": "e658b90273eba144260c707cc4b35e8ad29ee3179f6ae32cf7d44be3448826fb",
+      "classification": "Unused optional fuzzer/cryptography test data, not dependency compilation/relink input or license"
+    },
+    {
+      "component": "wxWindows-2.4.2",
+      "path": "samples/help/doc/ClassGraph.class",
+      "bytes": 86,
+      "sha256": "da7a2ab7c8087fb4d02cf8f1f8bd7359ae0b72f4fd3a24825eb850417de2a64b",
+      "classification": "Precompiled Java sample help/documentation bytecode, not C/C++ source or license"
+    },
+    {
+      "component": "wxWindows-2.4.2",
+      "path": "samples/help/doc/ClassGraphPanel.class",
+      "bytes": 148,
+      "sha256": "629542b900be97fd3cfa935d93ebde439824adaef036352883777846bc255b5a",
+      "classification": "Precompiled Java sample help/documentation bytecode, not C/C++ source or license"
+    },
+    {
+      "component": "wxWindows-2.4.2",
+      "path": "samples/help/doc/ClassLayout.class",
+      "bytes": 1685,
+      "sha256": "b45072a05d3c4305c53db05f9dc5aa7503789670b505760fe41a182af376bf4a",
+      "classification": "Precompiled Java sample help/documentation bytecode, not C/C++ source or license"
+    },
+    {
+      "component": "wxWindows-2.4.2",
+      "path": "samples/help/doc/NavigatorButton.class",
+      "bytes": 1570,
+      "sha256": "d855cce54c283e345322b6cfe53baaa80e74cd6445d1193a65d58f1e2f997bf4",
+      "classification": "Precompiled Java sample help/documentation bytecode, not C/C++ source or license"
+    }
+  ],
+  "retained_vms_text": [
+    {
+      "component": "boost_1_34_1",
+      "path": "tools/jam/src/build_vms.com",
+      "bytes": 3962,
+      "sha256": "d409a79ebf18644052ef70d37dfe75604bc29268f9f42562fc2607336c9319be",
+      "classification": "Exact public OpenVMS text build script; retained as source, never executed"
+    },
+    {
+      "component": "wxWindows-2.4.2",
+      "path": "src/png/scripts/makevms.com",
+      "bytes": 4199,
+      "sha256": "4888df1aa9726a7f0e275d288a0a47807935a68695e978ab13266ba9f5055c4c",
+      "classification": "Exact public OpenVMS text build script; retained as source, never executed"
+    },
+    {
+      "component": "wxWindows-2.4.2",
+      "path": "src/zlib/Make_vms.com",
+      "bytes": 3916,
+      "sha256": "ac9cce45cda68cd66e789c22efa90070d359f127070d73cd759076e24bdde703",
+      "classification": "Exact public OpenVMS text build script; retained as source, never executed"
+    },
+    {
+      "component": "zlib-1.2.3",
+      "path": "make_vms.com",
+      "bytes": 13234,
+      "sha256": "0aad7b4d639b1f8b46b50eca6ae90739a193e37cdfd0600b3b21a5a267cc6919",
+      "classification": "Exact public OpenVMS text build script; retained as source, never executed"
+    }
+  ],
+  "rules": [
+    "Every exact listed file must exist and match bytes and SHA256 before selection.",
+    "Omissions apply only to material/checkpoint selection, not original checkout files.",
+    "Actual compile inputs must remain within the admitted source/generated closure; omitted files cannot be compiled.",
+    "No binary, archive, database, SDK or executable signature is allowed through a source-text classification.",
+    "The complete original public source archives remain identified above; no blanket license claim is made."
+  ],
+  "excluded_product_linux_only_material": [
+    {
+      "path": "cmake/pgo/headless-linux-x64.profdata",
+      "git_blob": "79cad0404d3a1338879ea872173b4b23d71f4c28",
+      "bytes": 3921112,
+      "reason": "Linux-only profiling artifact; not consumed by Windows client preset; excluded from public source payload. Binary policy unchanged."
+    },
+    {
+      "path": "tools/pgo/record.sh",
+      "git_blob": "4eac74d47df2421378fa53c35cb61204384d8b39",
+      "bytes": 1951,
+      "reason": "Linux-only recording helper; not part of Windows build closure; omitted with the profile."
+    }
+  ],
+  "windows_export_scope": "This is the fixed Windows client source/relink selection, not a complete Linux PGO source package. Full immutable product checkout is unchanged."
+}

@@ -3,7 +3,7 @@
 The corresponding-source/engine directory contains the explicit reviewed public engine source/build files plus the exact pinned dependency sources as configured, including the recorded dependency patches. This is a source-based relinking mechanism for the statically linked FFmpeg libraries, not a bare attribution or an offer to provide sources later. The same source tree permits rebuilding the application with modified FFmpeg. Review the applicable component notices; no new root-level license is asserted here.
 
 Inputs and versions:
-- Original upstream base: 302eb87072249a4ac2195d3a30cb5475df30f31a; three exact replacements and their hashes in SOURCE_MANIFEST.json.
+- Original upstream base: 293153660c359066d637f1ddac718801e38a8118; three exact replacements and their hashes in SOURCE_MANIFEST.json.
 - LLVM 22.1.7 clang-cl/lld-link; Visual Studio 2022 MSVC 19.44; Windows SDK headers version and approved x64 static UCRT version/path/hash recorded in BUILD_MANIFEST.json. Do not substitute 26100 static UCRT math.
 - CMake 3.31.6 and Ninja; fresh x64 Release build, parallelism at most 2.
 - FFmpeg pinned commit 8f9ea179334d8ff01292728b9704b7da1f712c5f contains the upstream 7.1.3 source and faf/CMakeLists.txt. All five FFmpeg libraries are built statically with the repository's restricted LGPL component configuration. No GPL/nonfree component is requested by this build recipe.
@@ -32,3 +32,11 @@ Extract only c/ucrt/x64/libucrt.lib after verifying the archive: 39,778,014 byte
 If the approved static UCRT is not installed, use a temporary SDK overlay rather than changing Program Files or CMake source: its Include directory points to the existing modern SDK Include; its Lib/<modern version> points to the existing modern SDK library directory; its Lib/10.0.22000.0/ucrt/x64/libucrt.lib is the exact regular extracted file. Set FAF_WINSDK_DIR to that overlay and FAF_UCRT_LIB_VERSION=10.0.22000.0 while keeping FAF_WINSDK_VERSION at the recorded modern headers/UM version. Use junctions only as read-only inputs and remove the junction entries, not their SDK targets, during cleanup. Verify actual final links and run all four tests again. These build inputs are absent from the distributable by design.
 
 The current recipe also builds faf_effect_scan_tests and runs the exact CTest effect_scan with no arguments. This standalone header/standard-library generated-text check does not link faf_engine and is not a GUI or engine UCRT test. The complete client acceptance set is five build targets and four CTests. Server-mode remote_wire is not included.
+
+## Explicit source-material selection
+
+SOURCE_MATERIAL_POLICY.json records all 16 exact hash-bound omissions of optional test/sample data, sample bytecode, an IDE placeholder and a historical benchmark spreadsheet. These are not inputs to the selected dependency compilation, x64 relink mechanism or component notices. The original immutable checkout remains intact and actual compile inputs must stay inside the admitted source/generated closure. Four exact OpenVMS text build scripts are retained as source and are never executed. No executable/archive/database signature is allowed by this text classification. Full original public archive/commit identities are included for independent reconstruction; no further material is silently omitted to meet size or time limits.
+
+## Windows-only profiling-material boundary
+
+This source/relink export targets the Windows client. It omits the fixed upstream Linux-only `cmake/pgo/headless-linux-x64.profdata` and `tools/pgo/record.sh`, with exact identities listed in SOURCE_MATERIAL_POLICY.json. Windows presets do not consume them. The original full upstream commit remains available separately; retained upstream Linux CMake/preset text does not make this a complete Linux PGO bundle. Do not silently enable PGO or substitute new compiler flags when rebuilding the reviewed Windows recipe.

@@ -25,14 +25,14 @@ import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
 
-BASE = "302eb87072249a4ac2195d3a30cb5475df30f31a"
-BASE_TREE = "667c4a8a308c829c71c7275838c6b2511a1b9c7a"
-TREE = "9ea76a3f4509052ca6ac116581d95b0d42e6384f"
-INTEGRATION_SHA = "7ad6e3a269b8a739d16659d7cccaab0dbf8b15a5bb0463393c4ecb96ab650bcd"
+BASE = "293153660c359066d637f1ddac718801e38a8118"
+BASE_TREE = "12b6c285e91cf9c05005780c82ff25553c04c9ef"
+TREE = "ef844b5d98194249c7434e984c0c12dfa3b042a7"
+INTEGRATION_SHA = "d45b97292521e2711801d7f7314ff52233589ff8014ad191dc425037e303c561"
 LLVM_SHA = "3b568b5be1443d1a04c63261fa3a7aed16e126a8ed2196a1032aa8ed602144bd"
 LLVM_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.7/clang%2Bllvm-22.1.7-x86_64-pc-windows-msvc.tar.xz"
 LLVM_SIZE = 862033024
-EXE_NAME = "main_x64_test_302eb_282-284"
+EXE_NAME = "main_x64_test_293153_282-284"
 REQUIRED_TARGETS = ["faf_main", "faf_sim_math_tests", "faf_math_dump", "faf_coroutine_tests", "faf_effect_scan_tests"]
 REQUIRED_TESTS = ["math_dump", "sim_math"]
 TEST_REGEX = "^(sim_math|math_dump)$"
@@ -288,7 +288,7 @@ class Build:
         require(c.get("root_go_reference") and "REQUIRED" not in c["root_go_reference"], "Final root GO missing")
         require(c.get("parallelism") in [1, 2] and 0 < c.get("max_total_seconds", 0) <= 3300, "Build resource bounds invalid")
         require(c.get("upload_exact_package") is True, "Exact public package upload not enabled")
-        require(c.get("artifact_basename") == "faf-re-x64-302eb-282-284", "Artifact basename must be exact reviewed value")
+        require(c.get("artifact_basename") == "faf-re-x64-293153-282-284", "Artifact basename must be exact reviewed value")
         require(os.environ.get("APPVEYOR", "").lower() == "true", "Not an AppVeyor worker")
         require(os.environ.get("APPVEYOR_ACCOUNT_NAME", "").lower() == c["account"].lower(), "AppVeyor account mismatch")
         require(os.environ.get("APPVEYOR_PROJECT_SLUG") == c["project_slug"], "AppVeyor project mismatch")

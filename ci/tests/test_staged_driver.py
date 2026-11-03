@@ -74,7 +74,7 @@ class StageChecks(unittest.TestCase):
  def test_contracts_inert_fixed_source_and_limits(self):
   for stage in 'ab':
    c=json.loads((CI/f'execution-stage-{stage}.json').read_text());self.assertEqual(c['state'],'DRAFT_NOT_AUTHORIZED');self.assertFalse(c['upload_exact_package']);self.assertIsNone(c['root_go_reference']);self.assertIsNone(c['checkpoint_input']);self.assertEqual(c['parallelism'],2);self.assertEqual(c['max_total_seconds'],3300);self.assertEqual(c['source_review_status'],'REVIEWED_FIXED_PRODUCT')
-  self.assertEqual(driver.BASE,'302eb87072249a4ac2195d3a30cb5475df30f31a');self.assertEqual(driver.TREE,'9ea76a3f4509052ca6ac116581d95b0d42e6384f')
+  self.assertEqual(driver.BASE,'293153660c359066d637f1ddac718801e38a8118');self.assertEqual(driver.TREE,'ef844b5d98194249c7434e984c0c12dfa3b042a7')
  def test_build_success_sets_acceptance_window_before_link_audit(self):
   with tempfile.TemporaryDirectory() as d:
    b=staged.StagedBuild(CI,{'stage':'B','max_total_seconds':3300,'stage_downstream_reserve_seconds':1050,'stage_build_max_seconds':2100,'stage_min_build_window_seconds':120});b.root=Path(d);b.build=Path(d)/'build';b.build.mkdir();(b.root/'logs').mkdir();(b.root/'logs/build.txt').write_text('log')
@@ -120,4 +120,122 @@ class StageChecks(unittest.TestCase):
  def test_manifest_bytes(self):
   for e in json.loads((CI/'driver-manifest.json').read_text())['files']:
    data=(CI/e['path']).read_bytes();self.assertEqual(hashlib.sha256(data).hexdigest(),e['sha256'],e['path']);self.assertEqual(len(data),e['size'])
+
+class MaterialSelection(unittest.TestCase):
+ def setUp(self):
+  self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
+  self.a=self.root/'sample.class';self.a.write_bytes(b'\xca\xfe\xba\xbe fixture')
+  self.b=self.root/'build_vms.com';self.b.write_bytes(b'$ ! synthetic OpenVMS source\n')
+  self.h=self.root/'public.h';self.h.write_bytes(b'int x;\n')
+  def row(p):return {'component':'wxWindows-2.4.2','path':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'classification':'Synthetic exact selection only'}
+  self.rules={'schema':1,'omitted_non_build_material':[row(self.a)],'retained_vms_text':[row(self.b)]}
+  staged.validate_material_selection(self.rules)
+ def selected(self,files=None):return staged.select_dependency_materials('wxWindows-2.4.2',self.root,files or [self.a,self.b,self.h],self.rules)
+ def test_exact_omission_retains_source_and_checkout(self):
+  self.assertEqual(self.selected(),[self.b,self.h]);self.assertTrue(self.a.is_file())
+ def test_unknown_same_suffix_is_not_omitted(self):
+  other=self.root/'other.class';other.write_bytes(b'data')
+  self.assertIn(other,self.selected([self.a,self.b,self.h,other]))
+ def test_omission_changed_hash_blocks(self):
+  self.a.write_bytes(b'changed-size');self.assertRaises(driver.Blocked,self.selected)
+ def test_omission_missing_blocks(self):self.assertRaises(driver.Blocked,lambda:self.selected([self.b,self.h]))
+ def test_text_pin_changed_hash_blocks(self):
+  self.b.write_bytes(b'x'*self.b.stat().st_size);self.assertRaises(driver.Blocked,self.selected)
+ def test_hardlink_cannot_be_omitted(self):
+  os.link(self.a,self.root/'second');self.assertRaises(driver.Blocked,self.selected)
+ def test_symlink_cannot_be_omitted(self):
+  self.a.unlink();self.a.symlink_to(self.h);self.assertRaises(driver.Blocked,self.selected)
+ def test_nonselected_component_unchanged(self):
+  self.assertEqual(staged.select_dependency_materials('plog',self.root,[self.a],self.rules),[self.a])
+ def test_policy_negative_cases(self):
+  import copy
+  for field,value in [('path','../outside.class'),('component','unknown'),('sha256','f'*63),('bytes',-1),('path','LICENSE'),('path','public.c')]:
+   candidate=copy.deepcopy(self.rules);candidate['omitted_non_build_material'][0][field]=value
+   with self.subTest(field=field,value=value),self.assertRaises((driver.Blocked,ValueError)):staged.validate_material_selection(candidate)
+ def test_actual_exact_policy_counts(self):
+  value=staged.validate_material_selection(json.loads((CI/staged.MATERIAL_POLICY_FILE).read_text()))
+  self.assertEqual(len(value['omitted_non_build_material']),16);self.assertEqual(len(value['retained_vms_text']),4)
+  self.assertEqual(sum(x['path'].endswith('.class') for x in value['omitted_non_build_material']),4)
+ def test_compile_closure_gate_is_preserved(self):
+  source=__import__('inspect').getsource(staged.StagedBuild.owned_identity)
+  self.assertIn('p.resolve() in admitted for p in self.compile_sources',source)
+ def test_full_content_preflight_precedes_stage_dispatch(self):
+  source=__import__('inspect').getsource(staged.StagedBuild.run)
+  self.assertLess(source.index('preflight_available_content'),source.index('self.stage_a if'))
+  self.assertIn('checkpoint_boundary',source)
+ def test_linux_pgo_is_explicitly_outside_windows_export(self):
+  allow=json.loads((CI/'public-source-allowlist.json').read_text());paths={x['path'] for x in allow['files']}
+  policy=json.loads((CI/staged.MATERIAL_POLICY_FILE).read_text())
+  excluded=policy['excluded_product_linux_only_material']
+  self.assertEqual({x['path'] for x in excluded},{'cmake/pgo/headless-linux-x64.profdata','tools/pgo/record.sh'})
+  self.assertFalse(paths & {x['path'] for x in excluded});self.assertEqual(len(paths),2440)
+  self.assertEqual(next(x['git_blob'] for x in excluded if x['path'].endswith('.profdata')),'79cad0404d3a1338879ea872173b4b23d71f4c28')
+ def test_public_policy_copied_for_both_material_packages(self):
+  source=__import__('inspect').getsource(staged.StagedBuild.stage_materials)
+  self.assertIn('SOURCE_MATERIAL_POLICY.json',source)
+
+
+class ProducerPilot(unittest.TestCase):
+ def setup_build(self,root):
+  b=staged.StagedBuild(CI,{'stage':'A','max_total_seconds':3300,'stage_downstream_reserve_seconds':900,'stage_build_max_seconds':2100,'stage_min_build_window_seconds':1250})
+  b.root=root;b.cmake=Path('cmake');b.build=root/'build';b.build.mkdir();b.source=root/'source';b.source.mkdir();(root/'logs').mkdir()
+  for name in ['dependency-pilot','dependencies-build']:(root/'logs'/(name+'.txt')).write_text('fixture log')
+  b.target_data={'faf_monocypher':{'depends':[],'artifact':'mono.lib'}}
+  src=b.source/'dependencies/monocypher/src/monocypher.c';src.parent.mkdir(parents=True);src.write_text('int x;')
+  b.graph={'outputs':['mono.obj','mono.lib','other.obj'],'records':[{'target':'faf_monocypher','output':'mono.obj','source':str(src)},{'target':'faf_monocypher','output':'mono.lib','source':'unused'}]}
+  return b
+ def test_shared_deadline_no_fresh_full_allowance(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d));b.started=0
+   with mock.patch.object(staged.build_capture,'run_build',return_value={'state':'SUCCESS'}) as run,mock.patch.object(staged.time,'monotonic',return_value=100):
+    b.command(['fixture'],name='dependency-pilot');self.assertEqual(run.call_args.kwargs['timeout'],120)
+    self.assertEqual(b.dependency_compile_deadline,2200);self.assertEqual(b.phase_end,2200)
+   with mock.patch.object(staged.build_capture,'run_build',return_value={'state':'SUCCESS'}) as run,mock.patch.object(staged.time,'monotonic',return_value=210):
+    b.command(['fixture'],name='dependencies-build');self.assertEqual(run.call_args.kwargs['timeout'],1990)
+    self.assertEqual(b.dependency_compile_deadline,2200);self.assertEqual(b.phase_end,2910)
+ def test_a_short_initial_window_does_not_launch(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d));b.started=0
+   with mock.patch.object(staged.time,'monotonic',return_value=1200),mock.patch.object(staged.build_capture,'run_build') as run:
+    with self.assertRaises(driver.Blocked):b.command(['fixture'],name='dependency-pilot')
+    run.assert_not_called();self.assertIsNone(b.dependency_compile_deadline)
+ def test_expired_shared_window_does_not_launch(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d));b.dependency_compile_deadline=time.monotonic()-1
+   with mock.patch.object(staged.build_capture,'run_build') as run:
+    with self.assertRaises(driver.Blocked):b.command(['fixture'],name='dependencies-build')
+    run.assert_not_called()
+ def test_pilot_exact_subset_and_no_archive(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d))
+   def produce(*a,**kw):
+    self.assertEqual(kw['name'],'dependency-pilot');self.assertIn('faf_monocypher',a[0]);self.assertNotIn('faf_main',a[0])
+    for name in ['mono.obj','mono.lib']:(b.build/name).write_bytes(b'fixture')
+   with mock.patch.object(b,'command',side_effect=produce),mock.patch.object(b,'checkpoint_policy',return_value='policy'),mock.patch.object(staged.checkpoint,'validate_built_subset',return_value={'state':'PASS_BUILT_SUBSET_ONLY'}) as check:
+    b.dependency_pilot();self.assertEqual(set(check.call_args.args[1]),{'build/mono.obj','build/mono.lib','build/.ninja_log','build/.ninja_deps'})
+    self.assertEqual(b.receipt['dependency_format_pilot']['state'],'PASS_BUILT_SUBSET_ONLY')
+    self.assertFalse(list(Path(d).rglob('*.zip')))
+ def test_pilot_rejects_wrong_concrete_closure_before_launch(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d));b.target_data['faf_monocypher']['depends']=['wxmswu']
+   with mock.patch.object(b,'command') as run:
+    with self.assertRaises(driver.Blocked):b.dependency_pilot()
+    run.assert_not_called()
+ def test_pilot_rejects_unexpected_output_after_build(self):
+  with tempfile.TemporaryDirectory() as d:
+   b=self.setup_build(Path(d))
+   def produce(*a,**kw):
+    for name in b.graph['outputs']:(b.build/name).write_bytes(b'fixture')
+   with mock.patch.object(b,'command',side_effect=produce),mock.patch.object(staged.checkpoint,'validate_built_subset') as check:
+    with self.assertRaises(driver.Blocked):b.dependency_pilot()
+    check.assert_not_called()
+ def test_pilot_forbidden_in_consumer(self):
+  b=staged.StagedBuild(CI,{'stage':'B','max_total_seconds':3300})
+  with self.assertRaises(driver.Blocked):b.dependency_pilot()
+ def test_only_a_calls_pilot_and_still_builds_all18(self):
+  import inspect
+  a=inspect.getsource(staged.StagedBuild.stage_a);b=inspect.getsource(staged.StagedBuild.stage_b)
+  self.assertIn('self.dependency_pilot()',a);self.assertIn('*build_graph.TARGETS',a);self.assertNotIn('dependency_pilot',b)
+  self.assertIn('self.clean_dependency_plan()',b)
+
 if __name__=='__main__':unittest.main(verbosity=2)

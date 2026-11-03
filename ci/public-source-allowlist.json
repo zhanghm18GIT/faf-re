@@ -1,7 +1,7 @@
 {
-  "base": "302eb87072249a4ac2195d3a30cb5475df30f31a",
-  "composite_tree": "9ea76a3f4509052ca6ac116581d95b0d42e6384f",
-  "selection": "Explicit tracked public source and build/relink support paths. No .github, runner, user game material, or dependency binary archives.",
+  "base": "293153660c359066d637f1ddac718801e38a8118",
+  "composite_tree": "ef844b5d98194249c7434e984c0c12dfa3b042a7",
+  "selection": "Explicit tracked Windows public source and build/relink support paths, same 2440 paths as previous cutoff. Excludes .github, runner, game material, dependency binary archives, and the new Linux-only .profdata and profile-recording script. Full upstream root identity is separately pinned; this is a filtered source export, not a complete upstream checkout.",
   "files": [
     {
       "path": ".gitmodules",
@@ -15,7 +15,7 @@
     },
     {
       "path": "CMakePresets.json",
-      "git_blob": "ed18bea18e092b4afff9c72b46eab3f26a6a95f7",
+      "git_blob": "f82cc137de3892c24f8ed6ab3af1f17f33a4e7b5",
       "mode": "100644"
     },
     {
@@ -50,7 +50,7 @@
     },
     {
       "path": "cmake/FafLinux.cmake",
-      "git_blob": "0bc9685f9e17fb8898bed1d2ff136b26516da66a",
+      "git_blob": "0908d4a018fc9f7f5d74718f4dccf586970ed9c8",
       "mode": "100644"
     },
     {
@@ -110,7 +110,7 @@
     },
     {
       "path": "cmake/toolchains/linux-clang-pins.cmake",
-      "git_blob": "9204ea480abe51534044a4642e18ae0bb2892641",
+      "git_blob": "d0b1c3817045df9ae5f3946e3df43ba68da1e376",
       "mode": "100644"
     },
     {
@@ -190,7 +190,7 @@
     },
     {
       "path": "docs/SWITCHES.md",
-      "git_blob": "d08f24a347bd96dac31895c3c60309251af6a954",
+      "git_blob": "566612100842531beaf5a465d871e9d12607e2e5",
       "mode": "100644"
     },
     {
@@ -1690,12 +1690,12 @@
     },
     {
       "path": "src/headless/ReplayViewBench.cpp",
-      "git_blob": "860dd63dc10d16cff688a665094bbdfa21409593",
+      "git_blob": "bd526ec7440edd06d6d4aeaebf3bb5e2b06eeebb",
       "mode": "100644"
     },
     {
       "path": "src/headless/ReplayViewBench.h",
-      "git_blob": "e6ac17057c5b82c55740cced1da775e963a1fc47",
+      "git_blob": "b00ed95687ddd1a57a2363450c2206cab14ba75e",
       "mode": "100644"
     },
     {
@@ -1970,7 +1970,7 @@
     },
     {
       "path": "src/lua/LuaCrashDump.cpp",
-      "git_blob": "7c8f689f4140fbff06a0e98935d50630735addcf",
+      "git_blob": "262bef1229b8c22aa061d336f8d246799dd83908",
       "mode": "100644"
     },
     {
@@ -2025,7 +2025,7 @@
     },
     {
       "path": "src/lua/LuaObject.cpp",
-      "git_blob": "1fe877f2fa474d0186f7bac0a9c371c47be3a67a",
+      "git_blob": "4ac321a40d1750e165df579076f552d76a5d7790",
       "mode": "100644"
     },
     {
@@ -2070,7 +2070,7 @@
     },
     {
       "path": "src/lua/LuaRuntimeTypes.h",
-      "git_blob": "6777ec6381bbad01f0dfccc8811df3710a36153b",
+      "git_blob": "8c9331be3d667a861607a23fb314787a9fef3767",
       "mode": "100644"
     },
     {
@@ -3195,7 +3195,7 @@
     },
     {
       "path": "src/moho/animation/CAniPoseBoneTypeInfo.cpp",
-      "git_blob": "e7651d61e19da5d9d6cee60925d413e1be9dd7b7",
+      "git_blob": "7f1894367a2cecfc2e2b4acb367ff8e10ba8b0ec",
       "mode": "100644"
     },
     {
@@ -3460,7 +3460,7 @@
     },
     {
       "path": "src/moho/app/WinMain.cpp",
-      "git_blob": "7cd2e2d2ef0d76054dd8892eedabaa134cc34b34",
+      "git_blob": "00e3118b8e48db75e64c102b2e2fa01ce85696bf",
       "mode": "100644"
     },
     {
@@ -6190,12 +6190,12 @@
     },
     {
       "path": "src/moho/net/NetConVars.cpp",
-      "git_blob": "b1ec20a311c8e87289456b3406fa28786bd78400",
+      "git_blob": "f32d422a69cf221d34981e5697ce84c8753dadbf",
       "mode": "100644"
     },
     {
       "path": "src/moho/net/NetConVars.h",
-      "git_blob": "15483cf5575a51f967a6da37d0a99e5997b4afd2",
+      "git_blob": "26043dbaea00497e6ff645eacb07823a984c91f4",
       "mode": "100644"
     },
     {
@@ -7250,7 +7250,7 @@
     },
     {
       "path": "src/moho/render/d3d/CD3DPrimBatcher.cpp",
-      "git_blob": "657aa40caa26082ad33bc4448d0a7a6d865f01c5",
+      "git_blob": "76f9169e7da3833c8a38564dd78f61830f729e08",
       "mode": "100644"
     },
     {
@@ -9340,7 +9340,7 @@
     },
     {
       "path": "src/moho/sim/SimDriver.cpp",
-      "git_blob": "da5ba02682c321993e0b8c98567cf2d9ced2914f",
+      "git_blob": "9e183c8f1a263bd9997e051971d1c30da356398c",
       "mode": "100644"
     },
     {
@@ -11420,12 +11420,12 @@
     },
     {
       "path": "src/remote/FrameBuilder.cpp",
-      "git_blob": "396b26099f1a2b1295b12cf1d622bb32d19bc0cd",
+      "git_blob": "9e3d88b7b47f98d1c8aaa5233f2ee860fe1b06dc",
       "mode": "100644"
     },
     {
       "path": "src/remote/FrameBuilder.h",
-      "git_blob": "97d5a2be58b83869ab85a653fc54424797218512",
+      "git_blob": "936c764fc811eaeb4e8b1e0e940dc4d0700c606f",
       "mode": "100644"
     },
     {
@@ -11470,12 +11470,12 @@
     },
     {
       "path": "src/remote/ViewFrames.cpp",
-      "git_blob": "63665cc456e5c46e36cb6b0b5d269f8bf85decca",
+      "git_blob": "54db4f3d44e450ac49fed4c4df68af0a71971d13",
       "mode": "100644"
     },
     {
       "path": "src/remote/ViewFrames.h",
-      "git_blob": "73f06a889e5cedcc1ccdaa01698f0aaf9302ce07",
+      "git_blob": "67061d1bb9df2a83bd67cd72828fb9ccc35a42b2",
       "mode": "100644"
     },
     {
@@ -11500,12 +11500,12 @@
     },
     {
       "path": "src/remote/VisibilityOracle.cpp",
-      "git_blob": "b5f95229fc350502c36fc8c96767f3ba50e7f074",
+      "git_blob": "c35143d746b37ffc80c8c8c6e02384218491cdb7",
       "mode": "100644"
     },
     {
       "path": "src/remote/VisibilityOracle.h",
-      "git_blob": "95b0b8dea8c4559e35514cb3ad19e3e33b9dd1da",
+      "git_blob": "e93b368c91ab58ffdd99fb9f6a7066c2612a4a44",
       "mode": "100644"
     },
     {
@@ -11665,22 +11665,22 @@
     },
     {
       "path": "src/remote/wire/ArmyLane.cpp",
-      "git_blob": "6e6f9aa4f82c25f7862cfc2bfdb8adf56207a505",
+      "git_blob": "1580d9befb81c232d915a0e4274cf71f06c658eb",
       "mode": "100644"
     },
     {
       "path": "src/remote/wire/ArmyLane.h",
-      "git_blob": "14ab3cde205c783a6d82a5118e80271b6d2dcd78",
+      "git_blob": "e7ea6856511e1b6a091ab49dd6e72645cb1e6dcc",
       "mode": "100644"
     },
     {
       "path": "src/remote/wire/BitStream.cpp",
-      "git_blob": "b8949fe849970d236fb1d76fc199e1f290e25d93",
+      "git_blob": "752f385aad25812a34af297ec90368fc586d9418",
       "mode": "100644"
     },
     {
       "path": "src/remote/wire/BitStream.h",
-      "git_blob": "6b71bd522456e8b794d04de8321262f44cfbd8b0",
+      "git_blob": "f1cba0b2fb1854d83454c6859617b0ee74d70061",
       "mode": "100644"
     },
     {
@@ -11945,7 +11945,7 @@
     },
     {
       "path": "tests/remote/WireTests.cpp",
-      "git_blob": "ab18cbe2c10695d366002895893fcafffa117c5e",
+      "git_blob": "63f8c60a03a1eed82c1fe8d0a2ec52735754dd1a",
       "mode": "100644"
     },
     {
@@ -12200,7 +12200,7 @@
     },
     {
       "path": "tools/difffuzz/src/targets_sim.cpp",
-      "git_blob": "f172702f3e935b82d2c577142938005ed9d527b1",
+      "git_blob": "f5339085c175d342c3c3ec8ffae2ccaeb746e13a",
       "mode": "100644"
     }
   ]

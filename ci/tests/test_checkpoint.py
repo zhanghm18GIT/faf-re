@@ -78,6 +78,11 @@ class TestCheckpoint(unittest.TestCase):
                 z.writestr(i, data)
         self.receipt = {'bytes': self.zip.stat().st_size, 'sha256': hashlib.sha256(self.zip.read_bytes()).hexdigest()}
 
+    def test_reviewed_manifest_capacity_ceiling(self):
+        c.validate_policy(dataclasses.replace(self.policy, limits=dataclasses.replace(self.policy.limits, manifest_bytes=25_165_824)))
+        with self.assertRaises(c.CheckpointError):
+            c.validate_policy(dataclasses.replace(self.policy, limits=dataclasses.replace(self.policy.limits, manifest_bytes=25_165_825)))
+
     def test_exact_selected_external_file_declaration(self):
         ninja=r'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe'
         policy=dataclasses.replace(self.policy,allowed_log_inputs=self.policy.allowed_log_inputs|{ninja})
@@ -404,6 +409,268 @@ class TestCheckpoint(unittest.TestCase):
         too_small = dataclasses.replace(seal_policy, limits=dataclasses.replace(seal_policy.limits, member_bytes=maximum-1))
         with self.assertRaises(c.CheckpointError):
             c.seal_checkpoint(self.base/'too-small.zip', too_small, self.meta)
+
+
+    def test_available_preflight_counts_and_deferred_outputs(self):
+        events=[]
+        for name in ('dep.obj','dep.lib','.ninja_log','.ninja_deps'):
+            (self.build/name).write_bytes(b'INVALID FUTURE OUTPUT')
+        before=sorted(str(p.relative_to(self.base)) for p in self.base.rglob('*'))
+        receipt=c.preflight_available_content(self.policy,self.meta,lambda phase,spec,data:events.append((phase,spec.member if spec else None)))
+        self.assertEqual(receipt['state'],'CHECKED_AVAILABLE_CONTENT_ONLY')
+        self.assertEqual(receipt['input_count'],2)
+        self.assertEqual(receipt['available_payload_count'],2)
+        self.assertEqual(receipt['checked_item_count'],4)
+        self.assertEqual(receipt['unique_checked_member_count'],3)
+        self.assertEqual(receipt['deferred_payload_count'],4)
+        self.assertEqual(receipt['deferred_by_kind'],dict(obj=1,lib=1,ninja_log=1,ninja_deps=1))
+        self.assertEqual(events[0],('preflight-begin',None))
+        self.assertEqual(events[-1],('preflight-end',None))
+        self.assertEqual(len(events),6)
+        self.assertEqual(receipt['outer_zip_validation'],'NOT_RUN')
+        self.assertEqual(len(receipt['checked_identity_sha256']),64)
+        self.assertNotIn(str(self.base),json.dumps(receipt))
+        self.assertEqual(before,sorted(str(p.relative_to(self.base)) for p in self.base.rglob('*')))
+        with self.assertRaises(c.CheckpointError):
+            c.seal_checkpoint(self.base/'bad-after-preflight.zip',self.policy,self.meta)
+
+    def test_available_preflight_all_input_kinds_and_inl(self):
+        self.assertIn('.inl',c.HEADER_SUFFIXES)
+        p=self.gen/'inline.inl';p.write_bytes(b'inline int value() { return 1; }\n')
+        h=c.FileSpec('generated','inline.inl','header')
+        p=self.source/'legacy.txt';p.write_bytes(b'legacy \xa9'.replace(b'\\xa9',b'\xa9'))
+        material=c.FileSpec('source','legacy.txt','material')
+        policy=dataclasses.replace(self.policy,inputs=self.policy.inputs+(h,material),payloads=self.policy.payloads+(h,material))
+        receipt=c.preflight_available_content(policy,self.meta)
+        self.assertEqual(receipt['input_count'],4)
+        out=self.base/'inl.zip';r=c.seal_checkpoint(out,policy,self.meta)
+        c.restore_checkpoint(out,policy,r['sha256'],r['bytes'],self.meta)
+
+    def test_every_magic_has_sanitized_member_diagnostic(self):
+        for name,offset,magic in c.MATERIAL_SIGNATURES:
+            data=b'x'*offset+magic+b'PRIVATE_SENTINEL_DO_NOT_ECHO'
+            (self.source/'dep.c').write_bytes(data)
+            with self.subTest(name=name),self.assertRaises(c.CheckpointError) as caught:
+                c.preflight_available_content(self.policy,self.meta)
+            report=json.loads(str(caught.exception))
+            self.assertEqual(report['signature_id'],name)
+            self.assertEqual(report['offset'],offset)
+            self.assertEqual(report['magic_hex'],magic.hex())
+            self.assertEqual(report['member'],'source/dep.c')
+            self.assertEqual(report['kind'],'source')
+            self.assertEqual(report['bytes'],len(data))
+            self.assertEqual(report['sha256'],hashlib.sha256(data).hexdigest())
+            self.assertEqual(report['reason_code'],'material_magic_candidate')
+            self.assertNotIn('PRIVATE_SENTINEL_DO_NOT_ECHO',str(caught.exception))
+            self.assertNotIn(str(self.base),str(caught.exception))
+
+    def test_coff_candidate_context_and_seal_context(self):
+        data=coff();(self.source/'dep.c').write_bytes(data)
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.seal_checkpoint(self.base/'no.zip',self.policy,self.meta)
+        report=json.loads(str(caught.exception))
+        self.assertEqual(report['phase'],'seal-input')
+        self.assertEqual(report['signature_id'],'coff_6486')
+        self.assertEqual(report['magic_hex'],'6486')
+        self.assertEqual(report['reason_code'],'coff_machine_candidate')
+        self.assertFalse((self.base/'no.zip').exists())
+
+    def test_available_missing_material_context(self):
+        (self.source/'LICENSE').unlink()
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.preflight_available_content(self.policy,self.meta)
+        report=json.loads(str(caught.exception))
+        self.assertEqual(report['member'],'source/LICENSE')
+        self.assertEqual(report['reason_code'],'member_read_failed')
+        self.assertNotIn('sha256',report)
+        self.assertNotIn(str(self.base),str(caught.exception))
+
+    def test_provenance_and_baseline_error_redaction(self):
+        for fail_phase in ('preflight-begin','preflight-inputs','preflight-payloads','preflight-end'):
+            def callback(phase,spec,data):
+                if phase==fail_phase:
+                    raise RuntimeError(str(self.base)+'/secret PRIVATE_CONTENT')
+            with self.subTest(phase=fail_phase),self.assertRaises(c.CheckpointError) as caught:
+                c.preflight_available_content(self.policy,self.meta,callback)
+            report=json.loads(str(caught.exception))
+            self.assertEqual(report['reason_code'],'provenance_or_license_failed')
+            self.assertNotIn(str(self.base),str(caught.exception))
+            self.assertNotIn('PRIVATE_CONTENT',str(caught.exception))
+
+    def test_material_receipt_mismatch_and_baseline_drift(self):
+        def receipt(phase,spec,data):
+            if spec is not None and spec.relpath=='LICENSE':
+                raise c.CheckpointError('expected source receipt /private/do-not-echo')
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.preflight_available_content(self.policy,self.meta,receipt)
+        self.assertEqual(caught.exception.context['member'],'source/LICENSE')
+        baseline=hashlib.sha256((self.source/'dep.c').read_bytes()).hexdigest()
+        def drift(phase,spec,data):
+            if spec is not None and spec.member=='source/dep.c':
+                (self.source/'dep.c').write_bytes(b'changed during scan')
+            if phase=='preflight-end' and hashlib.sha256((self.source/'dep.c').read_bytes()).hexdigest()!=baseline:
+                raise c.CheckpointError('baseline drift')
+        with self.assertRaises(c.CheckpointError):
+            c.preflight_available_content(self.policy,self.meta,drift)
+
+    def test_manifest_upper_and_available_total_bounds(self):
+        r=c.preflight_available_content(self.policy,self.meta)
+        with zipfile.ZipFile(self.zip) as z:
+            self.assertGreaterEqual(r['manifest_bytes_upper'],len(z.read(c.MANIFEST)))
+        exact=dataclasses.replace(self.policy,limits=dataclasses.replace(self.policy.limits,manifest_bytes=r['manifest_bytes_upper'],total_bytes=r['available_total_bytes_upper']))
+        c.preflight_available_content(exact,self.meta)
+        for field,n in [('manifest_bytes',r['manifest_bytes_upper']-1),('total_bytes',r['available_total_bytes_upper']-1),('members',len(self.policy.payloads))]:
+            with self.subTest(field=field),self.assertRaises(c.CheckpointError):
+                c.preflight_available_content(dataclasses.replace(self.policy,limits=dataclasses.replace(self.policy.limits,**{field:n})),self.meta)
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.preflight_available_content(self.policy,{'secret_path':'C:/Users/Private/DoNotEcho'})
+        self.assertNotIn('DoNotEcho',str(caught.exception))
+
+    def text_pin_policy(self,data=b'$! public VMS build script\n$ exit\n'):
+        (self.source/'build.com').write_bytes(data)
+        spec=c.FileSpec('source','build.com','material')
+        policy=dataclasses.replace(self.policy,inputs=self.policy.inputs+(spec,),payloads=self.policy.payloads+(spec,),material_text_pins={spec.member:hashlib.sha256(data).hexdigest()})
+        return policy,spec
+
+    def test_exact_text_pin_roundtrip_and_drift(self):
+        policy,spec=self.text_pin_policy()
+        c.preflight_available_content(policy,self.meta)
+        out=self.base/'vms.zip';receipt=c.seal_checkpoint(out,policy,self.meta)
+        c.restore_checkpoint(out,policy,receipt['sha256'],receipt['bytes'],self.meta)
+        (self.source/'build.com').write_bytes(b'$ changed')
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.seal_checkpoint(self.base/'vms-drift.zip',policy,self.meta)
+        self.assertEqual(caught.exception.context['reason_code'],'material_text_pin_mismatch')
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.restore_checkpoint(out,policy,receipt['sha256'],receipt['bytes'],self.meta)
+        self.assertEqual(caught.exception.context['member'],spec.member)
+        self.assertEqual(caught.exception.context['reason_code'],'member_identity_mismatch')
+
+    def test_unlisted_com_and_wrong_pin_denied(self):
+        policy,spec=self.text_pin_policy()
+        for pins in ({},{spec.member:'0'*64}):
+            with self.subTest(pins=pins),self.assertRaises(c.CheckpointError):
+                c.preflight_available_content(dataclasses.replace(policy,material_text_pins=pins),self.meta)
+        (self.source/'other.com').write_bytes((self.source/'build.com').read_bytes())
+        other=c.FileSpec('source','other.com','material')
+        with self.assertRaises(c.CheckpointError):
+            c.preflight_available_content(dataclasses.replace(policy,inputs=policy.inputs+(other,)),self.meta)
+
+    def test_exact_pin_never_relaxes_signature_or_encoding(self):
+        for data in (b'MZplain text',b'PK\x03\x04',b'$ nul\0',b'$ legacy \xff',coff(),archive()):
+            data=data.replace(b'\\x03',b'\x03').replace(b'\\x04',b'\x04').replace(b'\\0',b'\0').replace(b'\\xff',b'\xff')
+            policy,_=self.text_pin_policy(data)
+            with self.subTest(data=data[:8]),self.assertRaises(c.CheckpointError):
+                c.preflight_available_content(policy,self.meta)
+
+    def test_material_pin_declarations_bounded_and_exact(self):
+        policy,spec=self.text_pin_policy()
+        for pins in ({'source/not-declared.com':'0'*64},{'source/dep.c':'0'*64},{spec.member:'ABC'},{'../unsafe.com':'0'*64},{f'source/a{i}.com':'0'*64 for i in range(17)}):
+            with self.subTest(pins=pins),self.assertRaises(c.CheckpointError):
+                c.validate_policy(dataclasses.replace(policy,material_text_pins=pins))
+        wrong=dataclasses.replace(policy,inputs=tuple(dataclasses.replace(x,kind='source') if x==spec else x for x in policy.inputs))
+        with self.assertRaises(c.CheckpointError):
+            c.validate_policy(wrong)
+
+    def test_com_alias_requires_separate_exact_pin(self):
+        policy,spec=self.text_pin_policy()
+        material_root=self.base/'material';material_root.mkdir()
+        (material_root/'build.com').write_bytes((self.source/'build.com').read_bytes())
+        alias=c.FileSpec('material','build.com','material')
+        policy=dataclasses.replace(policy,owned_roots={**policy.owned_roots,'material':material_root},root_kinds={**policy.root_kinds,'material':'material'},approved_path_roots=policy.approved_path_roots+(str(material_root),),payloads=policy.payloads+(alias,))
+        with self.assertRaises(c.CheckpointError):
+            c.preflight_available_content(policy,self.meta)
+        policy=dataclasses.replace(policy,material_text_pins={**policy.material_text_pins,alias.member:policy.material_text_pins[spec.member]})
+        c.preflight_available_content(policy,self.meta)
+
+
+    def test_text_pin_16k_boundary(self):
+        policy,_=self.text_pin_policy(b'$'+b' '*16383)
+        c.preflight_available_content(policy,self.meta)
+        policy,_=self.text_pin_policy(b'$'+b' '*16384)
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.preflight_available_content(policy,self.meta)
+        self.assertEqual(caught.exception.context['reason_code'],'material_text_size_rejected')
+
+    def subset_members(self):
+        return ['build/dep.obj','build/dep.lib','build/.ninja_log','build/.ninja_deps']
+
+    def test_built_subset_only_receipt_and_no_archive(self):
+        before=sorted(str(x.relative_to(self.base)) for x in self.base.rglob('*'))
+        events=[]
+        result=c.validate_built_subset(self.policy,self.subset_members(),lambda phase,spec,data:events.append((phase,spec.member if spec else None)))
+        self.assertEqual(result['state'],'PASS_BUILT_SUBSET_ONLY')
+        self.assertEqual(result['member_count'],4)
+        self.assertEqual(result['validated_output_count'],2)
+        self.assertEqual(result['counts_by_kind'],dict(obj=1,lib=1,ninja_log=1,ninja_deps=1))
+        self.assertEqual(len(result['checked_identity_sha256']),64)
+        self.assertEqual(result['full_checkpoint_validation'],'NOT_RUN')
+        self.assertEqual(result['outer_zip_validation'],'NOT_RUN')
+        self.assertEqual(len(events),6)
+        self.assertEqual(events[0],('built-subset-begin',None))
+        self.assertEqual(events[-1],('built-subset-end',None))
+        self.assertEqual(before,sorted(str(x.relative_to(self.base)) for x in self.base.rglob('*')))
+
+    def test_built_subset_rejects_unknown_missing_duplicate_and_material(self):
+        members=self.subset_members()
+        for bad in ([],members+[members[0]],members+['build/UNKNOWN.obj'],members[:-1],members+['source/LICENSE']):
+            with self.subTest(bad=bad),self.assertRaises(c.CheckpointError):
+                c.validate_built_subset(self.policy,bad)
+        (self.build/'dep.obj').unlink()
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.validate_built_subset(self.policy,members)
+        self.assertEqual(caught.exception.context['member'],'build/dep.obj')
+        self.assertEqual(caught.exception.context['reason_code'],'member_read_failed')
+
+    def test_built_subset_preserves_object_archive_and_state_gates(self):
+        fixtures={'dep.obj':b'not COFF','dep.lib':archive(coff(machine=0x14c)),'.ninja_log':b'# ninja log v5'+bytes([10]),'.ninja_deps':deps(['dep.obj',str(self.source/'dep.c')],version=3)}
+        for name,bad in fixtures.items():
+            path=self.build/name;original=path.read_bytes();path.write_bytes(bad)
+            try:
+                with self.subTest(name=name),self.assertRaises(c.CheckpointError) as caught:
+                    c.validate_built_subset(self.policy,self.subset_members())
+                self.assertEqual(caught.exception.context['member'],'build/'+name)
+            finally:
+                path.write_bytes(original)
+
+    def write_subset_log(self, output):
+        header=b'# ninja log v6'+bytes([10])
+        record=bytes([9]).join([b'0',b'1',b'123',output.encode(),b'f'])+bytes([10])
+        (self.build/'.ninja_log').write_bytes(header+record)
+
+    def test_subset_restricts_log_outputs_and_does_not_promote(self):
+        extra=c.FileSpec('build','future.obj','obj')
+        policy=dataclasses.replace(self.policy,payloads=self.policy.payloads+(extra,),allowed_log_outputs=self.policy.allowed_log_outputs|{'future.obj',str(self.build/'future.obj')})
+        c.validate_built_subset(policy,self.subset_members())
+        with self.assertRaises(c.CheckpointError):
+            c.seal_checkpoint(self.base/'not-promoted.zip',policy,self.meta)
+        self.write_subset_log('future.obj')
+        with self.assertRaises(c.CheckpointError):
+            c.validate_built_subset(policy,self.subset_members())
+        self.write_subset_log('dep.obj')
+        (self.build/'.ninja_deps').write_bytes(deps(['future.obj',str(self.source/'dep.c')]))
+        with self.assertRaises(c.CheckpointError):
+            c.validate_built_subset(policy,self.subset_members())
+
+    def test_subset_absolute_outputs_and_provenance(self):
+        self.write_subset_log(str(self.build/'dep.obj'))
+        (self.build/'.ninja_deps').write_bytes(deps([str(self.build/'dep.obj'),str(self.source/'dep.c')]))
+        c.validate_built_subset(self.policy,self.subset_members())
+        def denied(phase,spec,data):
+            if spec is not None:
+                raise RuntimeError('/private/NEVER_ECHO')
+        with self.assertRaises(c.CheckpointError) as caught:
+            c.validate_built_subset(self.policy,self.subset_members(),denied)
+        self.assertEqual(caught.exception.context['reason_code'],'provenance_or_license_failed')
+        self.assertNotIn('NEVER_ECHO',str(caught.exception))
+
+    def test_subset_keeps_full_material_pin_declarations(self):
+        policy,spec=self.text_pin_policy()
+        material_root=self.base/'material';material_root.mkdir()
+        (material_root/'build.com').write_bytes((self.source/'build.com').read_bytes())
+        alias=c.FileSpec('material','build.com','material')
+        policy=dataclasses.replace(policy,owned_roots={**policy.owned_roots,'material':material_root},root_kinds={**policy.root_kinds,'material':'material'},approved_path_roots=policy.approved_path_roots+(str(material_root),),payloads=policy.payloads+(alias,),material_text_pins={**policy.material_text_pins,alias.member:policy.material_text_pins[spec.member]})
+        c.validate_built_subset(policy,self.subset_members())
 
 
 if __name__ == '__main__':

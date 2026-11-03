@@ -18,12 +18,17 @@ import stat
 import struct
 import tempfile
 import zipfile
-from dataclasses import dataclass, field
+from contextlib import contextmanager
+from dataclasses import dataclass, field, replace
 from typing import Callable, Mapping
 
 
 class CheckpointError(ValueError):
-    pass
+    def __init__(self, message, *, code=None, signature_id=None):
+        super().__init__(message)
+        self.code = code
+        self.signature_id = signature_id
+
 
 
 def require(ok, message):
@@ -64,11 +69,15 @@ class Policy:
     log_base_root: str  # stable absolute build path for relative Ninja paths
     limits: Limits = field(default_factory=Limits)
     approved_path_files: tuple[str, ...] = ()  # Exact logical-path admission only, never a directory/payload grant.
+    material_text_pins: Mapping[str, str] = field(default_factory=dict)
 
 
 MANIFEST = 'checkpoint-manifest.json'
 KINDS = {'obj', 'lib', 'header', 'ninja_log', 'ninja_deps', 'source', 'license', 'material'}
 FORBIDDEN = {'.exe', '.dll', '.pdb', '.ilk', '.exp', '.dmp', '.zip', '.7z', '.gz', '.tgz', '.tar', '.bz2', '.xz', '.rar', '.log', '.a', '.so', '.dylib', '.o', '.obj', '.lib', '.bin', '.msi', '.cab', '.sys', '.com', '.scr'}
+MATERIAL_TEXT_MAX_BYTES = 16 * 1024
+HEADER_SUFFIXES = frozenset({'.h', '.hh', '.hpp', '.hxx', '.inc', '.inl'})
+DEFERRED_KINDS = frozenset({'obj', 'lib', 'ninja_log', 'ninja_deps'})
 BIGOBJ_ID = bytes.fromhex('c7a1bad1eebaa94baf20faf66aa4dcb8')
 BoundaryCheck = Callable[[str, FileSpec | None, bytes | dict], None]
 
@@ -201,6 +210,7 @@ def _policy(policy):
                 require(policy.root_kinds[a] == 'generated' and policy.root_kinds[b] == 'build', 'overlapping owned roots')
     approved_path(policy.log_base_root, policy)
     require(all(type(v) is int and v > 0 for v in vars(policy.limits).values()), 'invalid bounds')
+    require(policy.limits.manifest_bytes <= 25_165_824, 'manifest metadata capacity exceeds reviewed 24 MiB ceiling')
     require(policy.limits.member_bytes <= 536870912 and policy.limits.total_bytes <= 3221225472 and policy.limits.archive_bytes <= 400000000, 'limits exceed reviewed ceilings')
     require(len(policy.payloads)+1 <= policy.limits.members, 'payload plus manifest count bound')
     for group in (policy.payloads, policy.inputs):
@@ -214,6 +224,15 @@ def _policy(policy):
             target = path_key(str(Path(policy.owned_roots[spec.root]) / spec.relpath))
             require(target not in physical, 'duplicate physical file through root aliases')
             physical.add(target)
+    require(isinstance(policy.material_text_pins, Mapping) and len(policy.material_text_pins) <= 16, 'material text pin count/type bound')
+    pin_names = set()
+    for member, digest in policy.material_text_pins.items():
+        relative_name(member)
+        require(member.casefold() not in pin_names, 'material text pin case collision')
+        pin_names.add(member.casefold())
+        declared = [spec for spec in policy.inputs + policy.payloads if spec.member == member]
+        require(declared and all(spec.kind == 'material' and Path(spec.relpath).suffix.lower() == '.com' for spec in declared), 'text pin requires declared material .com member')
+        require(isinstance(digest, str) and re.fullmatch('[0-9a-f]{64}', digest) is not None, 'invalid material text pin hash')
     for spec in policy.inputs:
         require(spec.kind in {'source', 'header', 'material'} and policy.root_kinds[spec.root] in {'source', 'generated'}, 'input timestamp outside source/generated roots')
     for spec in policy.payloads:
@@ -436,25 +455,28 @@ def validate_ninja_deps(data, policy):
     return {'paths': len(paths), 'records': records, 'complete_include_inventory': False}
 
 
-def _material_bytes(data):
-    """Allow reviewed public bytes, never executable/archive/system payloads.
+MATERIAL_SIGNATURES = (
+    ('dos_mz', 0, b'MZ'), ('coff_archive', 0, b'!<arch>\n'), ('thin_archive', 0, b'!<thin>\n'),
+    ('elf', 0, b'\x7fELF'), ('zip_local', 0, b'PK\x03\x04'), ('zip_empty', 0, b'PK\x05\x06'),
+    ('zip_spanned', 0, b'PK\x07\x08'), ('seven_zip', 0, b'7z\xbc\xaf\x27\x1c'),
+    ('rar', 0, b'Rar!\x1a\x07'), ('gzip', 0, b'\x1f\x8b'), ('bzip2', 0, b'BZh'),
+    ('xz', 0, b'\xfd7zXZ\0'), ('cabinet', 0, b'MSCF'),
+    ('compound_document', 0, b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'), ('minidump', 0, b'MDMP'),
+    ('pdb_msf', 0, b'Microsoft C/C++ MSF'), ('pdb_legacy', 0, b'Microsoft C/C++ program database'),
+    ('mach_o_be32', 0, b'\xfe\xed\xfa\xce'), ('mach_o_le32', 0, b'\xce\xfa\xed\xfe'),
+    ('mach_o_be64', 0, b'\xfe\xed\xfa\xcf'), ('mach_o_le64', 0, b'\xcf\xfa\xed\xfe'),
+    ('fat_mach_or_java', 0, b'\xca\xfe\xba\xbe'), ('fat_mach_swapped', 0, b'\xbe\xba\xfe\xca'),
+    ('bigobj_or_import', 0, b'\0\0\xff\xff'), ('tar_ustar', 257, b'ustar'),
+)
 
-    Provenance is supplied by the caller's exact pinned material inventory, not
-    inferred from this format filter. PDF and legacy encodings need no decoder.
-    """
-    signatures = (b'MZ', b'!<arch>\n', b'!<thin>\n', b'\x7fELF',
-        b'PK\x03\x04', b'PK\x05\x06', b'PK\x07\x08', b'7z\xbc\xaf\x27\x1c',
-        b'Rar!\x1a\x07', b'\x1f\x8b', b'BZh', b'\xfd7zXZ\0', b'MSCF',
-        b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1', b'MDMP',
-        b'Microsoft C/C++ MSF', b'Microsoft C/C++ program database',
-        b'\xfe\xed\xfa\xce', b'\xce\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
-        b'\xcf\xfa\xed\xfe', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca',
-        b'\0\0\xff\xff')
-    require(not data.startswith(signatures), 'executable/archive/dump material signature')
-    require(data[257:262] != b'ustar', 'tar archive material forbidden')
-    # A raw relocatable COFF object must not bypass the obj gate by being renamed.
+
+def _material_bytes(data):
+    """Reject the same conservative signatures; matches are candidates, not proof."""
+    for name, offset, magic in MATERIAL_SIGNATURES:
+        if data[offset:offset+len(magic)] == magic:
+            raise CheckpointError('executable/archive/dump material signature', code='material_magic_candidate', signature_id=name)
     if len(data) >= 20 and struct.unpack_from('<H', data)[0] in {0x14c, 0x8664, 0x1c0, 0x1c4, 0xaa64}:
-        require(False, 'COFF/system binary material forbidden')
+        raise CheckpointError('COFF/system binary material forbidden', code='coff_machine_candidate', signature_id='coff_'+data[:2].hex())
 
 
 def _content(spec, data, policy):
@@ -473,9 +495,21 @@ def _content(spec, data, policy):
     elif spec.kind == 'ninja_deps':
         validate_ninja_deps(data, policy)
     else:
-        require(suffix not in FORBIDDEN and Path(spec.relpath).name not in {'CMakeCache.txt', 'build.ninja', 'rules.ninja'}, 'forbidden source/material payload')
+        pinned_text = suffix == '.com' and spec.kind == 'material' and spec.member in policy.material_text_pins
+        require((suffix not in FORBIDDEN or pinned_text) and Path(spec.relpath).name not in {'CMakeCache.txt', 'build.ninja', 'rules.ninja'}, 'forbidden source/material payload')
+        if pinned_text:
+            if len(data) > MATERIAL_TEXT_MAX_BYTES:
+                raise CheckpointError('pinned material text size bound', code='material_text_size_rejected')
+            if hashlib.sha256(data).hexdigest() != policy.material_text_pins[spec.member]:
+                raise CheckpointError('material text pin mismatch', code='material_text_pin_mismatch')
+            if b'\0' in data:
+                raise CheckpointError('NUL in pinned material text', code='material_text_encoding_rejected')
+            try:
+                data.decode('utf-8', errors='strict')
+            except UnicodeError:
+                raise CheckpointError('invalid pinned UTF-8 text', code='material_text_encoding_rejected') from None
         if spec.kind == 'header':
-            require(suffix in {'.h', '.hh', '.hpp', '.hxx', '.inc'}, 'header suffix')
+            require(suffix in HEADER_SUFFIXES, 'header suffix')
         _material_bytes(data)
         if spec.kind != 'material':
             require(b'\0' not in data, 'binary text source/header/license forbidden; use explicit material kind for public nontext')
@@ -491,6 +525,8 @@ def _read(spec, policy):
     path = _safe_path(policy, spec)
     before = path.stat()
     require(before.st_size <= policy.limits.member_bytes, 'member size bound')
+    if spec.member in policy.material_text_pins and before.st_size > MATERIAL_TEXT_MAX_BYTES:
+        raise CheckpointError('pinned material text size bound', code='material_text_size_rejected')
     with path.open('rb') as f:
         data = f.read(before.st_size+1)
     after = path.stat()
@@ -498,6 +534,129 @@ def _read(spec, policy):
     require(0 <= before.st_mtime_ns <= 2**63-1, 'invalid filesystem timestamp')
     entry = {'member': spec.member, 'kind': spec.kind, 'size': len(data), 'sha256': hashlib.sha256(data).hexdigest(), 'mtime_ns': before.st_mtime_ns}
     return entry, data
+
+
+_SAFE_CODES = frozenset({'material_magic_candidate', 'coff_machine_candidate', 'material_text_pin_mismatch', 'material_text_encoding_rejected', 'material_text_size_rejected', 'source_drift', 'member_identity_mismatch', 'mtime_ns_not_preserved'})
+
+
+@contextmanager
+def _member_guard(phase, spec, state=None):
+    """Never echo raw exceptions, paths or member bytes into public diagnostics."""
+    state = {} if state is None else state
+    try:
+        yield state
+    except Exception as exc:
+        code = getattr(exc, 'code', None)
+        operation = state.get('operation', 'content')
+        fallback = {'read': 'member_read_failed', 'content': 'member_content_rejected', 'provenance': 'provenance_or_license_failed', 'identity': 'member_identity_mismatch', 'timestamp': 'mtime_ns_not_preserved', 'write': 'member_write_failed'}.get(operation, 'member_check_failed')
+        report = {'phase': phase, 'member': spec.member if spec is not None else '<manifest>', 'kind': spec.kind if spec is not None else 'manifest', 'reason_code': code if code in _SAFE_CODES else fallback}
+        entry = state.get('entry')
+        if entry is not None:
+            report.update(bytes=entry['size'], sha256=entry['sha256'])
+        signature = getattr(exc, 'signature_id', None)
+        magic = next(((name, offset, raw) for name, offset, raw in MATERIAL_SIGNATURES if name == signature), None)
+        if magic is not None:
+            report.update(signature_id=magic[0], offset=magic[1], magic_hex=magic[2].hex())
+        elif signature in {'coff_4c01', 'coff_6486', 'coff_c001', 'coff_c401', 'coff_64aa'}:
+            report.update(signature_id=signature, offset=0, magic_hex=signature[5:])
+        error = CheckpointError(json.dumps(report, ensure_ascii=True, sort_keys=True, separators=(',', ':')), code=report['reason_code'])
+        error.context = report
+        raise error from None
+
+
+def _checked_file(spec, policy, phase, boundary_check=None):
+    with _member_guard(phase, spec) as state:
+        state['operation'] = 'read'
+        entry, data = _read(spec, policy)
+        state.update(entry=entry, operation='content')
+        _content(spec, data, policy)
+        if boundary_check:
+            state['operation'] = 'provenance'
+            boundary_check(phase, spec, data)
+        return entry, data
+
+
+def _baseline_callback(phase, callback, value):
+    if callback:
+        with _member_guard(phase, None, {'operation': 'provenance'}):
+            callback(phase, None, value)
+
+
+def preflight_available_content(policy, metadata, boundary_check=None):
+    """Check exact available inputs/materials, creating no archive or outputs.
+
+    Production callers validate their baseline in preflight-begin/end callbacks.
+    Budget enforcement is cooperative through every callback; retain no buffers.
+    Obj/lib/Ninja payloads are deferred even if files already exist. This receipt
+    does not admit their contents, predict compressed ZIP size, or admit reuse.
+    """
+    with _member_guard('preflight-declarations', None):
+        validate_policy(policy, metadata)
+    _baseline_callback('preflight-begin', boundary_check, {'metadata': metadata})
+    records, entries = [], {'inputs': [], 'payloads': []}
+    available_input_bytes = available_payload_bytes = 0
+    deferred = {kind: 0 for kind in sorted(DEFERRED_KINDS)}
+    for label, specs in [('inputs', policy.inputs), ('payloads', policy.payloads)]:
+        for spec in specs:
+            if label == 'payloads' and spec.kind in DEFERRED_KINDS:
+                deferred[spec.kind] += 1
+                entry = {'member': spec.member, 'kind': spec.kind, 'size': policy.limits.member_bytes, 'sha256': 'f'*64, 'mtime_ns': 2**63-1}
+            else:
+                entry, data = _checked_file(spec, policy, 'preflight-'+label, boundary_check)
+                records.append({'role': label, **entry})
+                if label == 'inputs':
+                    available_input_bytes += entry['size']
+                else:
+                    available_payload_bytes += entry['size']
+                del data
+                entry = {**entry, 'mtime_ns': 2**63-1}
+            entries[label].append(entry)
+    manifest_upper = {'schema': 1, 'metadata': metadata, 'owned_roots': {k: str(v) for k, v in policy.owned_roots.items()}, **entries}
+    manifest_bytes_upper = len(_json(manifest_upper))
+    require(manifest_bytes_upper <= policy.limits.manifest_bytes, 'manifest upper estimate exceeds bound')
+    available_total = available_payload_bytes + manifest_bytes_upper
+    require(available_total <= policy.limits.total_bytes, 'available payload plus manifest exceeds total bound')
+    receipt = {'state': 'CHECKED_AVAILABLE_CONTENT_ONLY', 'input_count': len(policy.inputs), 'available_payload_count': len(policy.payloads)-sum(deferred.values()), 'checked_item_count': len(records), 'unique_checked_member_count': len({r['member'] for r in records}), 'deferred_payload_count': sum(deferred.values()), 'deferred_by_kind': deferred, 'available_input_bytes': available_input_bytes, 'available_payload_bytes': available_payload_bytes, 'available_total_bytes_upper': available_total, 'manifest_bytes_upper': manifest_bytes_upper, 'checked_identity_sha256': hashlib.sha256(_json(records)).hexdigest(), 'metadata_sha256': hashlib.sha256(_json(metadata)).hexdigest(), 'output_content_validation': 'DEFERRED', 'outer_zip_validation': 'NOT_RUN'}
+    _baseline_callback('preflight-end', boundary_check, receipt)
+    return receipt
+
+
+def validate_built_subset(policy, members, boundary_check=None):
+    """Validate only an exact pilot subset; never create/promote a checkpoint.
+
+    Both Ninja state files are mandatory. The derived log policy admits only
+    selected object/archive outputs, preserving full input/root/limit/pin guards.
+    Cooperative budgets/provenance are supplied by the per-member callback.
+    """
+    with _member_guard('built-subset-declarations', None):
+        _policy(policy)
+        require(isinstance(members, (list, tuple)) and members and all(isinstance(x, str) for x in members), 'nonempty exact member list required')
+        require(len(members) <= len(policy.payloads) and len(set(members)) == len(members) and len({x.casefold() for x in members}) == len(members), 'duplicate/oversized subset')
+        declared = {spec.member: spec for spec in policy.payloads}
+        require(all(member in declared for member in members), 'unknown subset member')
+        selected = tuple(declared[member] for member in members)
+        require(all(spec.kind in DEFERRED_KINDS for spec in selected), 'non-output subset member')
+        require({spec.kind for spec in selected if spec.kind in {'ninja_log', 'ninja_deps'}} == {'ninja_log', 'ninja_deps'}, 'both Ninja states required')
+        outputs = set()
+        for spec in selected:
+            if spec.kind not in {'obj', 'lib'}:
+                continue
+            target = Path(policy.owned_roots[spec.root]) / spec.relpath
+            outputs.update((str(target), os.path.relpath(target, policy.log_base_root)))
+        restricted = replace(policy, allowed_log_outputs=frozenset(outputs))
+        _policy(restricted)
+    _baseline_callback('built-subset-begin', boundary_check, {'selected_count': len(selected)})
+    records, counts, total = [], {kind: 0 for kind in sorted(DEFERRED_KINDS)}, 0
+    for spec in selected:
+        entry, data = _checked_file(spec, restricted, 'built-subset', boundary_check)
+        records.append(entry)
+        counts[spec.kind] += 1
+        total += entry['size']
+        require(total <= policy.limits.total_bytes, 'subset bytes exceed total bound')
+        del data
+    receipt = {'state': 'PASS_BUILT_SUBSET_ONLY', 'member_count': len(records), 'validated_output_count': counts['obj']+counts['lib'], 'counts_by_kind': counts, 'bytes': total, 'checked_identity_sha256': hashlib.sha256(_json(records)).hexdigest(), 'full_checkpoint_validation': 'NOT_RUN', 'outer_zip_validation': 'NOT_RUN'}
+    _baseline_callback('built-subset-end', boundary_check, receipt)
+    return receipt
 
 
 def _json(value):
@@ -536,16 +695,16 @@ def _zip_info(name):
 
 def seal_checkpoint(path, policy, metadata, boundary_check: BoundaryCheck | None = None):
     """Seal only explicit payloads. Callback may raise to enforce material receipts."""
-    _policy(policy)
-    metadata_paths(metadata, policy)
+    with _member_guard('seal-declarations', None):
+        _policy(policy)
+        metadata_paths(metadata, policy)
     path = _outer_path(path, missing=True)
     require(not path.exists() and not path.is_symlink(), 'checkpoint destination already exists')
     require(path.parent.is_dir() and not path.parent.is_symlink(), 'checkpoint parent missing/link')
     manifest = {'schema': 1, 'metadata': metadata, 'owned_roots': {k: str(v) for k, v in policy.owned_roots.items()}, 'inputs': [], 'payloads': []}
     total = 0
     for spec in policy.inputs:
-        entry, data = _read(spec, policy)
-        _content(spec, data, policy)
+        entry, data = _checked_file(spec, policy, 'seal-input', boundary_check)
         manifest['inputs'].append(entry)
         del data
     fd, temporary = tempfile.mkstemp(prefix='.checkpoint-', suffix='.zip', dir=path.parent)
@@ -553,10 +712,7 @@ def seal_checkpoint(path, policy, metadata, boundary_check: BoundaryCheck | None
     try:
         with zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=False) as archive:
             for spec in policy.payloads:
-                entry, data = _read(spec, policy)
-                _content(spec, data, policy)
-                if boundary_check:
-                    boundary_check('seal', spec, data)
+                entry, data = _checked_file(spec, policy, 'seal', boundary_check)
                 total += len(data)
                 require(total <= policy.limits.total_bytes, 'uncompressed size bound')
                 manifest['payloads'].append(entry)
@@ -568,17 +724,18 @@ def seal_checkpoint(path, policy, metadata, boundary_check: BoundaryCheck | None
                         member.write(view[offset:offset+IO_CHUNK_BYTES])
                     del view
                 del data
-            if boundary_check:
-                boundary_check('manifest', None, manifest)
+            _baseline_callback('manifest', boundary_check, manifest)
             raw = _json(manifest)
             require(len(raw) <= policy.limits.manifest_bytes and total+len(raw) <= policy.limits.total_bytes, 'manifest/total size bound')
             archive.writestr(_zip_info(MANIFEST), raw)
         require(os.path.getsize(temporary) <= policy.limits.archive_bytes, 'outer archive size bound')
         # Recheck source bytes AND mtime after sealing outputs, without publishing.
         for spec, entry in zip(policy.inputs, manifest['inputs']):
-            current, _ = _read(spec, policy)
-            require(current == entry, 'source drift during seal')
-            del _
+            with _member_guard('seal-recheck', spec, {'operation': 'read'}) as state:
+                current, data = _read(spec, policy)
+                state.update(entry=current, operation='identity')
+                require(current == entry, 'source drift during seal')
+                del data
         os.replace(temporary, path)
         return _fingerprint(path)
     finally:
@@ -642,31 +799,40 @@ def validate_checkpoint(path, policy, expected_sha256, expected_size, expected_m
         require(isinstance(manifest, dict) and set(manifest) == {'schema', 'metadata', 'owned_roots', 'inputs', 'payloads'} and type(manifest['schema']) is int and manifest['schema'] == 1, 'unknown manifest schema/fields')
         require(manifest['owned_roots'] == {k: str(v) for k, v in policy.owned_roots.items()}, 'stable owned root mismatch')
         require(manifest['metadata'] == expected_metadata, 'immutable metadata drift')
-        metadata_paths(manifest['metadata'], policy)
+        with _member_guard('validate-metadata', None):
+            metadata_paths(manifest['metadata'], policy)
         for label, specs in [('inputs', policy.inputs), ('payloads', policy.payloads)]:
             require(isinstance(manifest[label], list) and len(manifest[label]) == len(specs), 'manifest allowlist length mismatch')
             for entry, spec in zip(manifest[label], specs):
-                _entry(entry, spec, policy)
-                if label == 'inputs':
-                    current, data = _read(spec, policy)
-                    _equal(entry, data)  # mtime changes alone are restorable.
-                    _content(spec, data, policy)
-                else:
-                    require(archive.getinfo(spec.member).file_size == entry['size'], 'ZIP/manifest size mismatch')
-                    data = archive.read(spec.member)
-                    _equal(entry, data)
-                    _content(spec, data, policy)
-                    if policy.root_kinds[spec.root] in {'source', 'generated'}:
-                        # These destinations are fresh, owned source/header trees,
-                        # not output space. Never overwrite/backdate drifted data.
-                        _, existing = _read(spec, policy)
-                        _equal(entry, existing)
-                        del existing
+                with _member_guard('validate-'+label, spec) as state:
+                    _entry(entry, spec, policy)
+                    if label == 'inputs':
+                        state['operation'] = 'read'
+                        current, data = _read(spec, policy)
+                        state.update(entry=current, operation='identity')
+                        _equal(entry, data)  # mtime changes alone are restorable.
+                        state['operation'] = 'content'
+                        _content(spec, data, policy)
+                    else:
+                        require(archive.getinfo(spec.member).file_size == entry['size'], 'ZIP/manifest size mismatch')
+                        state['operation'] = 'read'
+                        data = archive.read(spec.member)
+                        state.update(entry={'size':len(data),'sha256':hashlib.sha256(data).hexdigest()}, operation='identity')
+                        _equal(entry, data)
+                        state['operation'] = 'content'
+                        _content(spec, data, policy)
+                        if policy.root_kinds[spec.root] in {'source', 'generated'}:
+                            # These destinations are fresh, owned source/header trees,
+                            # not output space. Never overwrite/backdate drifted data.
+                            state['operation'] = 'read'
+                            _, existing = _read(spec, policy)
+                            state['operation'] = 'identity'
+                            _equal(entry, existing)
+                            del existing
                     if boundary_check:
                         boundary_check('validate', spec, data)
                 del data
-        if boundary_check:
-            boundary_check('manifest', None, manifest)
+        _baseline_callback('manifest', boundary_check, manifest)
     return manifest
 
 
@@ -684,41 +850,51 @@ def restore_checkpoint(path, policy, expected_sha256, expected_size, expected_me
     manifest = validate_checkpoint(path, policy, expected_sha256, expected_size, expected_metadata, boundary_check)
     # Preflight every destination before the first modification.
     for spec in policy.payloads:
-        _safe_path(policy, spec, allow_missing=True)
+        with _member_guard('restore-destination', spec, {'operation':'read'}):
+            _safe_path(policy, spec, allow_missing=True)
     with zipfile.ZipFile(path) as archive:
         for spec, entry in zip(policy.payloads, manifest['payloads']):
-            dest = _safe_path(policy, spec, allow_missing=True)
-            data = archive.read(spec.member)
-            _equal(entry, data)
-            if policy.root_kinds[spec.root] in {'source', 'generated'}:
-                _, current = _read(spec, policy)
-                _equal(entry, current)
-                del current
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            _safe_path(policy, spec, allow_missing=True)
-            fd, temporary = tempfile.mkstemp(prefix='.checkpoint-member-', dir=dest.parent)
-            try:
-                with os.fdopen(fd, 'wb') as out:
-                    view = memoryview(data)
-                    for offset in range(0, len(data), IO_CHUNK_BYTES):
-                        out.write(view[offset:offset+IO_CHUNK_BYTES])
-                    del view
-                    out.flush()
-                    os.fsync(out.fileno())
-                os.replace(temporary, dest)
-                _mtime(dest, entry['mtime_ns'])
-            finally:
-                if os.path.exists(temporary):
-                    os.unlink(temporary)
-            del data
+            with _member_guard('restore-payload', spec, {'operation':'read'}) as state:
+                dest = _safe_path(policy, spec, allow_missing=True)
+                data = archive.read(spec.member)
+                state.update(entry={'size':len(data),'sha256':hashlib.sha256(data).hexdigest()},operation='identity')
+                _equal(entry, data)
+                if policy.root_kinds[spec.root] in {'source', 'generated'}:
+                    _, current = _read(spec, policy)
+                    _equal(entry, current)
+                    del current
+                state['operation'] = 'write'
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                _safe_path(policy, spec, allow_missing=True)
+                fd, temporary = tempfile.mkstemp(prefix='.checkpoint-member-', dir=dest.parent)
+                try:
+                    with os.fdopen(fd, 'wb') as out:
+                        view = memoryview(data)
+                        for offset in range(0, len(data), IO_CHUNK_BYTES):
+                            out.write(view[offset:offset+IO_CHUNK_BYTES])
+                        del view
+                        out.flush()
+                        os.fsync(out.fileno())
+                    os.replace(temporary, dest)
+                    state['operation'] = 'timestamp'
+                    _mtime(dest, entry['mtime_ns'])
+                finally:
+                    if os.path.exists(temporary):
+                        os.unlink(temporary)
+                del data
     for spec, entry in zip(policy.inputs, manifest['inputs']):
-        _, data = _read(spec, policy)
-        _equal(entry, data)  # equality is immediately before touching each source.
-        _mtime(_safe_path(policy, spec), entry['mtime_ns'])
-        del data
+        with _member_guard('restore-input', spec, {'operation':'read'}) as state:
+            observed, data = _read(spec, policy)
+            state.update(entry=observed,operation='identity')
+            _equal(entry, data)  # equality is immediately before touching each source.
+            state['operation'] = 'timestamp'
+            _mtime(_safe_path(policy, spec), entry['mtime_ns'])
+            del data
     for label, specs in [('inputs', policy.inputs), ('payloads', policy.payloads)]:
         for spec, entry in zip(specs, manifest[label]):
-            current, data = _read(spec, policy)
-            require(current == entry, 'post-restore hash/size/mtime mismatch')
-            del data
+            with _member_guard('restore-final-'+label, spec, {'operation':'read'}) as state:
+                current, data = _read(spec, policy)
+                state.update(entry=current,operation='identity')
+                require(current == entry, 'post-restore hash/size/mtime mismatch')
+                del data
     return manifest

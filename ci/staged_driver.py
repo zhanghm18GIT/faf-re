@@ -36,16 +36,58 @@ def validate_effect_link(text,build):
  need('faf_engine.dir' not in found[0].lower(),'Standalone effect_scan unexpectedly links engine objects')
  return {'target':'faf_effect_scan_tests.exe','command_sha256':hashlib.sha256(found[0].encode()).hexdigest(),'engine_linked':False,'ucrt_policy':'standalone text test; not an engine UCRT compatibility claim'}
 
+MATERIAL_POLICY_FILE='source-material-policy.json'
+
+def validate_material_selection(value):
+ need(isinstance(value,dict) and value.get('schema')==1,'Invalid reviewed material selection')
+ seen=set()
+ for group in ['omitted_non_build_material','retained_vms_text']:
+  rows=value.get(group);need(isinstance(rows,list) and len(rows)<=64,'Material selection count/type')
+  for row in rows:
+   need(isinstance(row,dict) and set(row)=={'component','path','bytes','sha256','classification'},'Material selection fields')
+   need(row['component'] in core.SOURCE_COMPONENTS,'Unknown material component')
+   rel=core.safe_relative(row['path']).as_posix();key=(row['component'],rel.casefold())
+   need(key not in seen,'Duplicate material selection');seen.add(key)
+   need(type(row['bytes']) is int and 0<=row['bytes']<=1_000_000,'Selected material size bound')
+   need(isinstance(row['sha256'],str) and re.fullmatch('[a-f0-9]{64}',row['sha256']),'Selected material digest')
+   need(isinstance(row['classification'],str) and 0<len(row['classification'])<=256,'Selected material classification')
+   need(not core.NOTICE_RE.match(Path(rel).name),'Notice/license cannot be omitted or reclassified')
+   allowed={'.com'} if group=='retained_vms_text' else {'.ncb','.xls','.class','.bin'}
+   need(Path(rel).suffix.lower() in allowed,'Unsupported exact material classification')
+ return value
+
+def select_dependency_materials(name,root,files,selection):
+ # The original immutable checkout is retained. Only these exact reviewed bytes
+ # are omitted from checkpoint/relink material; no suffix-wide omission is added.
+ admitted={p.relative_to(root).as_posix():p for p in files};omitted=set()
+ for group in ['omitted_non_build_material','retained_vms_text']:
+  for row in selection[group]:
+   if row['component']!=name:continue
+   rel=row['path'];need(rel in admitted,'Exact reviewed material is absent from source selection: '+name+'/'+rel)
+   p=admitted[rel]
+   for a in [p,*p.parents]:
+    st=a.lstat();need(not a.is_symlink() and not getattr(st,'st_file_attributes',0)&0x400,'Selected material link/reparse forbidden')
+    if a==root:break
+   need(p.is_file() and p.stat().st_nlink==1 and p.stat().st_size==row['bytes'],'Exact reviewed material size/type differs: '+name+'/'+rel)
+   need(core.sha(p)==row['sha256'],'Exact reviewed material digest differs: '+name+'/'+rel)
+   if group=='omitted_non_build_material':omitted.add(rel)
+ return [p for p in files if p.relative_to(root).as_posix() not in omitted]
+
 class StagedBuild(core.Build):
  def __init__(self,here,c):
-  super().__init__(here,c);self.stage_name=c.get('stage');self.child_uncertain=False;self.owned_root=None;self.child_env=None;self.phase_end=None;self.graph=None;self.fp_allowance=fp.PassAllowance()
+  super().__init__(here,c);self.stage_name=c.get('stage');self.child_uncertain=False;self.owned_root=None;self.child_env=None;self.phase_end=None;self.dependency_compile_deadline=None;self.graph=None;self.fp_allowance=fp.PassAllowance()
  def validate_contract(self):
   super().validate_contract()
   need(self.stage_name in STAGES,'Unknown reviewed stage')
+  self.material_selection=validate_material_selection(core.read_json(self.here/MATERIAL_POLICY_FILE))
+  self.material_selection_sha=core.sha(self.here/MATERIAL_POLICY_FILE)
+  need(self.distribution.get('material_selection_sha256')==self.material_selection_sha,'Distribution material selection is not bound')
+  need(self.distribution.get('material_selection_review_status')=='REVIEWED','Amended material selection review pending')
   need(self.c.get('source_review_status')=='REVIEWED_FIXED_PRODUCT','Source-only review pending')
   need(self.c.get('cross_product_reuse') is False,'Cross-product reuse disabled for this first pair')
   need(self.c.get('max_checkpoint_bytes')==400_000_000,'Checkpoint byte ceiling differs')
   need(self.c.get('stage_build_max_seconds')==2100,'Unreviewed build cap')
+  need(self.c.get('stage_min_build_window_seconds')==(1250 if self.stage_name=='A' else 120),'Unreviewed initial compile-window threshold')
   reserve=900 if self.stage_name=='A' else 1050
   need(self.c.get('stage_downstream_reserve_seconds')==reserve,'Unreviewed downstream reservation')
   self.recipe=core.read_json(self.here/RECIPE_FILE);self.recipe_key=json_hash(self.recipe)
@@ -67,17 +109,30 @@ class StagedBuild(core.Build):
   if self.phase_end is not None:n=min(n,int(self.phase_end-time.monotonic()));need(n>0,'Current stage phase allowance exhausted')
   return n
  def command(self,args,cwd=None,cap=120,env=None,name='command',binary=False,permit_failure=False,started_callback=None):
-  if name in {'build','dependencies-build'}:
-   available=super().remaining(3300);reserve=self.c['stage_downstream_reserve_seconds'];limit=min(self.c['stage_build_max_seconds'],available-reserve)
-   need(limit>=self.c['stage_min_build_window_seconds'],'Insufficient build window after downstream reservation')
-   print('BUILD_BUDGET '+json.dumps({'stage':self.stage_name,'remaining_seconds':available,'build_cap_seconds':limit,'downstream_reserved_seconds':reserve,'reservation_is_not_runtime_prediction':True}),flush=True)
+  if name in {'build','dependencies-build','dependency-pilot'}:
+   available=super().remaining(3300);reserve=self.c['stage_downstream_reserve_seconds']
+   if name in {'dependencies-build','dependency-pilot'}:
+    need(self.stage_name=='A','Dependency pilot/build is producer-only')
+    if self.dependency_compile_deadline is None:
+     limit=min(self.c['stage_build_max_seconds'],available-reserve)
+     need(limit>=self.c['stage_min_build_window_seconds'],'Insufficient build window after downstream reservation')
+     self.dependency_compile_deadline=time.monotonic()+limit
+     self.phase_end=self.dependency_compile_deadline
+    limit=int(self.dependency_compile_deadline-time.monotonic())
+    need(limit>0,'Shared dependency compile deadline exhausted')
+    if name=='dependency-pilot':limit=min(120,limit)
+    else:need(limit>=120,'Insufficient remaining shared dependency compile window')
+   else:
+    limit=min(self.c['stage_build_max_seconds'],available-reserve)
+    need(limit>=self.c['stage_min_build_window_seconds'],'Insufficient build window after downstream reservation')
+   print('BUILD_BUDGET '+json.dumps({'stage':self.stage_name,'command':name,'remaining_seconds':available,'build_cap_seconds':limit,'downstream_reserved_seconds':reserve,'pilot_and_full_share_original_compile_deadline':name!='build','reservation_is_not_runtime_prediction':True}),flush=True)
    log=self.root/'logs'/f'{name}.txt'
    result=build_capture.run_build([str(x) for x in args],cwd=cwd or self.root,env=env or self.child_env,log_path=log,timeout=limit,emit=print,aliases=[(self.root,'<owned-work>'),(self.here.parent,'<configuration>')])
    self.receipt.setdefault('build_capture',{})[name]=result
    self.receipt['ninja_timing_summary']=build_capture.ninja_summary(self.build/'.ninja_log',[(self.root,'<owned-work>')])
    if result['state']!='SUCCESS':self.child_uncertain=True;raise core.Blocked('Bounded streamed build did not complete: '+result['state'])
    text=log.read_text(encoding='utf-8',errors='replace')
-   self.start_acceptance_window()
+   if name!='dependency-pilot':self.start_acceptance_window()
    if name=='build':self.receipt['standalone_effect_scan_link']=validate_effect_link(text,self.build)
    return text
   try:return super().command(args,cwd,cap,env if env is not None else self.child_env,name,binary,permit_failure,started_callback)
@@ -176,7 +231,7 @@ class StagedBuild(core.Build):
      need(p.is_dir(),'Missing generated include root')
      for f in p.rglob('*'):
       need(not f.is_symlink(),'Generated include link forbidden')
-      if f.is_file():need(f.suffix.lower() in {'.h','.hpp','.inc','.inl'},'Unexpected generated include material');generated.add(f)
+      if f.is_file():need(f.suffix.lower() in checkpoint.HEADER_SUFFIXES,'Unexpected generated include material');generated.add(f)
   need(len(files)<=100000 and len(generated)<=256,'Source/generated inventory count exceeded')
   return sorted(files),sorted(generated)
  def owned_identity(self):
@@ -224,6 +279,12 @@ class StagedBuild(core.Build):
   core.validate_junit(junit,['effect_scan']);self.receipt['ctest_executed'].append('effect_scan');self.assert_owned()
  def clean_dependency_plan(self):
   self.assert_owned();plan=self.command([self.ninja,'-C',self.build,'-n','-v','-d','explain',*build_graph.TARGETS],cap=120,name='dependency-reuse-admission');build_graph.clean_plan(plan)
+ def dependency_sources(self,name,component_root):
+  files=super().dependency_sources(name,component_root)
+  return select_dependency_materials(name,component_root,files,self.material_selection)
+ def stage_materials(self):
+  super().stage_materials()
+  self.copy_exact(self.here/MATERIAL_POLICY_FILE,'SOURCE_MATERIAL_POLICY.json')
  def prepare_materials(self):
   self.material_root=self.root/'checkpoint-material';self.material_root.mkdir(exist_ok=True)
   final_stage=self.stage;self.stage=self.material_root
@@ -268,24 +329,45 @@ class StagedBuild(core.Build):
     installed=Path(self.c['windows_sdk_root'])
     if p.is_relative_to(installed/'Include'):add(self.sdk/'Include'/p.relative_to(installed/'Include'))
   outputs=set(self.graph['outputs'])|{str(self.build/x) for x in self.graph['outputs']}
-  return checkpoint.Policy(owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),approved_path_files=(str(self.ninja),),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472))
+  text_pins={}
+  for row in self.material_selection['retained_vms_text']:
+   rel='dependencies/'+row['component']+'/'+row['path']
+   text_pins['source/'+rel]=row['sha256']
+   text_pins['material/corresponding-source/engine/'+rel]=row['sha256']
+  return checkpoint.Policy(material_text_pins=text_pins,owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),approved_path_files=(str(self.ninja),),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472,manifest_bytes=25_165_824))
  def metadata(self):
   if self.stage_name=='A':
    a=self.receipt['appveyor'];producer={'account':a['account'],'project_slug':a['project_slug'],'build_id':a['build_id'],'job_id':a['job_id'],'configuration_commit':a['provider_commit']}
   else:
    p=self.c['checkpoint_input'];producer={'account':self.c['account'],'project_slug':self.c['project_slug'],**{k:p[k] for k in ['build_id','job_id','configuration_commit']}}
   external=self.external_before.public_summary();external.pop('duration_seconds',None)
-  return {'schema':1,'product_base':BASE,'product_tree':TREE,'dependency_recipe_key':self.recipe_key,'dependency_command_identity':self.graph['identity'],'compile_argv_identity':self.compile_argv_identity,'dependency_outputs':self.graph['outputs'],'owned_source_identity':self.owned_baseline['sha256'],'actual_glob_membership':self.owned_baseline['mbedtls_actual_glob'],'controlled_environment':self.effective_env_identity,'external_inputs':external,'producer':producer,'dependency_build_complete':True,'final_client_tests':'NOT_RUN_IN_PRODUCER','not_a_client_package':True}
+  return {'schema':1,'public_material_policy_sha256':self.material_selection_sha,'product_base':BASE,'product_tree':TREE,'dependency_recipe_key':self.recipe_key,'dependency_command_identity':self.graph['identity'],'compile_argv_identity':self.compile_argv_identity,'dependency_outputs':self.graph['outputs'],'owned_source_identity':self.owned_baseline['sha256'],'actual_glob_membership':self.owned_baseline['mbedtls_actual_glob'],'controlled_environment':self.effective_env_identity,'external_inputs':external,'producer':producer,'dependency_build_complete':True,'final_client_tests':'NOT_RUN_IN_PRODUCER','not_a_client_package':True}
  def checkpoint_boundary(self,phase,spec,data):
   self.remaining(120)
-  if phase=='manifest':self.assert_owned()
+  if phase in {'manifest','preflight-begin','preflight-end'}:self.assert_owned()
   if spec is not None and spec.root=='material':need(hashlib.sha256(data).hexdigest()==self.material_hashes[spec.relpath],'Checkpoint material differs from independently reconstructed source/notice')
  def start_acceptance_window(self):
   # Aggregate local acceptance is cooperative; reserve actual upload and cleanup time.
   self.phase_end=self.started+self.c['max_total_seconds']-390
   need(self.remaining(1)>0,'No acceptance window remains')
+ def dependency_pilot(self):
+  need(self.stage_name=='A','Producer pilot cannot run in consumer')
+  target=self.target_data['faf_monocypher'];need(target['depends']==[],'Pilot has a concrete dependency')
+  rows=[x for x in self.graph['records'] if x['target']=='faf_monocypher']
+  objects=[x for x in rows if x['output'].endswith('.obj')];libs=[x for x in rows if x['output'].endswith('.lib')]
+  need(len(rows)==2 and len(objects)==1 and len(libs)==1 and libs[0]['output']==target['artifact'],'Pilot closure is not exactly one object plus one archive')
+  source=Path(objects[0]['source']);source=source if source.is_absolute() else self.build/source
+  need(source.resolve()==(self.source/'dependencies/monocypher/src/monocypher.c').resolve(),'Unexpected pilot translation unit')
+  need(not any((self.build/x).exists() for x in self.graph['outputs']),'Producer pilot requires absent selected outputs')
+  self.phase='dependency-format-pilot'
+  self.command([self.cmake,'--build',self.build,'--target','faf_monocypher','--parallel','2','--verbose','--','-d','keeprsp'],name='dependency-pilot')
+  need({x for x in self.graph['outputs'] if (self.build/x).exists()}=={x['output'] for x in rows},'Pilot produced unexpected or missing selected outputs')
+  members=['build/'+x['output'] for x in rows]+['build/.ninja_log','build/.ninja_deps']
+  self.receipt['dependency_format_pilot']=checkpoint.validate_built_subset(self.checkpoint_policy(),members,self.checkpoint_boundary)
+  need(self.remaining(1)>0,'Shared compile deadline exhausted during pilot inspection')
+  print('DEPENDENCY_FORMAT_PILOT '+json.dumps(self.receipt['dependency_format_pilot'],sort_keys=True),flush=True)
  def stage_a(self):
-  self.phase='dependency-compile';self.assert_owned()
+  self.phase='dependency-compile';self.assert_owned();self.dependency_pilot();self.phase='dependency-compile'
   self.command([self.cmake,'--build',self.build,'--target',*build_graph.TARGETS,'--parallel','2','--verbose','--','-d','keeprsp'],name='dependencies-build')
   self.start_acceptance_window();self.assert_owned();self.external_identity().assert_matches(self.external_before)
   self.phase='seal-checkpoint';policy=self.checkpoint_policy();meta=self.metadata()
@@ -368,6 +450,10 @@ class StagedBuild(core.Build):
    self.receipt['external_input_fingerprint']=self.external_before.public_summary()
    self.receipt['checkpoint_policy_preflight']=checkpoint.validate_policy(self.checkpoint_policy(),self.metadata())
    print('CHECKPOINT_POLICY_PREFLIGHT '+json.dumps(self.receipt['checkpoint_policy_preflight'],sort_keys=True),flush=True)
+   self.phase='precompile-content-acceptance'
+   self.receipt['checkpoint_content_preflight']=checkpoint.preflight_available_content(self.checkpoint_policy(),self.metadata(),self.checkpoint_boundary)
+   self.receipt['public_material_selection']={'policy_sha256':self.material_selection_sha,'omitted_exact_non_build_files':len(self.material_selection['omitted_non_build_material']),'retained_exact_vms_text_files':len(self.material_selection['retained_vms_text']),'original_checkout_unchanged':True}
+   print('CHECKPOINT_CONTENT_PREFLIGHT '+json.dumps(self.receipt['checkpoint_content_preflight'],sort_keys=True),flush=True)
    self.remove_junctions(read_only=True)
    self.receipt['owned_tree_preflight']=owned_cleanup.preflight_owned_tree(self.root,self.root,owner_check=self.verify_owner,verified_junctions=tuple(self.junctions),max_seconds=self.remaining(60),emit=lambda k,v:print(k+' '+json.dumps(v,sort_keys=True),flush=True))
    print('OWNED_TREE_PREFLIGHT '+json.dumps(self.receipt['owned_tree_preflight'],sort_keys=True),flush=True)

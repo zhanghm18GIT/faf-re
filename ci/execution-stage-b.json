@@ -2,14 +2,14 @@
   "schema": 1,
   "state": "DRAFT_NOT_AUTHORIZED",
   "root_go_reference": null,
-  "reviewed_driver_manifest_sha256": "9b43ead08eee93aa5b7bebaca27781ebe4dd59a9881c141b053413aeb862b122",
+  "reviewed_driver_manifest_sha256": "3d8b4c46a442d2167c5dbcf627511d80ccb816763f5910307b6e6a1294cda5a0",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
   "preflight_receipt": "preflight-receipt.json",
   "preflight_receipt_sha256": "ab6ded7934c8031cc15851595188da75eb7832d170a50a249ca2b3104b170bdb",
   "distribution_review": "distribution-review.json",
-  "distribution_review_sha256": "9b211fd6ed371d765bfa52e61de32fb5978e1c9bf2556fbf142e33337a75a8a1",
+  "distribution_review_sha256": "b47553354fc7b19c181cf0ce854728413bf5c8cd5233d95d0a5d5d375196bd37",
   "ucrt": {
     "version": "10.0.22000.0",
     "source": "pinned-official-nuget",
@@ -20,7 +20,7 @@
   "max_artifact_bytes": 400000000,
   "max_total_seconds": 3300,
   "parallelism": 2,
-  "artifact_basename": "faf-re-x64-302eb-282-284",
+  "artifact_basename": "faf-re-x64-293153-282-284",
   "upload_exact_package": false,
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
@@ -49,6 +49,7 @@
       "ci/preflight-receipt.json",
       "ci/public-source-allowlist.json",
       "ci/run-client-build.ps1",
+      "ci/source-material-policy.json",
       "ci/staged_driver.py",
       "ci/tests/test_build_capture.py",
       "ci/tests/test_checkpoint.py",
@@ -65,9 +66,9 @@
   "stage_build_max_seconds": 2100,
   "stage_downstream_reserve_seconds": 1050,
   "stage_min_build_window_seconds": 120,
-  "dependency_recipe_sha256": "f0fdaa608b33b521f5d729f3273bb578897a991a08caac867c580a98fc52503d",
+  "dependency_recipe_sha256": "358900630295bc50c870570fb65b525e9610c0648e89cf5af19022891f59f1de",
   "cross_product_reuse": false,
   "source_review_status": "REVIEWED_FIXED_PRODUCT",
-  "source_review_reference": "source-302eb-20261103",
-  "source_review_report_sha256": "f18ebbe958347a702b9f42cf7339451551712ef62a585eb5161db96cfcabb1e5"
+  "source_review_reference": "source-293153-static-20261103-1722",
+  "source_review_report_sha256": "f1def5a106f6832388bca1bed0321ff68240226b51a632176668af586d07c0a5"
 }

@@ -2,8 +2,8 @@
   "schema": 1,
   "status": "REVIEWED_FOR_THIS_PUBLIC_EXPERIMENT",
   "review_reference": "staged-material-review-20261103-1359",
-  "composite_tree": "9ea76a3f4509052ca6ac116581d95b0d42e6384f",
-  "public_source_allowlist_sha256": "bd0a080f8fd151fc8325e762bbb8e5ab3bcb947fc1b08a75edc47b7e7ec77d18",
+  "composite_tree": "ef844b5d98194249c7434e984c0c12dfa3b042a7",
+  "public_source_allowlist_sha256": "ac265877efafec8b90361c358015c24d74ca9bca49fb0fed642cf00940de92a6",
   "root_license_absence_recorded": true,
   "distribution_scope": "Public experimental RE source build only; no official release or upstream endorsement",
   "material_policy": "exact-engine-allowlist-plus-pinned-dependency-source-v1",
@@ -31,5 +31,11 @@
     "zlib-1.2.3": [
       "README"
     ]
-  }
+  },
+  "material_selection_sha256": "e956ca6f465f67b966392bea1ed7712d80234b756d96cca599470f2ee9b8292c",
+  "material_selection_review_status": "REVIEWED",
+  "material_selection_review_reference": "material-fix3-293153-static-20261103-1727",
+  "product_source_review_reference": "source-293153-static-20261103-1722",
+  "product_source_review_report_sha256": "f1def5a106f6832388bca1bed0321ff68240226b51a632176668af586d07c0a5",
+  "product_source_review_scope": "Fixed Windows source selection only; final material-selection amendment remains separately gated"
 }
