@@ -1,6 +1,6 @@
 """Pure and synthetic integration checks. No CI, network or real product build."""
 from pathlib import Path
-import ast,hashlib,json,os,sys,tempfile,time,unittest
+import ast,hashlib,json,os,re,sys,tempfile,time,unittest
 from unittest import mock
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import build_graph as graph
@@ -91,6 +91,31 @@ class GraphChecks(unittest.TestCase):
    with self.assertRaises(graph.GraphError):graph.clean_plan(x)
 
 class StageChecks(unittest.TestCase):
+ def test_bootstrap_driver_pin_and_lf(self):
+  bootstrap=(CI/'run-client-build.ps1').read_bytes()
+  pins=re.findall(rb"Get-FileHash -LiteralPath \$entry -Algorithm SHA256\)\.Hash\.ToLowerInvariant\(\) -ne '([0-9a-f]{64})'",bootstrap)
+  self.assertEqual(len(pins),1)
+  self.assertEqual(pins[0].decode(),hashlib.sha256((CI/'staged_driver.py').read_bytes()).hexdigest())
+  self.assertIn(b"* text eol=lf",(CI.parent/'.gitattributes').read_bytes())
+  self.assertNotIn(b'\r',(CI/'staged_driver.py').read_bytes())
+  self.assertNotIn(b'\r',bootstrap)
+ def test_cross_configuration_hash_chain(self):
+  manifest=hashlib.sha256((CI/'driver-manifest.json').read_bytes()).hexdigest()
+  recipe=json.loads((CI/'dependency-recipe.json').read_text())
+  paths=set(json.loads((CI/'execution-stage-a.json').read_text())['provider_configuration']['tracked_files'])
+  for st in 'ab':
+   c=json.loads((CI/f'execution-stage-{st}.json').read_text())
+   self.assertEqual(c['reviewed_driver_manifest_sha256'],manifest)
+   self.assertEqual(c['dependency_recipe_sha256'],staged.json_hash(recipe))
+   for key in ['preflight_receipt','distribution_review']:
+    self.assertEqual(c[key+'_sha256'],hashlib.sha256((CI/c[key]).read_bytes()).hexdigest())
+   self.assertEqual(set(c['provider_configuration']['tracked_files']),paths)
+  inner=json.loads((CI/'driver-manifest.json').read_text())
+  for f in inner['files']:self.assertIn('ci/'+f['path'],paths)
+  self.assertEqual(driver.INTEGRATION_SHA,hashlib.sha256((CI/'integration-manifest.json').read_bytes()).hexdigest())
+  d=json.loads((CI/'distribution-review.json').read_text())
+  self.assertEqual(d['public_source_allowlist_sha256'],hashlib.sha256((CI/'public-source-allowlist.json').read_bytes()).hexdigest())
+  self.assertEqual(d['material_selection_sha256'],hashlib.sha256((CI/'source-material-policy.json').read_bytes()).hexdigest())
  def test_contracts_inert_fixed_source_and_limits(self):
   for stage in 'ab':
    c=json.loads((CI/f'execution-stage-{stage}.json').read_text());self.assertEqual(c['state'],'DRAFT_NOT_AUTHORIZED');self.assertFalse(c['upload_exact_package']);self.assertIsNone(c['root_go_reference']);self.assertIsNone(c['checkpoint_input']);self.assertEqual(c['parallelism'],2);self.assertEqual(c['max_total_seconds'],3300);self.assertEqual(c['source_review_status'],'REVIEWED_FIXED_PRODUCT')

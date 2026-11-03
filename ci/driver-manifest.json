@@ -69,7 +69,7 @@
     },
     {
       "path": "run-client-build.ps1",
-      "sha256": "fc383c8a72884cc6812c8d101b11a711b46c1577cf9d8a902808eca14a5cc36f",
+      "sha256": "e73c1b716cf2f6020939686529fd5a6f14cfe43f44ae592f0a37bbf721130f30",
       "size": 3935
     },
     {
@@ -104,8 +104,8 @@
     },
     {
       "path": "tests/test_staged_driver.py",
-      "sha256": "2c4aff7c46db15ef9661366e0fb9c9816c99b3acfb621312b6e6dc8e29b3e68b",
-      "size": 20432
+      "sha256": "692d91d0a61bebbb445b0095f0b1cf76dd45e783717484a85394c291de87408c",
+      "size": 22291
     },
     {
       "path": "tests/test_toolchain_fingerprint.py",
