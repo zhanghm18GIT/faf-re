@@ -100,6 +100,19 @@ class StagedBuild(core.Build):
    p=self.c['checkpoint_input'];self.checkpoint_path=root/'out'/p['filename']
    url='https://ci.appveyor.com/api/buildjobs/'+p['job_id']+'/artifacts/'+urllib.parse.quote(p['filename'],safe='')
    self.download_fixed(url,self.checkpoint_path,p['size'],300);core.checked_hash(self.checkpoint_path,p['sha256'])
+ def windows_cleanup_fixture(self):
+  self.phase='owned-cleanup-fixture'
+  need(os.name=='nt','Windows cleanup fixture requires actual Windows')
+  fixture=self.root/'cleanup-fixture';fixture.mkdir();testfile=fixture/'readonly.txt';testfile.write_bytes(b'public cleanup fixture\n')
+  os.chmod(testfile,stat.S_IREAD)
+  need(testfile.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY,'Fixture READONLY attribute was not set')
+  events=[]
+  owned_cleanup.remove_owned_path(self.root,fixture,owner_check=self.verify_owner,max_seconds=self.remaining(10),emit=lambda k,v:events.append((k,v)))
+  retries=[v for k,v in events if k=='CLEANUP_READONLY_RETRY']
+  need(retries==[{'relative_path':'cleanup-fixture/readonly.txt','result':'removed'}] and not fixture.exists(),'Expected one actual fixture-only read-only retry')
+  self.verify_owner()
+  self.receipt['windows_cleanup_fixture']='PASS_SINGLE_OWNED_READONLY_FILE_ONLY'
+  print('WINDOWS_CLEANUP_FIXTURE '+json.dumps({'state':self.receipt['windows_cleanup_fixture'],'large_tree_cleanup':'NOT_ESTABLISHED'}),flush=True)
  def tools_and_runtime(self):
   super().tools_and_runtime()
   path_roots=[('llvm-bin',self.llvm/'bin'),('cmake-bin',self.cmake.parent),('ninja-bin',self.ninja.parent),('python-bin',Path(sys.executable).parent),('git-bin',Path(self.git).parent),('system32',Path(os.environ['WINDIR'])/'System32'),('windows',Path(os.environ['WINDIR']))]
@@ -245,6 +258,7 @@ class StagedBuild(core.Build):
    p=Path(p);allowed.add(str(p));allowed.add(os.path.relpath(p,self.build))
   for p in source+generated:add(p)
   mapping=self.external_before.private_root_mapping()
+  need(Path(mapping.get('ninja',''))==self.ninja,'Exact Ninja path lacks matching selected-file fingerprint')
   for item in self.external_before.private_manifest()['roots']:
    physical=Path(mapping[item['logical_id']])
    for r in item['records']:
@@ -254,7 +268,7 @@ class StagedBuild(core.Build):
     installed=Path(self.c['windows_sdk_root'])
     if p.is_relative_to(installed/'Include'):add(self.sdk/'Include'/p.relative_to(installed/'Include'))
   outputs=set(self.graph['outputs'])|{str(self.build/x) for x in self.graph['outputs']}
-  return checkpoint.Policy(owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472))
+  return checkpoint.Policy(owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),approved_path_files=(str(self.ninja),),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472))
  def metadata(self):
   if self.stage_name=='A':
    a=self.receipt['appveyor'];producer={'account':a['account'],'project_slug':a['project_slug'],'build_id':a['build_id'],'job_id':a['job_id'],'configuration_commit':a['provider_commit']}
@@ -307,7 +321,7 @@ class StagedBuild(core.Build):
   self.cleanup_operation='remove-owned-path'
   limit=self.remaining(60)
   owned_cleanup.remove_owned_path(self.owned_root,target,owner_check=self.verify_owner,max_seconds=limit,emit=lambda k,v:print(k+' '+json.dumps(v,sort_keys=True),flush=True))
- def remove_junctions(self):
+ def remove_junctions(self,read_only=False):
   self.cleanup_operation='unlink-sdk-junctions'
   allowed={self.owned_root/'sdk-overlay/Include',self.owned_root/'sdk-overlay/Lib'/self.c['windows_sdk_headers_version']}
   for p in reversed(self.junctions):
@@ -317,10 +331,11 @@ class StagedBuild(core.Build):
     for parent in [self.owned_root,self.owned_root/'sdk-overlay',p.parent]:need(not(parent.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT),'SDK junction parent is a reparse point')
     target=Path(self.c['windows_sdk_root'])/('Include' if p.name=='Include' else 'Lib/'+self.c['windows_sdk_headers_version'])
     need(p.resolve()==target.resolve(),'SDK junction target changed')
+    if read_only:continue
     try:os.rmdir(p)
     except OSError as e:
      print('CLEANUP_DETAIL '+json.dumps({'operation':'unlink-sdk-junction','relative_path':p.relative_to(self.owned_root).as_posix(),'error_type':type(e).__name__,'errno':e.errno,'winerror':getattr(e,'winerror',None)},sort_keys=True),flush=True);raise
-  self.junctions=[]
+  if not read_only:self.junctions=[]
  def clean_before_upload(self):
   self.phase='owned-cleanup-before-upload';need(not self.child_uncertain,'Uncertain child forbids artifact promotion');self.verify_owner();self.remove_junctions()
   core.checked_hash(self.artifact,self.receipt['artifact']['sha256'])
@@ -345,12 +360,17 @@ class StagedBuild(core.Build):
   print('PUBLIC_ARTIFACT_RECEIPT '+json.dumps({'appveyor':self.receipt['appveyor'],'artifact':self.receipt['artifact'],'stage':self.stage_name,'state':self.receipt['state']},sort_keys=True),flush=True)
  def run(self):
   try:
-   self.validate_contract();self.verify_configuration_checkout();self.start_workspace()
+   self.validate_contract();self.verify_configuration_checkout();self.start_workspace();self.windows_cleanup_fixture()
    for method in [self.tools_and_runtime,self.source_assembly,self.configure]:
     print('PHASE '+method.__name__+' '+str(round(time.monotonic()-self.started,3)),flush=True);method()
    self.prepare_materials();self.owned_baseline=self.owned_identity();self.external_before=self.external_identity()
    need(self.external_before.public_summary()['backend']=='windows-handles','Actual Windows fingerprint backend required')
    self.receipt['external_input_fingerprint']=self.external_before.public_summary()
+   self.receipt['checkpoint_policy_preflight']=checkpoint.validate_policy(self.checkpoint_policy(),self.metadata())
+   print('CHECKPOINT_POLICY_PREFLIGHT '+json.dumps(self.receipt['checkpoint_policy_preflight'],sort_keys=True),flush=True)
+   self.remove_junctions(read_only=True)
+   self.receipt['owned_tree_preflight']=owned_cleanup.preflight_owned_tree(self.root,self.root,owner_check=self.verify_owner,verified_junctions=tuple(self.junctions),max_seconds=self.remaining(60),emit=lambda k,v:print(k+' '+json.dumps(v,sort_keys=True),flush=True))
+   print('OWNED_TREE_PREFLIGHT '+json.dumps(self.receipt['owned_tree_preflight'],sort_keys=True),flush=True)
    (self.stage_a if self.stage_name=='A' else self.stage_b)();self.clean_before_upload();self.upload();return 0
   except Exception as e:
    self.receipt['state']='BLOCKED_UPLOAD_UNCERTAIN' if self.upload_attempted and not self.upload_accepted else 'BLOCKED'
@@ -360,7 +380,7 @@ class StagedBuild(core.Build):
     if self.child_uncertain:print('CLEANUP_UNCERTAIN no artifact fallback; owned ephemeral work retained for provider teardown',flush=True)
     else:
      try:self.cleanup_operation='verify-owned-marker';self.verify_owner();self.remove_junctions();self.remove_owned(self.owned_root);print('CLEANUP owned work removed',flush=True)
-     except Exception as e:print('CLEANUP_INCOMPLETE '+json.dumps({'operation':getattr(self,'cleanup_operation','unknown'),'error_type':type(e).__name__,'errno':getattr(e,'errno',None),'winerror':getattr(e,'winerror',None),'artifact_fallback':False},sort_keys=True),flush=True)
+     except Exception as e:print('CLEANUP_INCOMPLETE '+json.dumps({'operation':getattr(self,'cleanup_operation','unknown'),'error_type':type(e).__name__,'reason_code':getattr(e,'reason_code',None),'errno':getattr(e,'errno',None),'winerror':getattr(e,'winerror',None),'artifact_fallback':False},sort_keys=True),flush=True)
    print('FINALIZATION no cache, fallback artifact, deploy or retry',flush=True)
 
 def main():

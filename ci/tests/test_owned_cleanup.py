@@ -83,4 +83,77 @@ class CleanupTests(unittest.TestCase):
   with mock.patch.object(os,'rmdir',side_effect=rmdir),mock.patch.object(os,'chmod') as chmod:
    with self.assertRaises(PermissionError):self.run_clean()
    chmod.assert_not_called()
+ def test_entry_and_time_limit_reason_codes(self):
+  for kwargs,code in [({'max_entries':1},'CLEANUP_ENTRY_LIMIT'),({'max_seconds':0},'CLEANUP_TIME_LIMIT')]:
+   events=[]
+   with self.assertRaises(clean.CleanupError) as result:
+    clean.remove_owned_path(self.root,self.tree,owner_check=self.owner,emit=lambda k,v:events.append(v),**kwargs)
+   self.assertEqual(result.exception.reason_code,code)
+   self.assertTrue(any(v.get('reason_code')==code and 'entries_checked' in v and 'elapsed_seconds' in v for v in events))
+   self.assertTrue(self.file.exists())
+ def test_changed_root_identity_rejected(self):
+  original=os.walk;renamed=self.root.parent/'moved'
+  def walk(*a,**kw):
+   for row in original(*a,**kw):
+    self.root.rename(renamed);self.root.mkdir();self.marker.write_text('fixture')
+    yield row;return
+  with mock.patch.object(os,'walk',side_effect=walk):
+   with self.assertRaisesRegex(clean.CleanupError,'ROOT_IDENTITY_CHANGED'):self.run_clean()
+  self.assertEqual((renamed/'source/object').read_text(),'owned')
+ def test_retry_does_not_trust_prewalk_ancestor_cache(self):
+  outside=Path(self.tmp.name)/'outside';outside.mkdir();sentinel=outside/'object';sentinel.write_text('external');self.file.chmod(0o444)
+  moved=self.root/'moved';original=os.unlink;fired=False
+  def unlink(path,*args,**kwargs):
+   nonlocal fired
+   if Path(path).name=='object' and not fired:
+    fired=True;self.tree.rename(moved);self.tree.symlink_to(outside,target_is_directory=True)
+    e=PermissionError(errno.EACCES,'fixture');e.winerror=5;raise e
+   return original(path,*args,**kwargs)
+  with mock.patch.object(os,'unlink',side_effect=unlink),mock.patch.object(os,'chmod') as chmod:
+   with self.assertRaisesRegex(clean.CleanupError,'UNEXPECTED_REPARSE_POINT'):self.run_clean()
+   chmod.assert_not_called()
+  self.assertEqual(sentinel.read_text(),'external');self.assertEqual((moved/'object').read_text(),'owned')
+ def test_read_only_prewalk_never_mutates(self):
+  before={str(p):p.stat().st_mtime_ns for p in self.root.rglob('*')}
+  with mock.patch.object(os,'unlink') as unlink,mock.patch.object(os,'chmod') as chmod,mock.patch.object(os,'rmdir') as rmdir:
+   receipt=clean.preflight_owned_tree(self.root,self.root,owner_check=self.owner)
+   unlink.assert_not_called();chmod.assert_not_called();rmdir.assert_not_called()
+  self.assertEqual(receipt['state'],'PASS_READ_ONLY_PREWALK');self.assertFalse(receipt['deletion_performed'])
+  self.assertEqual(before,{str(p):p.stat().st_mtime_ns for p in self.root.rglob('*')})
+ def test_only_verified_mountpoint_entries_pruned_without_descent(self):
+  from types import SimpleNamespace
+  outside=Path(self.tmp.name)/'sdk';outside.mkdir();(outside/'sentinel').write_text('external')
+  link=self.root/'sdk-link';link.symlink_to(outside,target_is_directory=True);original=Path.lstat
+  def lstat(path,*a,**kw):
+   self.assertFalse(path.is_relative_to(outside),'must not inspect installed subtree')
+   result=original(path,*a,**kw)
+   if path==link:
+    values={n:getattr(result,n) for n in dir(result) if n.startswith('st_')};values.update(st_file_attributes=0x400,st_reparse_tag=0xa0000003);return SimpleNamespace(**values)
+   return result
+  with mock.patch.object(Path,'lstat',lstat),mock.patch.object(os,'unlink') as unlink,mock.patch.object(os,'rmdir') as rmdir:
+   receipt=clean.preflight_owned_tree(self.root,self.root,owner_check=self.owner,verified_junctions=(link,))
+   unlink.assert_not_called();rmdir.assert_not_called()
+  self.assertEqual(receipt['verified_junction_entries_pruned'],1);self.assertEqual((outside/'sentinel').read_text(),'external');self.assertTrue(link.is_symlink())
+ def test_unverified_or_ordinary_entry_cannot_be_skipped(self):
+  with self.assertRaisesRegex(clean.CleanupError,'INVALID_VERIFIED_JUNCTION_ENTRY'):
+   clean.preflight_owned_tree(self.root,self.root,owner_check=self.owner,verified_junctions=(self.tree,))
+  with self.assertRaises(TypeError):clean.remove_owned_path(self.root,self.root,owner_check=self.owner,verified_junctions=(self.tree,))
+  self.assertTrue(self.file.exists())
+ def test_large_readonly_scan_checks_leafs_without_repeating_ancestor_chains(self):
+  folder=self.tree/'a'/'b'/'c'/'d';folder.mkdir(parents=True)
+  for i in range(500):(folder/f'{i}.txt').write_text('fixture')
+  count=[0];original=Path.lstat
+  def counted(path,*a,**kw):count[0]+=1;return original(path,*a,**kw)
+  with mock.patch.object(Path,'lstat',counted):receipt=clean.preflight_owned_tree(self.root,self.root,owner_check=self.owner)
+  self.assertGreaterEqual(receipt['entries_checked'],500);self.assertLess(count[0],1700);self.assertEqual(len(list(folder.iterdir())),500)
+ def test_scandir_error_blocks_readonly_pass_and_no_mutation(self):
+  original=os.scandir
+  def scandir(path):
+   if Path(path)==self.tree:raise PermissionError(errno.EACCES,'fixture',str(self.tree))
+   return original(path)
+  events=[]
+  with mock.patch.object(os,'scandir',side_effect=scandir),mock.patch.object(os,'unlink') as unlink,mock.patch.object(os,'chmod') as chmod:
+   with self.assertRaises(PermissionError):clean.preflight_owned_tree(self.root,self.root,owner_check=self.owner,emit=lambda k,v:events.append(v))
+   unlink.assert_not_called();chmod.assert_not_called()
+  self.assertTrue(any(e['relative_path']=='source' and e['error_type']=='PermissionError' for e in events));self.assertTrue(self.file.exists())
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -107,6 +107,16 @@ class StageChecks(unittest.TestCase):
   with mock.patch.object(staged.owned_cleanup,'remove_owned_path') as remove:
    with self.assertRaises(driver.Blocked):b.remove_owned(Path('unused'))
    remove.assert_not_called()
+ def test_early_policy_validation_and_windows_fixture_order(self):
+  tree=ast.parse((CI/'staged_driver.py').read_text());run=next(x for x in ast.walk(tree) if isinstance(x,ast.FunctionDef) and x.name=='run');text=ast.unparse(run)
+  self.assertLess(text.index('self.windows_cleanup_fixture()'),text.index('self.tools_and_runtime'))
+  self.assertLess(text.index('checkpoint.validate_policy('),text.index('self.stage_a'))
+  self.assertLess(text.index('owned_cleanup.preflight_owned_tree('),text.index('self.stage_a'))
+  fixture=next(x for x in ast.walk(tree) if isinstance(x,ast.FunctionDef) and x.name=='windows_cleanup_fixture');f=ast.unparse(fixture)
+  self.assertLess(f.index('owned_cleanup.remove_owned_path('),f.rindex('self.verify_owner()'))
+  method=next(x for x in ast.walk(tree) if isinstance(x,ast.FunctionDef) and x.name=='checkpoint_policy');text=ast.unparse(method)
+  self.assertIn('approved_path_files=(str(self.ninja),)',text)
+  self.assertIn("mapping.get('ninja', '')",text)
  def test_manifest_bytes(self):
   for e in json.loads((CI/'driver-manifest.json').read_text())['files']:
    data=(CI/e['path']).read_bytes();self.assertEqual(hashlib.sha256(data).hexdigest(),e['sha256'],e['path']);self.assertEqual(len(data),e['size'])

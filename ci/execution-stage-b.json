@@ -2,7 +2,7 @@
   "schema": 1,
   "state": "DRAFT_NOT_AUTHORIZED",
   "root_go_reference": null,
-  "reviewed_driver_manifest_sha256": "12fb0e8695fc990775089bcd4dc9e7d64ecb74c9c9c9186d1c15595e00360683",
+  "reviewed_driver_manifest_sha256": "9b43ead08eee93aa5b7bebaca27781ebe4dd59a9881c141b053413aeb862b122",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",

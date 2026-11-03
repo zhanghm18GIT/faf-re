@@ -78,6 +78,33 @@ class TestCheckpoint(unittest.TestCase):
                 z.writestr(i, data)
         self.receipt = {'bytes': self.zip.stat().st_size, 'sha256': hashlib.sha256(self.zip.read_bytes()).hexdigest()}
 
+    def test_exact_selected_external_file_declaration(self):
+        ninja=r'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe'
+        policy=dataclasses.replace(self.policy,allowed_log_inputs=self.policy.allowed_log_inputs|{ninja})
+        with self.assertRaises(c.CheckpointError):c.validate_policy(policy,self.meta)
+        policy=dataclasses.replace(policy,approved_path_files=(ninja,))
+        result=c.validate_policy(policy,self.meta)
+        self.assertEqual(result['state'],'PASS_DECLARATIONS_ONLY')
+        self.assertEqual(result['exact_external_file_count'],1)
+        self.assertFalse(any(x.relpath.lower().endswith('.exe') for x in policy.payloads))
+
+    def test_exact_ninja_absolute_relative_and_aliases(self):
+        ninja=r'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe'
+        policy=dataclasses.replace(self.policy,approved_path_files=(ninja,),log_base_root=r'C:\faf-re-staged\recipe\build')
+        relative=r'..\..\..\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe'
+        for value in [ninja,relative,ninja.upper(),ninja.replace('\\','/')]:c.approved_path(value,policy)
+        for value in [ninja+'.bak',ninja+'\\child',ninja.replace('ninja.exe','other.exe'),relative.replace('ninja.exe','..\\other.exe'),ninja.rsplit('\\',1)[0]]:
+            with self.assertRaises(c.CheckpointError):c.approved_path(value,policy)
+
+    def test_drive_relative_exact_file_is_not_absolute(self):
+        with self.assertRaises(c.CheckpointError):c.validate_policy(dataclasses.replace(self.policy,approved_path_files=('C:ninja.exe',)))
+
+    def test_policy_validation_precedes_payload_reads(self):
+        bad=dataclasses.replace(self.policy,allowed_log_inputs=self.policy.allowed_log_inputs|{r'C:\unapproved\tool.exe'})
+        with mock.patch.object(c,'_read') as read:
+            with self.assertRaises(c.CheckpointError):c.validate_policy(bad,self.meta)
+            read.assert_not_called()
+
     def test_roundtrip_restores_ns_and_exact_content(self):
         original = self.validate()
         for spec in self.policy.inputs:

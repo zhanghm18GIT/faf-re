@@ -63,6 +63,7 @@ class Policy:
     approved_path_roots: tuple[str, ...]
     log_base_root: str  # stable absolute build path for relative Ninja paths
     limits: Limits = field(default_factory=Limits)
+    approved_path_files: tuple[str, ...] = ()  # Exact logical-path admission only, never a directory/payload grant.
 
 
 MANIFEST = 'checkpoint-manifest.json'
@@ -98,7 +99,8 @@ def approved_path(path, policy):
     if not absolute(path):
         key = path_key(ntpath.join(policy.log_base_root, path))
     roots = [path_key(p).rstrip('\\') for p in policy.approved_path_roots]
-    require(any(key == r or key.startswith(r + '\\') for r in roots), 'unapproved stable path: ' + path)
+    exact = {path_key(p) for p in policy.approved_path_files}
+    require(key in exact or any(key == r or key.startswith(r + '\\') for r in roots), 'unapproved stable path: ' + path)
 
 
 SCAN_CHUNK_BYTES = 1024 * 1024
@@ -178,6 +180,9 @@ def _safe_path(policy, spec, *, allow_missing=False):
 def _policy(policy):
     require(set(policy.owned_roots) == set(policy.root_kinds), 'root-kind mismatch')
     require(policy.owned_roots and policy.approved_path_roots and absolute(policy.log_base_root), 'missing root boundaries')
+    require(len(policy.approved_path_files) <= 16, 'exact external-file count bound')
+    exact = [path_key(p) for p in policy.approved_path_files]
+    require(len(set(exact)) == len(exact) and all(ntpath.isabs(p) for p in policy.approved_path_files), 'invalid exact external-file declaration')
     roots = []
     for label, root in policy.owned_roots.items():
         relative_name(label)
@@ -234,6 +239,15 @@ def _policy(policy):
         require(len(set(keys)) == len(keys), 'logical path aliases/case collisions')
         for p in group:
             approved_path(p, policy)
+
+
+def validate_policy(policy, metadata=None):
+    """Validate all declarations before expensive work; no payload-read/pass claim."""
+    _policy(policy)
+    if metadata is not None:
+        metadata_paths(metadata, policy)
+    return {'state': 'PASS_DECLARATIONS_ONLY', 'payload_count': len(policy.payloads),
+            'input_count': len(policy.inputs), 'exact_external_file_count': len(policy.approved_path_files)}
 
 
 def _range(data, offset, size, label):
