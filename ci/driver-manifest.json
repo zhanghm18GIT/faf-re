@@ -4,13 +4,13 @@
   "files": [
     {
       "path": "driver.py",
-      "sha256": "669b820ef5faa3b104ee58756c61730108b6946c1878dcbce3505527b4157d4f",
-      "size": 59083
+      "sha256": "5e9945289435a705449abe071d345fdb9bd1499dc11b275f59ecec1cae714e6d",
+      "size": 60218
     },
     {
       "path": "run-client-build.ps1",
-      "sha256": "39b814e34e3f11084b889198b0d9fd3ca050f1602db6f0c5b3d32997259a39b6",
-      "size": 1316
+      "sha256": "513d13dca63a4af683ceb128e773b57eda2ce5d17cd893c9a9a2f8f435374747",
+      "size": 3815
     },
     {
       "path": "integration-manifest.json",

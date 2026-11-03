@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """DRAFT Windows-only one-job RE build driver. Importing this file does nothing.
-No execution without --execute, a fully approved contract, and matching reviewed hashes.
+No build execution without --execute, an approved contract, and matching reviewed hashes.
+The separate --check-interpreter mode reports identity and exits without build/download.
 The only external write is an exact, explicitly enabled AppVeyor package upload.
 """
 from __future__ import annotations
@@ -10,6 +11,7 @@ import ctypes
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path, PurePosixPath
 import re
 import shutil
@@ -59,6 +61,20 @@ class Blocked(RuntimeError):
 def require(condition, message):
     if not condition:
         raise Blocked(message)
+
+def interpreter_identity():
+    return {"executable": sys.executable, "version": sys.version.split()[0],
+            "os_name": os.name, "pointer_bits": struct.calcsize("P") * 8,
+            "machine": platform.machine()}
+
+def validate_interpreter():
+    identity = interpreter_identity()
+    print("INTERPRETER_IDENTITY " + json.dumps(identity, sort_keys=True), flush=True)
+    require(identity["os_name"] == "nt", "Interpreter OS must be Windows (os.name=nt)")
+    require(identity["pointer_bits"] == 64, "Interpreter must have 64-bit pointers; no x86 fallback")
+    # Machine name is diagnostic; the wrapper checks actual AMD64 PE32+ bytes.
+    require(sys.version_info >= (3, 11), "Python >=3.11 required; do not install automatically")
+    return identity
 
 def sha(path):
     h = hashlib.sha256()
@@ -265,8 +281,7 @@ class Build:
     def validate_contract(self):
         c = self.c
         resolve_contract_receipts(self.here, c)
-        require(os.name == "nt" and struct.calcsize("P") == 8, "Execution requires Windows x64 Python")
-        require(sys.version_info >= (3, 11), "Python >=3.11 required; do not install automatically")
+        validate_interpreter()
         require(c.get("schema") == 1 and c.get("state") == "APPROVED_FOR_ONE_MANUAL_BUILD", "Draft contract is intentionally inert")
         require(c.get("root_go_reference") and "REQUIRED" not in c["root_go_reference"], "Final root GO missing")
         require(c.get("parallelism") in [1, 2] and 0 < c.get("max_total_seconds", 0) <= 3300, "Build resource bounds invalid")
@@ -836,9 +851,19 @@ class Build:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--contract", type=Path, required=True)
+    parser.add_argument("--contract", type=Path)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--check-interpreter", action="store_true", help="Identity/architecture check only; no build or download")
     args = parser.parse_args()
+    if args.check_interpreter:
+        try:
+            validate_interpreter()
+            return 0
+        except Blocked as exc:
+            print("INTERPRETER_BLOCKED " + str(exc), flush=True)
+            return 1
+    if not args.contract:
+        parser.error("--contract is required unless --check-interpreter is used")
     if not args.execute:
         print("DRAFT ONLY. No execution requested.")
         return 2

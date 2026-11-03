@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "public-x64-config-20261103-1017",
-  "reviewed_driver_manifest_sha256": "6fb679aab8b1d7fc6ef37874dbee9eb39e02c5202be5eca3778044019b397119",
+  "root_go_reference": "public-x64-python-fix-20261103-1044",
+  "reviewed_driver_manifest_sha256": "ece775b8336ca1733b25ac1368c8cf6cdf0de512735ed80b2b396b6f6ecaf35d",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-b620-20261103",
-    "parent_commit": "e266d19c1ceed8315866a2b874df31b244876035",
+    "parent_commit": "0dead6aeea9cd279762f460294017f7bcdd75f7b",
     "tracked_files": [
       ".gitattributes",
       "README.md",
