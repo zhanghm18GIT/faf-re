@@ -20,6 +20,17 @@ STAGES={'A','B'}
 EFFECT_REGEX='^effect_scan$'
 RECIPE_FILE='dependency-recipe.json'
 
+def validate_public_literal_graph(graph, targets, source, build):
+ # Normalize lexical relative paths without following any filesystem links.
+ expected=Path(os.path.normpath(str(Path(source)/checkpoint.WX_LITERAL_SOURCE)))
+ rows=[]
+ for row in graph['records']:
+  p=Path(row['source']);p=p if p.is_absolute() else Path(build)/p
+  if row['target']=='wxmswu' and Path(os.path.normpath(str(p)))==expected:rows.append(row)
+ need(len(rows)==1 and rows[0]['output']==checkpoint.WX_LITERAL_OBJECT,'Public literal source/object graph mismatch')
+ need(targets['wxmswu']['artifact']==checkpoint.WX_LITERAL_LIBRARY,'Public literal library graph mismatch')
+
+
 def json_hash(x):return hashlib.sha256(json.dumps(x,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 def single_test(data,name,exe,commands=True):
  tests=data.get('tests',[]);need(len(tests)==1 and tests[0].get('name')==name,'Unexpected standalone test discovery')
@@ -334,7 +345,10 @@ class StagedBuild(core.Build):
    rel='dependencies/'+row['component']+'/'+row['path']
    text_pins['source/'+rel]=row['sha256']
    text_pins['material/corresponding-source/engine/'+rel]=row['sha256']
-  return checkpoint.Policy(material_text_pins=text_pins,owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),approved_path_files=(str(self.ninja),),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472,manifest_bytes=25_165_824))
+  # Bind the reviewed public source literal to the actual admitted Ninja edge
+  # and CMake artifact. Any graph/layout change fails before dependency build.
+  validate_public_literal_graph(self.graph,self.target_data,self.source,self.build)
+  return checkpoint.Policy(public_literal_rules=(checkpoint.WX_LITERAL_RULE,),material_text_pins=text_pins,owned_roots=roots,root_kinds=kinds,payloads=tuple(payloads),inputs=tuple(inputs),allowed_log_inputs=frozenset(allowed),allowed_log_outputs=frozenset(outputs),approved_path_roots=tuple(sorted(approved)),log_base_root=str(self.build),approved_path_files=(str(self.ninja),),limits=checkpoint.Limits(archive_bytes=400_000_000,member_bytes=536_870_912,total_bytes=3_221_225_472,manifest_bytes=25_165_824))
  def metadata(self):
   if self.stage_name=='A':
    a=self.receipt['appveyor'];producer={'account':a['account'],'project_slug':a['project_slug'],'build_id':a['build_id'],'job_id':a['job_id'],'configuration_commit':a['provider_commit']}
@@ -359,8 +373,11 @@ class StagedBuild(core.Build):
   source=Path(objects[0]['source']);source=source if source.is_absolute() else self.build/source
   need(source.resolve()==(self.source/'dependencies/monocypher/src/monocypher.c').resolve(),'Unexpected pilot translation unit')
   need(not any((self.build/x).exists() for x in self.graph['outputs']),'Producer pilot requires absent selected outputs')
+  wx=[r for r in self.graph['records'] if r['output']==checkpoint.WX_LITERAL_OBJECT and r['target']=='wxmswu']
+  need(len(wx)==1,'Missing exact public-literal pilot edge')
+  rows += wx
   self.phase='dependency-format-pilot'
-  self.command([self.cmake,'--build',self.build,'--target','faf_monocypher','--parallel','2','--verbose','--','-d','keeprsp'],name='dependency-pilot')
+  self.command([self.cmake,'--build',self.build,'--target','faf_monocypher',checkpoint.WX_LITERAL_OBJECT,'--parallel','2','--verbose','--','-d','keeprsp'],name='dependency-pilot')
   need({x for x in self.graph['outputs'] if (self.build/x).exists()}=={x['output'] for x in rows},'Pilot produced unexpected or missing selected outputs')
   members=['build/'+x['output'] for x in rows]+['build/.ninja_log','build/.ninja_deps']
   self.receipt['dependency_format_pilot']=checkpoint.validate_built_subset(self.checkpoint_policy(),members,self.checkpoint_boundary)

@@ -73,6 +73,7 @@ class Policy:
     limits: Limits = field(default_factory=Limits)
     approved_path_files: tuple[str, ...] = ()  # Exact logical-path admission only, never a directory/payload grant.
     material_text_pins: Mapping[str, str] = field(default_factory=dict)
+    public_literal_rules: tuple[str, ...] = ()  # Reviewed IDs only; no caller-provided strings, roots, offsets or hashes.
 
 
 MANIFEST = 'checkpoint-manifest.json'
@@ -83,6 +84,124 @@ HEADER_SUFFIXES = frozenset({'.h', '.hh', '.hpp', '.hxx', '.inc', '.inl'})
 DEFERRED_KINDS = frozenset({'obj', 'lib', 'ninja_log', 'ninja_deps'})
 BIGOBJ_ID = bytes.fromhex('c7a1bad1eebaa94baf20faf66aa4dcb8')
 BoundaryCheck = Callable[[str, FileSpec | None, bytes | dict], None]
+
+
+# Public wx 2.4.2 Windows PostScript default, not a build-worker path.
+# This is intentionally not a general literal allowlist. Unknown IDs fail closed.
+WX_LITERAL_RULE = 'wx242-msw-afm-default-v1'
+WX_LITERAL_SOURCE = 'dependencies/wxWindows-2.4.2/src/common/cmndata.cpp'
+WX_LITERAL_SOURCE_SHA256 = 'd7b4712ce7b1cdee89a4c44fb49848fc3143bf8be38c3ed30ea3b2996e0cfb2c'
+WX_LITERAL_OBJECT = 'cmake/deps/wxwindows/CMakeFiles/wxmswu.dir/__/__/__/dependencies/wxWindows-2.4.2/src/common/cmndata.cpp.obj'
+WX_LITERAL_LIBRARY = 'cmake/deps/wxwindows/wxmswu.lib'
+WX_LITERAL_SYMBOL = b'??_C@_1CG@ENHPNFKP@?$AAc?$AA?3?$AA?2?$AAw?$AAi?$AAn?$AAd?$AAo?$AAw?$AAs?$AA?2?$AAs?$AAy?$AAs?$AAt?$AAe?$AAm?$AA?2?$AA?$AA@'
+WX_LITERAL_BYTES = ('c:' + chr(92) + 'windows' + chr(92) + 'system' + chr(92) + chr(0)).encode('utf-16le')
+
+
+def _public_literal_provenance(policy):
+    require(type(policy.public_literal_rules) is tuple and policy.public_literal_rules in ((), (WX_LITERAL_RULE,)), 'unknown/duplicate public literal rule')
+    if not policy.public_literal_rules:
+        return False
+    source = FileSpec('source', WX_LITERAL_SOURCE, 'material')
+    require(source in policy.inputs and policy.root_kinds.get('source') == 'source', 'public literal source is not a declared source input')
+    require(FileSpec('build', WX_LITERAL_OBJECT, 'obj') in policy.payloads and FileSpec('build', WX_LITERAL_LIBRARY, 'lib') in policy.payloads, 'public literal outputs are not declared exact payloads')
+    path = _safe_path(policy, source)
+    require(path.is_file() and path.stat().st_size <= 128000, 'missing/oversized public literal source')
+    require(hashlib.sha256(path.read_bytes()).hexdigest() == WX_LITERAL_SOURCE_SHA256, 'public literal source pin mismatch')
+    return True
+
+
+def _public_literal_ranges(data, policy, spec, archive_name=None):
+    if not policy.public_literal_rules:
+        return []
+    _public_literal_provenance(policy)
+    if spec == FileSpec('build', WX_LITERAL_OBJECT, 'obj'):
+        require(archive_name is None, 'unexpected public literal archive identity')
+    elif spec == FileSpec('build', WX_LITERAL_LIBRARY, 'lib'):
+        # llvm-lib preserves the relative input path in its longname table.
+        # Also recognize the absolute spelling only at the approved build root.
+        names = {WX_LITERAL_OBJECT.replace('/', chr(92)), WX_LITERAL_OBJECT}
+        root = str(policy.owned_roots['build']).rstrip('/' + chr(92))
+        names |= {root + '/' + WX_LITERAL_OBJECT, root.replace('/', chr(92)) + chr(92) + WX_LITERAL_OBJECT.replace('/', chr(92))}
+        if archive_name not in names:
+            return []
+    else:
+        return []
+    # inspect_coff has already bounded headers, symbols and every section.
+    big = bytes(data[:4]) == b'\0\0\xff\xff'
+    header = 56 if big else 20
+    sections = struct.unpack_from('<I' if big else '<H', data, 44 if big else 2)[0]
+    ranges = []
+    extents = []
+    metadata_extents = []
+    for i in range(sections):
+        at = header + i * 40
+        size, start = struct.unpack_from('<II', data, at + 16)
+        flags = struct.unpack_from('<I', data, at + 36)[0]
+        rp, lp, nr, nl = struct.unpack_from('<IIHH', data, at + 24)
+        if flags & 0x1000000:
+            nr = struct.unpack_from('<I', data, rp)[0]
+        if nr: metadata_extents.append((rp, rp + nr * 10))
+        if nl: metadata_extents.append((lp, lp + nl * 6))
+        if size and start:
+            extents.append((start, start + size, i))
+        # An entire dedicated, immutable string COMDAT, not an arbitrary match
+        # inside rdata. Exact size/value includes its UTF-16 NUL terminator.
+        if bytes(data[at:at+8]) != b'.rdata\0\0' or flags != 0x40201040:
+            continue
+        if size != len(WX_LITERAL_BYTES) or bytes(data[start:start+size]) != WX_LITERAL_BYTES:
+            continue
+        reloc, lines, nr, nl = struct.unpack_from('<IIHH', data, at + 24)
+        if reloc or lines or nr or nl:
+            continue
+        ranges.append((start, start + size, i))
+    # Refuse overlapping section aliases; masking must never hide debug bytes.
+    result = []
+    for start, end, number in ranges:
+        require(not any(other != number and start < b and a < end for a,b,other in extents), 'public literal section overlaps another section')
+        symbols = struct.unpack_from('<I', data, 48 if big else 8)[0]
+        require(symbols and end <= symbols, 'public literal missing/overlapping symbols')
+        require(not any(start < b and a < end for a,b in metadata_extents), 'public literal overlaps COFF metadata')
+        require(_public_literal_symbols(data, number + 1, big), 'public literal lacks canonical string COMDAT symbols')
+        result.append((start, end))
+    require(len(result) <= 1, 'duplicate public literal section')
+    return result
+
+
+def _public_literal_symbols(data, section, big):
+    width = 20 if big else 18
+    symbols, count = struct.unpack_from('<II', data, 48 if big else 8)
+    strings = symbols + count * width
+    slen = struct.unpack_from('<I', data, strings)[0]
+    section_defs = literal_defs = 0
+    i = 0
+    while i < count:
+        at = symbols + i * width
+        name = bytes(data[at:at+8])
+        if name[:4] == b'\0' * 4:
+            off = struct.unpack_from('<I', name, 4)[0]
+            require(4 <= off < slen, 'public literal invalid symbol string offset')
+            tail = bytes(data[strings+off:strings+slen])
+            end = tail.find(b'\0')
+            require(end >= 0, 'public literal unterminated symbol name')
+            name = tail[:end]
+        else:
+            name = name.rstrip(b'\0')
+        value = struct.unpack_from('<I', data, at+8)[0]
+        sec = struct.unpack_from('<i' if big else '<h', data, at+12)[0]
+        typ, storage, aux = struct.unpack_from('<HBB', data, at+(16 if big else 14))
+        if sec == section:
+            if name == b'.rdata' and value == typ == 0 and storage == 3 and aux == 1:
+                a = at + width
+                length, nr, nl, crc, number, selection = struct.unpack_from('<IHHIHB', data, a)
+                high = struct.unpack_from('<H', data, a+16)[0]
+                require(length == len(WX_LITERAL_BYTES) and nr == nl == 0 and crc == 0x2A79B1E3 and (number | (high << 16)) == section and selection == 2, 'public literal invalid COMDAT definition')
+                section_defs += 1
+            elif name == WX_LITERAL_SYMBOL and value == typ == aux == 0 and storage == 2:
+                literal_defs += 1
+            else:
+                return False
+        i += 1 + aux
+    return section_defs == literal_defs == 1
 
 
 def relative_name(name):
@@ -207,6 +326,7 @@ def _safe_path(policy, spec, *, allow_missing=False):
 
 
 def _policy(policy):
+    _public_literal_provenance(policy)
     require(set(policy.owned_roots) == set(policy.root_kinds), 'root-kind mismatch')
     require(policy.owned_roots and policy.approved_path_roots and absolute(policy.log_base_root), 'missing root boundaries')
     require(len(policy.approved_path_files) <= 16, 'exact external-file count bound')
@@ -425,7 +545,7 @@ def _archive_symbol_names(body_tail, count):
     reject('archive_symbol_name_unterminated')
 
 
-def inspect_archive(data, *, object_spans=None):
+def inspect_archive(data, *, object_spans=None, named_object_spans=None):
     require(data.startswith(b'!<arch>\n'), 'not a regular COFF archive')
     pos, objects, longnames, symbol_count = 8, 0, None, 0
     object_offsets, symbol_offset_views = set(), []
@@ -484,6 +604,8 @@ def inspect_archive(data, *, object_spans=None):
             inspect_coff(body)
             if object_spans is not None:
                 object_spans.append((at, at+size))
+            if named_object_spans is not None:
+                named_object_spans.append((at, at+size, name))
             object_offsets.add(pos)
             objects += 1
         pos = at+size
@@ -702,20 +824,27 @@ def _content(spec, data, policy):
         require(suffix == '.obj', 'object suffix')
         inspect_coff(data)
         spans = _validated_codeview_ranges(data, policy)
-        _inspect_public_paths(data, policy, spans)
+        spans += _public_literal_ranges(data, policy, spec)
+        _inspect_public_paths(data, policy, sorted(spans))
     elif spec.kind == 'lib':
         require(suffix == '.lib', 'library suffix')
         objects = []
         try:
-            inspect_archive(data, object_spans=objects)
+            inspect_archive(data, named_object_spans=objects)
         except CheckpointError as exc:
             if exc.code:
                 raise
             raise CheckpointError('archive structure rejected', code='archive_structure_rejected', rule='archive_structure_rule') from None
         spans = []
         view = memoryview(data)
-        for start, end in objects:
-            spans.extend((start+a, start+b) for a,b in _validated_codeview_ranges(view[start:end], policy))
+        literal_objects = 0
+        for start, end, name in objects:
+            ranges = _validated_codeview_ranges(view[start:end], policy)
+            literal_ranges = _public_literal_ranges(view[start:end], policy, spec, name)
+            literal_objects += bool(literal_ranges)
+            require(literal_objects <= 1, 'duplicate public literal archive object')
+            ranges += literal_ranges
+            spans.extend((start+a, start+b) for a,b in ranges)
         _inspect_public_paths(data, policy, sorted(spans))
     elif spec.kind == 'ninja_log':
         validate_ninja_log(data, policy)

@@ -8,6 +8,26 @@ import staged_driver as staged
 import driver
 CI=Path(__file__).resolve().parents[1]
 
+class PublicLiteralGraph(unittest.TestCase):
+ def fixture(self, relative=False):
+  source=Path('/owned/source');build=Path('/owned/build');c=staged.checkpoint
+  spelling='../source/'+c.WX_LITERAL_SOURCE if relative else str(source/c.WX_LITERAL_SOURCE)
+  return {'records':[{'source':spelling,'target':'wxmswu','output':c.WX_LITERAL_OBJECT}]},{'wxmswu':{'artifact':c.WX_LITERAL_LIBRARY}},source,build
+ def test_absolute(self):staged.validate_public_literal_graph(*self.fixture())
+ def test_relative(self):staged.validate_public_literal_graph(*self.fixture(True))
+ def test_wrong_object(self):
+  g,t,s,b=self.fixture();g['records'][0]['output']='unrelated.obj'
+  with self.assertRaises(driver.Blocked):staged.validate_public_literal_graph(g,t,s,b)
+ def test_wrong_source(self):
+  g,t,s,b=self.fixture();g['records'][0]['source']='/other/cmndata.cpp'
+  with self.assertRaises(driver.Blocked):staged.validate_public_literal_graph(g,t,s,b)
+ def test_wrong_library(self):
+  g,t,s,b=self.fixture();t['wxmswu']['artifact']='unrelated.lib'
+  with self.assertRaises(driver.Blocked):staged.validate_public_literal_graph(g,t,s,b)
+ def test_duplicate_edge(self):
+  g,t,s,b=self.fixture();g['records']*=2
+  with self.assertRaises(driver.Blocked):staged.validate_public_literal_graph(g,t,s,b)
+
 class CompilerInputs(unittest.TestCase):
  def setUp(self):
   self.compiler=r'C:\stable\llvm\bin\clang-cl.exe';self.build=r'C:\stable\build'
@@ -183,6 +203,9 @@ class ProducerPilot(unittest.TestCase):
   b.target_data={'faf_monocypher':{'depends':[],'artifact':'mono.lib'}}
   src=b.source/'dependencies/monocypher/src/monocypher.c';src.parent.mkdir(parents=True);src.write_text('int x;')
   b.graph={'outputs':['mono.obj','mono.lib','other.obj'],'records':[{'target':'faf_monocypher','output':'mono.obj','source':str(src)},{'target':'faf_monocypher','output':'mono.lib','source':'unused'}]}
+  wx=staged.checkpoint.WX_LITERAL_OBJECT
+  b.graph['outputs'].append(wx);b.graph['records'].append({'target':'wxmswu','output':wx,'source':str(b.source/staged.checkpoint.WX_LITERAL_SOURCE)})
+  (b.build/wx).parent.mkdir(parents=True)
   return b
  def test_shared_deadline_no_fresh_full_allowance(self):
   with tempfile.TemporaryDirectory() as d:
@@ -210,9 +233,9 @@ class ProducerPilot(unittest.TestCase):
    b=self.setup_build(Path(d))
    def produce(*a,**kw):
     self.assertEqual(kw['name'],'dependency-pilot');self.assertIn('faf_monocypher',a[0]);self.assertNotIn('faf_main',a[0])
-    for name in ['mono.obj','mono.lib']:(b.build/name).write_bytes(b'fixture')
+    for name in ['mono.obj','mono.lib',staged.checkpoint.WX_LITERAL_OBJECT]:(b.build/name).write_bytes(b'fixture')
    with mock.patch.object(b,'command',side_effect=produce),mock.patch.object(b,'checkpoint_policy',return_value='policy'),mock.patch.object(staged.checkpoint,'validate_built_subset',return_value={'state':'PASS_BUILT_SUBSET_ONLY'}) as check:
-    b.dependency_pilot();self.assertEqual(set(check.call_args.args[1]),{'build/mono.obj','build/mono.lib','build/.ninja_log','build/.ninja_deps'})
+    b.dependency_pilot();self.assertEqual(set(check.call_args.args[1]),{'build/mono.obj','build/mono.lib','build/'+staged.checkpoint.WX_LITERAL_OBJECT,'build/.ninja_log','build/.ninja_deps'})
     self.assertEqual(b.receipt['dependency_format_pilot']['state'],'PASS_BUILT_SUBSET_ONLY')
     self.assertFalse(list(Path(d).rglob('*.zip')))
  def test_pilot_rejects_wrong_concrete_closure_before_launch(self):
