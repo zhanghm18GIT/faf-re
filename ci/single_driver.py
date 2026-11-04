@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Inert fixed-source single-job client build. No cache or intermediate export."""
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -14,6 +14,32 @@ import staged_driver as shared
 import build_capture
 
 need = core.require
+# Microsoft vswhere maintainer documents the underlying COM ProgramData dependency:
+# https://github.com/microsoft/vswhere/issues/236#issuecomment-985741650
+VS_LOCATOR_KEYS = ('ProgramData',)
+VS_TOOL_MEMBERS = {
+    'cmake': 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe',
+    'ctest': 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/ctest.exe',
+    'ninja': 'Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe',
+}
+
+def validate_vswhere_result(text):
+    # Never print unrestricted locator stdout or environment values.
+    lines = text.splitlines()
+    print('VS_LOCATOR_RESULT '+json.dumps({'line_count':len(lines),'nonempty_line_count':sum(bool(x.strip()) for x in lines)}),flush=True)
+    need(len(lines) == 1 and bool(lines[0].strip()), 'VS locator must return exactly one nonempty installation path')
+    value = lines[0].strip()
+    win = PureWindowsPath(value)
+    need(win.is_absolute() and len(win.drive) == 2 and win.drive[1] == ':' and '..' not in win.parts,
+         'VS locator installation path must be absolute local Windows path')
+    root = Path(value)
+    exists = root.is_dir()
+    members = {name:(root/relative).is_file() for name,relative in VS_TOOL_MEMBERS.items()}
+    print('VS_BUNDLED_TOOLS '+json.dumps({'installation_directory_exists':exists,'members':members},sort_keys=True),flush=True)
+    need(exists, 'VS locator installation directory missing')
+    for name, present in members.items():
+        need(present, 'VS bundled build tool missing: '+name)
+    return value
 
 class SingleBuild(shared.StagedBuild):
     # Reuse audited acquisition, controlled environment, configuration, source
@@ -77,8 +103,16 @@ class SingleBuild(shared.StagedBuild):
                 text = log.read_text(encoding='utf-8', errors='replace')
                 self.receipt['standalone_effect_scan_link'] = shared.validate_effect_link(text, self.build)
                 return text
-            return core.Build.command(self, args, cwd, cap, env if env is not None else self.child_env,
-                                      name, binary, permit_failure, started_callback)
+            effective = env if env is not None else self.child_env
+            if name == 'vswhere':
+                need(env is None and not binary and not permit_failure, 'VS locator requires fixed text-success mode')
+                effective = dict(self.child_env)
+                for key in VS_LOCATOR_KEYS:
+                    if key in os.environ: effective[key] = os.environ[key]
+                print('VS_LOCATOR_ENV '+json.dumps({key:key in effective for key in VS_LOCATOR_KEYS},sort_keys=True),flush=True)
+            output = core.Build.command(self, args, cwd, cap, effective,
+                                        name, binary, permit_failure, started_callback)
+            return validate_vswhere_result(output) if name == 'vswhere' else output
         except BaseException:
             self.child_uncertain = True
             raise

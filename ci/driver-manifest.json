@@ -14,8 +14,8 @@
     },
     {
       "path": "README-SINGLE.md",
-      "size": 2224,
-      "sha256": "a5029d85b441953d10277b92532b89470cda485c27305b1f4236f3ac66cee908"
+      "size": 3121,
+      "sha256": "7a56bf28b84ab67506e1c32ae7dc32cdec56ea63b00d9114c0a2ee5b9df2bb2b"
     },
     {
       "path": "REBUILD.md",
@@ -105,12 +105,12 @@
     {
       "path": "run-single-build.ps1",
       "size": 3727,
-      "sha256": "13b8d4baa6aa7a0610cfd49e7afaf4e0047b554f31ac97202c5fe37e3de421ac"
+      "sha256": "7cca26710a7ee059964e4f58e90aec54e03df7f2e5dc0e64522e6b1a7f5c571e"
     },
     {
       "path": "single_driver.py",
-      "size": 11346,
-      "sha256": "6cc5abcad5eb9fae2f325339bfc2958a327573a3b65b05718edc6c3fae031af6"
+      "size": 13474,
+      "sha256": "bf26fa1ae845556d78fe83b53a40dd106db21a95c8d7f6eeae7019c3023ea492"
     },
     {
       "path": "source-material-policy.json",
@@ -186,6 +186,11 @@
       "path": "tests/test_single_driver.py",
       "size": 6721,
       "sha256": "aeb0e460e2be638bd59218bec7c909ecf164b2ed069f57d6f0cdf99937a70c2a"
+    },
+    {
+      "path": "tests/test_single_locator.py",
+      "size": 4442,
+      "sha256": "aaffcb3b3de55e95f3bbaa71b69cd7de0e0177b81f149dd6d8cc1f2f79273ef9"
     },
     {
       "path": "tests/test_staged_driver.py",

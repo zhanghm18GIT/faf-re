@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "root-single-job-free-build-20261104-0349-independent-review-6ef97cf946ec35ce4dc43de6ee0a85937b4e443fe639d7211869fd0aff5f4d67",
-  "reviewed_driver_manifest_sha256": "9e66d08fe7bfa9f95ee2d106d13c46dbba234177d351469c744146c3aa3dfc40",
+  "root_go_reference": "root-free-single-locator-fix-20261104-0413-independent-review-e1d9ecf8e7871f89fa97a45ad47b137ae6368cd90e733f63179a7f9b9a003baf",
+  "reviewed_driver_manifest_sha256": "c2d5a09b88ae61f84fe2635cce5c2763cdea364dee57f8a2155482c432bd103d",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": "9277b66faa74572664538f662394f801c3cde5c0",
+    "parent_commit": "6dd8c062f94e13e77db6e6fc5f77eb6a6e31e174",
     "tracked_files": [
       ".gitattributes",
       "README.md",
@@ -74,6 +74,7 @@
       "ci/tests/test_owned_cleanup.py",
       "ci/tests/test_public_literal.py",
       "ci/tests/test_single_driver.py",
+      "ci/tests/test_single_locator.py",
       "ci/tests/test_staged_driver.py",
       "ci/tests/test_structured_checkpoint.py",
       "ci/tests/test_structured_objects.py",

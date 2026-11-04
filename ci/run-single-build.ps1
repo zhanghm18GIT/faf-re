@@ -12,7 +12,7 @@ $driverDir = $PSScriptRoot
 $python = 'C:\Python312-x64\python.exe'
 $entry = Join-Path $driverDir 'single_driver.py'
 $contract = Join-Path $driverDir 'execution-single.json'
-if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6cc5abcad5eb9fae2f325339bfc2958a327573a3b65b05718edc6c3fae031af6') {
+if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'bf26fa1ae845556d78fe83b53a40dd106db21a95c8d7f6eeae7019c3023ea492') {
     throw 'Driver entry SHA-256 mismatch'
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw 'Documented installed x64 Python missing; no fallback or installation' }
