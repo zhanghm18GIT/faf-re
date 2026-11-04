@@ -44,8 +44,8 @@
     },
     {
       "path": "checkpoint.py",
-      "sha256": "0f3ef2c3991feae94241f9fedf37187adc862e92aff95f4363a790610275b3bc",
-      "size": 78066
+      "sha256": "84f3951ac843a83f152a813489de2eccb2d4396aa61cf6ca2169b582d2393738",
+      "size": 78680
     },
     {
       "path": "command_admission.py",
@@ -61,6 +61,11 @@
       "path": "driver.py",
       "sha256": "15956c107b80f93cf3903fdb09af45987519cdc115b6050b803129cd0a4e8ec6",
       "size": 60982
+    },
+    {
+      "path": "exact_timestamp.py",
+      "sha256": "934fc018206d4c3123a3a16cc8f180bf55b116d9401d4fa943abd9cb3c9848ac",
+      "size": 10157
     },
     {
       "path": "integration-manifest.json",
@@ -84,7 +89,7 @@
     },
     {
       "path": "run-client-build.ps1",
-      "sha256": "3c6058d907b5fe180cbca0f5da8915903e4c8f54b582724ab3419247ad12be69",
+      "sha256": "f932a493c6e304f6ae308a014bf54718bdc3ba2dbfbe193aa3bef546c78768f0",
       "size": 4585
     },
     {
@@ -94,8 +99,8 @@
     },
     {
       "path": "staged_driver.py",
-      "sha256": "c5a251ebc6e6f61381242f085e92d7efe759a10ebb761304840a5f35ef13edab",
-      "size": 48766
+      "sha256": "0a39bb4c9b632573b8e558c8dd531e9e9cccd45052cf0935e7aab4386eae2228",
+      "size": 49606
     },
     {
       "path": "structured_objects.py",
@@ -124,13 +129,18 @@
     },
     {
       "path": "tests/test_checkpoint.py",
-      "sha256": "e715ef9bdd62413b94027ad8bc838a4733064a959cd37d151e01481a17804531",
-      "size": 53483
+      "sha256": "2398cc0ff9840a48c7de27aa0d3b3ee3f3ad76b6dfafb86a1080ed91f171f855",
+      "size": 53517
     },
     {
       "path": "tests/test_command_admission.py",
       "sha256": "aa17400a0c13cbf8d638de36abf03adeeec657d55f549d3f64d6a5a48ed145db",
       "size": 2419
+    },
+    {
+      "path": "tests/test_exact_timestamp.py",
+      "sha256": "7d82e82940566300a59c9f07b41468ced05c84c0886244f93e5889576d6a4eea",
+      "size": 12037
     },
     {
       "path": "tests/test_full_command_profiles.py",
@@ -149,8 +159,8 @@
     },
     {
       "path": "tests/test_staged_driver.py",
-      "sha256": "424064a102320f3cc8b8b4921c2a83f086867c65c361518c0ea3f194c251b532",
-      "size": 24731
+      "sha256": "0e58e051160b34d7fd27d7b48809e02d42aa41e798bb1efffde17c5e7b165a99",
+      "size": 24740
     },
     {
       "path": "tests/test_structured_checkpoint.py",
@@ -161,6 +171,11 @@
       "path": "tests/test_structured_objects.py",
       "sha256": "7899f432ceb46161f3fcec2fe94cb8b506ce53fd6e5c55cf4df629515530b575",
       "size": 9197
+    },
+    {
+      "path": "tests/test_timestamp_integration.py",
+      "sha256": "1748c2169e4ef9076412309c41f49940c521e45753fb072c5cd022cbdcef6ff3",
+      "size": 2010
     },
     {
       "path": "tests/test_toolchain_fingerprint.py",

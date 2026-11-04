@@ -429,10 +429,12 @@ class StagedBuild(core.Build):
   self.phase='checkpoint-rehearsal';need(not self.child_uncertain,'Uncertain writer forbids rehearsal or publication')
   # Exercise reacquired source mtimes, after byte verification, only inside the owned root.
   self.assert_owned();source,_=self.source_inputs()
-  newer=max([time.time_ns()]+[(self.build/x).stat().st_mtime_ns for x in self.graph['outputs']])+2_000_000_000
+  # This is a new synthetic test timestamp, not rounding a saved manifest time.
+  latest=max([time.time_ns()]+[(self.build/x).stat().st_mtime_ns for x in self.graph['outputs']])
+  newer=((latest+99)//100)*100+2_000_000_000
   for p in source:
    need(p.is_relative_to(self.source) and not p.is_symlink(),'Rehearsal refuses external/source links')
-   os.utime(p,ns=(newer,newer));need(p.stat().st_mtime_ns==newer,'Fresh-source timestamp simulation failed')
+   checkpoint._mtime(p,newer);need(p.stat().st_mtime_ns==newer,'Fresh-source timestamp simulation failed')
   # Fresh generated graph at identical stable paths; no source/tool download is repeated.
   self.remove_owned(self.build);self.build.mkdir();self.configure();self.assert_owned()
   policy=self.checkpoint_policy();checkpoint.restore_checkpoint(path,policy,sealed['sha256'],sealed['bytes'],meta,self.checkpoint_boundary)
@@ -494,9 +496,13 @@ class StagedBuild(core.Build):
   self.upload_accepted=True;self.receipt['state']='UPLOAD_ACCEPTED_RETRIEVAL_NOT_VERIFIED'
   print('PUBLIC_ARTIFACT_RECEIPT '+json.dumps({'appveyor':self.receipt['appveyor'],'artifact':self.receipt['artifact'],'stage':self.stage_name,'state':self.receipt['state']},sort_keys=True),flush=True)
  def cache_precompile_tests(self):
-  # Synthetic-only: verifies the integrated guard chain, not filesystem isolation.
-  for pattern in ['test_cache_transport.py','test_cache_ready.py','test_command_admission.py','test_structured_checkpoint.py','test_structured_objects.py','test_full_command_profiles.py']:
-   self.command([sys.executable,'-I','-B','-m','unittest','discover','-s',self.here/'tests','-p',pattern,'-q'],cap=90,name='precompile-'+pattern[:-3])
+  # Native timestamp/argv probes run on Windows; synthetic tests do not prove isolation.
+  self.phase='precompile-platform-tests'
+  print('PLATFORM_TIMESTAMP '+json.dumps({'python':sys.version.split()[0],'platform':sys.platform,'utime_supports_nofollow':os.utime in os.supports_follow_symlinks,'exact_native_probe_required':os.name=='nt'},sort_keys=True),flush=True)
+  # Before tool acquisition, pass only platform locators and this job's owned temp.
+  probe_env={'SYSTEMROOT':os.environ['SYSTEMROOT'],'WINDIR':os.environ['WINDIR'],'COMSPEC':str(Path(os.environ['WINDIR'])/'System32/cmd.exe'),'PATH':os.pathsep.join([str(Path(sys.executable).parent),str(Path(os.environ['WINDIR'])/'System32')]),'TEMP':str(self.root/'temp'),'TMP':str(self.root/'temp'),'PYTHONDONTWRITEBYTECODE':'1'}
+  for pattern in ['test_cache_transport.py','test_cache_ready.py','test_command_admission.py','test_structured_checkpoint.py','test_structured_objects.py','test_full_command_profiles.py','test_exact_timestamp.py','test_timestamp_integration.py']:
+   self.command([sys.executable,'-I','-B','-m','unittest','discover','-s',self.here/'tests','-p',pattern,'-q'],cap=90,env=probe_env,name='precompile-'+pattern[:-3])
   self.receipt['cache_precompile_tests']='PASS_SYNTHETIC_GUARD_CHAIN_NOT_READ_ISOLATION'
  def stage_native_cache(self):
   need(self.stage_name=='A' and not self.child_uncertain,'Producer success required')
@@ -518,10 +524,9 @@ class StagedBuild(core.Build):
  def run(self):
   result=1
   try:
-   self.validate_contract();self.verify_configuration_checkout();self.start_workspace();self.windows_cleanup_fixture()
+   self.validate_contract();self.verify_configuration_checkout();self.start_workspace();self.windows_cleanup_fixture();self.cache_precompile_tests()
    for method in [self.tools_and_runtime,self.source_assembly,self.configure]:
     print('PHASE '+method.__name__+' '+str(round(time.monotonic()-self.started,3)),flush=True);method()
-    if method.__name__=='source_assembly':self.cache_precompile_tests()
    self.prepare_materials();self.owned_baseline=self.owned_identity();self.external_before=self.external_identity()
    need(self.external_before.public_summary()['backend']=='windows-handles','Actual Windows fingerprint backend required')
    self.receipt['external_input_fingerprint']=self.external_before.public_summary()

@@ -19,6 +19,7 @@ import struct
 import sys
 import tempfile
 import zipfile
+import exact_timestamp
 from contextlib import contextmanager
 from bisect import bisect_left
 from dataclasses import dataclass, field, replace
@@ -968,6 +969,13 @@ def _member_guard(phase, spec, state=None):
         operation = state.get('operation', 'content')
         fallback = {'read': 'member_read_failed', 'content': 'member_content_rejected', 'provenance': 'provenance_or_license_failed', 'identity': 'member_identity_mismatch', 'timestamp': 'mtime_ns_not_preserved', 'write': 'member_write_failed'}.get(operation, 'member_check_failed')
         report = {'phase': phase, 'member': spec.member if spec is not None else '<manifest>', 'kind': spec.kind if spec is not None else 'manifest', 'reason_code': code if code in _SAFE_CODES else fallback}
+        if operation == 'timestamp':
+            # Fixed identifiers only: distinguish unsupported API from actual precision loss.
+            report['timestamp_error_type'] = type(exc).__name__ if type(exc).__name__ in {'TimestampError','NotImplementedError','PermissionError','OSError','CheckpointError','ValueError'} else 'other'
+            native = getattr(exc, 'winerror', None)
+            if type(native) is int and 0 <= native <= 2**32-1: report['winerror'] = native
+            why = getattr(exc, 'code', None)
+            if isinstance(why, str) and why in exact_timestamp.SAFE_CODES: report['timestamp_rule'] = why
         rule = getattr(exc, 'rule', None)
         if rule in _SAFE_FORMAT_RULES:
             report['format_rule'] = rule
@@ -1291,7 +1299,7 @@ def validate_checkpoint(path, policy, expected_sha256, expected_size, expected_m
 
 
 def _mtime(path, value):
-    os.utime(path, ns=(path.stat().st_atime_ns, value), follow_symlinks=False)
+    exact_timestamp.set_mtime(path, value)
     require(path.stat().st_mtime_ns == value, 'filesystem cannot preserve exact mtime_ns')
 
 

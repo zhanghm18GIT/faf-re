@@ -114,7 +114,7 @@ class TestCheckpoint(unittest.TestCase):
         original = self.validate()
         for spec in self.policy.inputs:
             p = self.policy.owned_roots[spec.root]/spec.relpath
-            os.utime(p, ns=(9876543210, 9876543210))
+            os.utime(p, ns=(9876543200, 9876543200))
         for name in ('dep.obj', 'dep.lib', '.ninja_log', '.ninja_deps'):
             self.build.joinpath(name).unlink()
         self.assertEqual(self.restore(), original)
@@ -161,8 +161,8 @@ class TestCheckpoint(unittest.TestCase):
             self.validate()
 
     def test_timestamp_readback_failure(self):
-        os.utime(self.source/'dep.c', ns=(10, 10))
-        with mock.patch.object(c.os, 'utime'):
+        os.utime(self.source/'dep.c', ns=(1000, 1000))
+        with mock.patch.object(c.exact_timestamp, 'set_mtime'):
             with self.assertRaisesRegex(c.CheckpointError, 'mtime_ns'):
                 self.restore()
 
@@ -256,7 +256,7 @@ class TestCheckpoint(unittest.TestCase):
     def test_generated_root_nested_in_build(self):
         nested = self.build/'gen'
         self.gen.rename(nested)
-        os.utime(nested/'cfg.h', ns=(1, 1))
+        os.utime(nested/'cfg.h', ns=(1000, 1000))
         policy = dataclasses.replace(self.policy,
             owned_roots={**self.policy.owned_roots, 'generated': nested},
             allowed_log_inputs=frozenset({str(self.source/'dep.c'), str(nested/'cfg.h')}),
@@ -265,7 +265,7 @@ class TestCheckpoint(unittest.TestCase):
         out = self.base/'nested.zip'
         receipt = c.seal_checkpoint(out, policy, self.meta)
         c.restore_checkpoint(out, policy, receipt['sha256'], receipt['bytes'], self.meta)
-        self.assertEqual((nested/'cfg.h').stat().st_mtime_ns, 1)
+        self.assertEqual((nested/'cfg.h').stat().st_mtime_ns, 1000)
 
     def test_coff_sections_and_symbols_bounds(self):
         data = bytearray(coff())
@@ -336,7 +336,7 @@ class TestCheckpoint(unittest.TestCase):
         metadata = {**self.meta, 'material_inventory': 'driver-pinned-public-source-receipt'}
         receipt = c.seal_checkpoint(out, policy, metadata)
         for name in files:
-            os.utime(self.source/name, ns=(7, 7))
+            os.utime(self.source/name, ns=(700, 700))
         result = c.restore_checkpoint(out, policy, receipt['sha256'], receipt['bytes'], metadata)
         for name, data in files.items():
             self.assertEqual((self.source/name).read_bytes(), data)

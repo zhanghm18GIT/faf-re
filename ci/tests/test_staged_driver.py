@@ -141,7 +141,7 @@ class StageChecks(unittest.TestCase):
    with self.assertRaises(driver.Blocked):driver.validate_actual_links(text[-16000:],root,ucrt)
  def test_rehearsal_timestamp_change_precedes_fresh_configure(self):
   tree=ast.parse((CI/'staged_driver.py').read_text());f=next(x for x in ast.walk(tree) if isinstance(x,ast.FunctionDef) and x.name=='stage_a');s=ast.unparse(f)
-  self.assertLess(s.index('os.utime('),s.index('self.remove_owned(self.build)'));self.assertIn('p.is_relative_to(self.source)',s);self.assertIn('checkpoint.restore_checkpoint',s)
+  self.assertLess(s.index('checkpoint._mtime('),s.index('self.remove_owned(self.build)'));self.assertIn('p.is_relative_to(self.source)',s);self.assertIn('checkpoint.restore_checkpoint',s)
  def test_no_mutable_build_lib_in_external_inventory(self):
   tree=ast.parse((CI/'staged_driver.py').read_text());f=next(x for x in ast.walk(tree) if isinstance(x,ast.FunctionDef) and x.name=='external_identity');self.assertNotIn('build-cwd',ast.unparse(f))
  def test_any_command_exception_suppresses_cleanup(self):

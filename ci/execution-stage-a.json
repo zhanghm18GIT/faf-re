@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "parent-free-A-only-command-admission-20261104",
-  "reviewed_driver_manifest_sha256": "dc42d3dabdd4ad3c6ef0b8316861ea046d67bc17a4307f9e9c0ba53841f34686",
+  "root_go_reference": "parent-free-A-only-windows-timestamp-20261104",
+  "reviewed_driver_manifest_sha256": "3066f7cda82e199bfaa000654b8f446594ed6759ce2db86296b3706e087784f8",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": "3e2e5e0e9504fdd401e97fc9fcf90da2b1592073",
+    "parent_commit": "7a234894e979393dccd64ace9d7a2dd2d7f73969",
     "tracked_files": [
       ".gitattributes",
       "README.md",
@@ -45,6 +45,7 @@
       "ci/distribution-review.json",
       "ci/driver-manifest.json",
       "ci/driver.py",
+      "ci/exact_timestamp.py",
       "ci/execution-stage-a.json",
       "ci/execution-stage-b.json",
       "ci/integration-manifest.json",
@@ -61,12 +62,14 @@
       "ci/tests/test_cache_transport.py",
       "ci/tests/test_checkpoint.py",
       "ci/tests/test_command_admission.py",
+      "ci/tests/test_exact_timestamp.py",
       "ci/tests/test_full_command_profiles.py",
       "ci/tests/test_owned_cleanup.py",
       "ci/tests/test_public_literal.py",
       "ci/tests/test_staged_driver.py",
       "ci/tests/test_structured_checkpoint.py",
       "ci/tests/test_structured_objects.py",
+      "ci/tests/test_timestamp_integration.py",
       "ci/tests/test_toolchain_fingerprint.py",
       "ci/toolchain_fingerprint.py",
       "ci/ucrt-package.json"
