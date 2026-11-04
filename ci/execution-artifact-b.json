@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "state": "DRAFT_NOT_AUTHORIZED",
-  "root_go_reference": null,
+  "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
+  "root_go_reference": "root-free-public-artifact-final-B-20261104-1430-source-review-4c57ff3d6a468011d641ed35ddaefd30ef94c43f86f2b0d5661b490769299773-verified-R55025409",
   "reviewed_driver_manifest_sha256": "1de90b54ec435c11f789ad54d7eb7871d151f91d44d3627228a312f3b22bd1d0",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": null,
+    "parent_commit": "e70277ed67426dda054f897325c16a8988a0f2d9",
     "tracked_files": [
       ".gitattributes",
       "README.md",
@@ -124,6 +124,34 @@
   "mode": "public-artifact-build-resume-v1",
   "build_reserve_seconds": 390,
   "resume_stage": "B",
-  "resume_input": null,
+  "resume_input": {
+    "url": "https://ci.appveyor.com/api/buildjobs/b78ur1l57651o71s/artifacts/resume-transfer.zip",
+    "size": 258251013,
+    "sha256": "85e72ae86771cf1677792eff7c488f9aae6faf41d2d8181c2c5711995bf0a8ca",
+    "inner": {
+      "size": 97002579,
+      "sha256": "072d5f863942355c73cb1cfc15b95f1a13bcec2758dc3263484e91541784e978"
+    },
+    "producer": {
+      "build_id": "55025409",
+      "job_id": "b78ur1l57651o71s",
+      "configuration_commit": "e70277ed67426dda054f897325c16a8988a0f2d9"
+    },
+    "predecessor": {
+      "url": "https://ci.appveyor.com/api/buildjobs/hldaal012sq53o7c/artifacts/resume-transfer.zip",
+      "size": 241765505,
+      "sha256": "86426b7fbc6ebdab7dec4f0ee9a4023d8a2cc315a6e20e595b5f6188abfcf7d3",
+      "inner": {
+        "size": 80517283,
+        "sha256": "4f832deb6c6942f8a7c70527e9376e36fa2bd59d9e481dacf51e7c5854bec8f1"
+      },
+      "producer": {
+        "build_id": "55025153",
+        "job_id": "hldaal012sq53o7c",
+        "configuration_commit": "5bb946002c7ae872c87d6c0ddd394de5082db62f"
+      },
+      "predecessor": null
+    }
+  },
   "resume_recipe_sha256": "4dc60f14608af98d185c09abd13fe12e558c107c92ef65f3ab3aadf1b4f0be16"
 }
