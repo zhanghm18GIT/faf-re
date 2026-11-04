@@ -44,8 +44,13 @@
     },
     {
       "path": "checkpoint.py",
-      "sha256": "84f3951ac843a83f152a813489de2eccb2d4396aa61cf6ca2169b582d2393738",
-      "size": 78680
+      "sha256": "dae4877d3376dc04b39acc0882bc7cd98959de97f6be1720a9f1fb08c2a26782",
+      "size": 78874
+    },
+    {
+      "path": "codeview_catalog.py",
+      "sha256": "53d8635805de79e7ced7a615ed3028b0a24a5fcd2db0cd4e26cddc07eaf989fd",
+      "size": 16195
     },
     {
       "path": "command_admission.py",
@@ -89,7 +94,7 @@
     },
     {
       "path": "run-client-build.ps1",
-      "sha256": "f932a493c6e304f6ae308a014bf54718bdc3ba2dbfbe193aa3bef546c78768f0",
+      "sha256": "adbe41433c86fc7265611b8362579021dab954aa783744590981ae1f27945198",
       "size": 4585
     },
     {
@@ -99,13 +104,13 @@
     },
     {
       "path": "staged_driver.py",
-      "sha256": "0a39bb4c9b632573b8e558c8dd531e9e9cccd45052cf0935e7aab4386eae2228",
-      "size": 49606
+      "sha256": "12b51e37fe12e4c6d2df4ffd4d51ee97344e91f73e126093d2b0d9236769f30f",
+      "size": 49633
     },
     {
       "path": "structured_objects.py",
-      "sha256": "4fb9b2e50cb0afd5605e1e2076030948e006d3e1d52e3c65c496f1385d808100",
-      "size": 17865
+      "sha256": "b9ab38afd424b78a94b7dbf97facb00fc1b2f9c505cc26e84c21ad90e8b1e048",
+      "size": 18937
     },
     {
       "path": "tests/fixtures/command_profiles.json",
@@ -131,6 +136,11 @@
       "path": "tests/test_checkpoint.py",
       "sha256": "2398cc0ff9840a48c7de27aa0d3b3ee3f3ad76b6dfafb86a1080ed91f171f855",
       "size": 53517
+    },
+    {
+      "path": "tests/test_codeview_catalog.py",
+      "sha256": "3991ca0a90e7060462892f3303d969ac3e92cdbbf76d2caa92b4f7f0e200c3b1",
+      "size": 4133
     },
     {
       "path": "tests/test_command_admission.py",
@@ -164,8 +174,8 @@
     },
     {
       "path": "tests/test_structured_checkpoint.py",
-      "sha256": "115da139037954e82bddba0201806e25463b2e56b7cc4ab1d18718fe1e736218",
-      "size": 2083
+      "sha256": "88d6998daa7b5ecfd00b468f0a1c8f71e5f6e4aafce4f0a79404f11a6707ea2a",
+      "size": 3039
     },
     {
       "path": "tests/test_structured_objects.py",

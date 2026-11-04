@@ -501,7 +501,7 @@ class StagedBuild(core.Build):
   print('PLATFORM_TIMESTAMP '+json.dumps({'python':sys.version.split()[0],'platform':sys.platform,'utime_supports_nofollow':os.utime in os.supports_follow_symlinks,'exact_native_probe_required':os.name=='nt'},sort_keys=True),flush=True)
   # Before tool acquisition, pass only platform locators and this job's owned temp.
   probe_env={'SYSTEMROOT':os.environ['SYSTEMROOT'],'WINDIR':os.environ['WINDIR'],'COMSPEC':str(Path(os.environ['WINDIR'])/'System32/cmd.exe'),'PATH':os.pathsep.join([str(Path(sys.executable).parent),str(Path(os.environ['WINDIR'])/'System32')]),'TEMP':str(self.root/'temp'),'TMP':str(self.root/'temp'),'PYTHONDONTWRITEBYTECODE':'1'}
-  for pattern in ['test_cache_transport.py','test_cache_ready.py','test_command_admission.py','test_structured_checkpoint.py','test_structured_objects.py','test_full_command_profiles.py','test_exact_timestamp.py','test_timestamp_integration.py']:
+  for pattern in ['test_cache_transport.py','test_cache_ready.py','test_command_admission.py','test_structured_checkpoint.py','test_structured_objects.py','test_full_command_profiles.py','test_exact_timestamp.py','test_timestamp_integration.py','test_codeview_catalog.py']:
    self.command([sys.executable,'-I','-B','-m','unittest','discover','-s',self.here/'tests','-p',pattern,'-q'],cap=90,env=probe_env,name='precompile-'+pattern[:-3])
   self.receipt['cache_precompile_tests']='PASS_SYNTHETIC_GUARD_CHAIN_NOT_READ_ISOLATION'
  def stage_native_cache(self):

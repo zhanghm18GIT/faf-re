@@ -11,6 +11,7 @@ import hashlib
 import ntpath
 import re
 import struct
+import codeview_catalog as catalog
 
 class StructureError(ValueError):
     def __init__(self, reason, *, details=None):
@@ -48,21 +49,17 @@ def check_path(raw, policy, backend):
         backend.approved_path(text,policy)
     backend.inspect_public_paths(raw,policy)
 
-# LLVM22 C/C++ embedded /Z7 dialect. This finite framing allowlist does not
-# claim semantic decoding of every non-path field within these records.
-TYPE_KINDS={0x000a,0x1001,0x1002,0x1008,0x1009,0x1201,0x1203,0x1205,0x1206,
-            0x1503,0x1504,0x1505,0x1506,0x1507,0x150a,0x1516,
-            0x1601,0x1602,0x1603,0x1604,0x1605,0x1606,0x1607}
-SYMBOL_KINDS={0x0006,0x1012,0x1101,0x1102,0x1103,0x1107,0x1108,0x110c,0x110d,
-              0x110e,0x110f,0x1110,0x1112,0x1113,0x1125,0x113c,0x113e,0x113f,0x1140,
-              0x1141,0x1142,0x1143,0x1144,0x1145,0x1146,0x1147,0x114c,
-              0x114d,0x114e,0x114f,0x1153,0x1154,0x1155,0x1168}
-SUBSECTIONS={0xf1,0xf2,0xf3,0xf4,0xf6}
+# LLVM22.1.7 C/C++ embedded /Z7 dialect, classified against the complete official catalog.
+# Modern nonpath framing does not claim full inner-field semantic validation.
+TYPE_KINDS = (catalog.TYPE_NONPATH | catalog.TYPE_PATH) - {0x1607}  # Module/string-table context not admitted.
+SYMBOL_KINDS = catalog.SYMBOL_NONPATH | catalog.SYMBOL_PATH
+SUBSECTIONS = catalog.SUBSECTION_PATH
 
 def debug_sections(data, sections, policy, backend):
     # Reviewed parser validates LF_BUILDINFO links, command escaping, roots,
     # no external type-server PDB, record lengths and CodeView padding.
     command_ranges=backend._validated_codeview_ranges(data,policy)
+    path_string_ids=set();buildinfo_ids=set();source_refs=[];substring_refs=[];buildinfo_refs=[];type_sections=0
     strings=[];checksums=[];checksum_starts=set();file_refs=[];checksum_tables=0;module_refs=[]
     for section_index,(name,start,size) in enumerate(sections,1):
         if not name.startswith(b'.debug'): continue
@@ -71,6 +68,7 @@ def debug_sections(data, sections, policy, backend):
         need(len(body)>=4 and body[:4]==b'\x04\0\0\0','unsupported debug signature')
         pos=4
         if name==b'.debug$T':
+            type_sections+=1;need(type_sections==1,'ambiguous type index namespace');type_id=0x1000
             while pos<len(body):
                 bounds(body,pos,4);length,kind=struct.unpack_from('<HH',body,pos)
                 stop=pos+2+length;need(length>=2 and stop<=len(body) and stop%4==0,'invalid type record extent')
@@ -88,8 +86,17 @@ def debug_sections(data, sections, policy, backend):
                     tail=body[end:stop]
                     need(len(tail)<=3 and tail==bytes(range(0xf0+len(tail),0xf0,-1)),'invalid string-id padding')
                     # Command strings are validated canonically by the backend.
-                    if not any(a==start+pos+8 for a,b in command_ranges):check_path(value,policy,backend)
-                pos=stop
+                    if not any(a==start+pos+8 for a,b in command_ranges):
+                        check_path(value,policy,backend);path_string_ids.add(type_id)
+                elif kind==0x1603:buildinfo_ids.add(type_id)  # Full five-reference argv validation is performed above.
+                elif kind==0x1606:
+                    need(length==14,'invalid source-line reference shape')
+                    source_refs.append((type_id,struct.unpack_from('<I',body,pos+8)[0]))
+                elif kind==0x1604:
+                    need(length>=6,'short substring list');count=struct.unpack_from('<I',body,pos+4)[0]
+                    need(length==6+count*4,'invalid substring-list extent')
+                    substring_refs.extend((type_id,x[0]) for x in struct.iter_unpack('<I',body[pos+8:stop]))
+                pos=stop;type_id+=1
         else:
             while pos<len(body):
                 bounds(body,pos,8);kind,length=struct.unpack_from('<II',body,pos);begin=pos+8;end=begin+length
@@ -100,6 +107,8 @@ def debug_sections(data, sections, policy, backend):
                     while cur<len(payload):
                         bounds(payload,cur,4);rl,rk=struct.unpack_from('<HH',payload,cur);stop=cur+2+rl
                         need(rl>=2 and stop<=len(payload),'invalid CodeView symbol extent');cv_kind(rk in SYMBOL_KINDS,'unsupported CodeView symbol kind',rk,section_index,start+begin+cur)
+                        if rk==0x114c:
+                            need(rl==6,'invalid buildinfo symbol reference shape');buildinfo_refs.append(struct.unpack_from('<I',payload,cur+4)[0])
                         if rk==0x1101:
                             need(rl>=7,'short object-name symbol');value,tail=cstring(payload,cur+8,stop);check_path(value,policy,backend)
                             need(stop-tail<=3 and not any(payload[tail:stop]),'invalid object-name padding')
@@ -157,6 +166,8 @@ def debug_sections(data, sections, policy, backend):
                 aligned=(end+3)&~3;need(aligned<=len(body) and not any(body[end:aligned]),'invalid subsection padding');pos=aligned
         # Paths are checked only in parsed semantic fields. Checksums, line
         # tables, type references and other typed numerics are never strings.
+    need(all(ref in path_string_ids and ref<owner for owner,ref in source_refs+substring_refs),'invalid path string-id reference')
+    need(all(ref in buildinfo_ids for ref in buildinfo_refs),'invalid buildinfo symbol type reference')
     need(not (checksums or module_refs) or len(strings)==1,'missing/ambiguous debug filename table')
     if checksums or module_refs:need(all(x in strings[0] for x in checksums+module_refs),'filename is not a string start')
     need(all(x in checksum_starts for x in file_refs),'line references unknown checksum record')

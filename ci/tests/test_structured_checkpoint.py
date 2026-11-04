@@ -1,7 +1,9 @@
-import sys,unittest,dataclasses,hashlib
+import sys,unittest,dataclasses,hashlib,json
+from unittest import mock
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import checkpoint as c
+import structured_objects as so
 import test_checkpoint as fixture
 coff=fixture.coff;archive=fixture.archive
 class StructuredCheckpoint(unittest.TestCase):
@@ -14,6 +16,19 @@ class StructuredCheckpoint(unittest.TestCase):
   r=self.seal();self.f.build.joinpath('dep.obj').unlink();self.f.build.joinpath('dep.lib').unlink()
   c.restore_checkpoint(self.f.zip,self.p,r['sha256'],r['bytes'],self.f.meta)
   self.assertEqual((self.f.build/'dep.obj').read_bytes(),coff())
+ def test_standalone_prepass_diagnostic_seal_and_subset(self):
+  original=c._content
+  def reject(spec,data,policy):
+   if spec.kind=='obj':
+    raise so.StructureError('unsupported CodeView symbol kind',details={'type_index':65534,'section_index':2,'record_offset':144})
+   return original(spec,data,policy)
+  for mode in ('seal','subset'):
+   with self.subTest(mode=mode),mock.patch.object(c,'_content',side_effect=reject):
+    with self.assertRaises(c.CheckpointError) as caught:
+     if mode=='seal':self.seal()
+     else:c.validate_built_subset(self.p,['build/dep.obj','build/dep.lib','build/.ninja_log','build/.ninja_deps'])
+    value=json.loads(str(caught.exception));self.assertEqual(value['phase'],'standalone-object-inventory');self.assertEqual(value['member'],'build/dep.obj')
+    self.assertEqual(value['format_details'],{'type_index':65534,'section_index':2,'record_offset':144})
  def test_archive_object_substitution(self):
   data=bytearray(coff());data[-1]=0x90;self.f.build.joinpath('dep.lib').write_bytes(archive(bytes(data)))
   with self.assertRaises(Exception):self.seal()

@@ -1141,9 +1141,12 @@ def _standalone_hash_policy(policy, selected=None):
     hashes={}
     for spec in policy.payloads:
         if spec.kind=='obj' and (names is None or spec.member in names):
-            entry,data=_read(spec,policy)
-            _content(spec,data,policy)
-            hashes[spec.member]=entry['sha256']
+            with _member_guard('standalone-object-inventory', spec) as state:
+                state['operation']='read'
+                entry,data=_read(spec,policy)
+                state.update(entry=entry,operation='content')
+                _content(spec,data,policy)
+                hashes[spec.member]=entry['sha256']
     return replace(policy,object_hashes=hashes)
 
 
