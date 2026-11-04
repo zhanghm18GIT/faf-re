@@ -1,0 +1,11 @@
+# Inert single-job measured build
+
+Select appveyor-single.yml only after independent review and a new exact single-job activation. execution-single.json is DRAFT, upload_exact_package is false, and no provider parent/GO is set. Old A/B files remain inert reference and regression fixtures, not this entry's execution path.
+
+One configure and one streamed Ninja invocation builds all five fixed targets at parallelism2. Both existing POST_BUILD math goldens and all four CTests are mandatory. No checkpoint files, cache restore/save, intermediate COFF scans, source mtime rewriting or second configure occur. Final exact package retains client+two runtime DLLs, corresponding source, notices, truthful BuildInfo and hash inventories; test executables are verified, not newly published.
+
+Fixed public source/tool/download pins, declared controlled child environment, dependency command reconciliation and two source/generated identity passes remain. This is the fixed trusted public source/official compiler model, not isolation against arbitrary malicious source. Dependency command reconciliation does not prove every engine/test argv. Whole-SDK cross-job fingerprints are intentionally absent because no intermediate state crosses jobs. Existing pinned-tool and UCRT checks remain.
+
+Budget: driver3300s, provider3600s, compile min(existing2700s cap, remaining−390s). This reserves only the minimum upload/cleanup window, not all possible downstream test/package costs. Existing per-test caps remain420/210/210s. Each command also obeys the global remaining budget. Final upload needs390s remaining and is one attempt capped330s. Timeout, failed goldens/CTest, identity drift, package failure or pre-upload cleanup failure prevents publication. Failure may leave ephemeral work for provider teardown if child exit is uncertain. No rerun/cache fallback. Completion within60minutes is NOT guaranteed; this attempt measures the previously unknown full engine cost.
+
+PHASE_START/END and COMMAND_DURATION record monotonic durations. Build capture streams progress, keeps local bounded logs and records Ninja timings. Private environment contents and full worker logs are not packaged. Finalization stays disabled in all cases.

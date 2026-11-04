@@ -1,4 +1,12 @@
-# Experimental staged x64 RE build
+# Experimental single-job x64 RE build
+
+The current entry is `appveyor-single.yml`, which calls `ci/run-single-build.ps1` with `ci/execution-single.json`. That contract is inert until separately reviewed and activated for one manual free build. Keep push, PR and scheduled triggers disabled.
+
+The single job uses the fixed product source described below, configures once, builds all five targets once, and requires both POST_BUILD math golden checks plus all four CTests. It exports only the final client package with required DLLs, corresponding source and notices. There is no intermediate checkpoint, cache transfer, restore rehearsal, or checkpoint precompile-test phase. See `ci/README-SINGLE.md` for the exact scope, deadline and failure behavior. Full completion within the provider limit is not established.
+
+The following A/B documentation is historical reference only. Both A/B contracts remain disabled and none of their cache or checkpoint acceptance claims describe the current single-job path.
+
+# Historical A/B configuration (disabled)
 
 This configuration branch builds public upstream `293153660c359066d637f1ddac718801e38a8118` with the three rendering replacements in `ci/integration-manifest.json`, producing product tree `ef844b5d98194249c7434e984c0c12dfa3b042a7`. It is not an official release. The historical branch name contains `302eb`; that is not the product source identity.
 
