@@ -8,7 +8,8 @@
     "ffmpeg_extracted_options_sha256": "f7b5f2b2ecfdf14359b6d1a8be2138d020561d6bc868bfcfe3297c3ea009f648",
     "raw_ninja_compdb_sha256": "17eb3c6f67604da480973b5845bda80364d7e8c38beabad612eb73fccd26640f",
     "full_local_fixtures_sha256": "08f5702288e3adba4d7c37f47c96fe4ca7b4605cec57d1e5bc72c661c4ae1512",
-    "limits": "Synthetic source/include paths, macro fixture, forced compiler identity; not actual Windows worker commands. Windows command quoting reconstructed with Python list2cmdline; native Windows parser not tested. Bare /Fd preserved exactly as generated. Full dependency graph not reproduced."
+    "limits": "Synthetic source/include paths, macro fixture, forced compiler identity; not actual Windows worker commands. Windows command quoting reconstructed with Python list2cmdline; native Windows parser not tested. Bare /Fd preserved exactly as generated. Full dependency graph not reproduced. Original source_base records the original fixture; unchanged codegen/dependency pins support current fixed-source applicability.",
+    "current_fixed_source_base": "6c93e3625d96d5041b3336e88e3692b88c1ec0c2"
   },
   "fixtures": [
     {

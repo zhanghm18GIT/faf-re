@@ -119,7 +119,7 @@ class StageChecks(unittest.TestCase):
  def test_contracts_inert_fixed_source_and_limits(self):
   for stage in 'ab':
    c=json.loads((CI/f'execution-stage-{stage}.json').read_text());self.assertEqual(c['state'],'DRAFT_NOT_AUTHORIZED');self.assertFalse(c['upload_exact_package']);self.assertIsNone(c['root_go_reference']);self.assertIsNone(c['checkpoint_input']);self.assertEqual(c['parallelism'],2);self.assertEqual(c['max_total_seconds'],3300);self.assertEqual(c['source_review_status'],'REVIEWED_FIXED_PRODUCT')
-  self.assertEqual(driver.BASE,'293153660c359066d637f1ddac718801e38a8118');self.assertEqual(driver.TREE,'ef844b5d98194249c7434e984c0c12dfa3b042a7')
+  self.assertEqual(driver.BASE,'6c93e3625d96d5041b3336e88e3692b88c1ec0c2');self.assertEqual(driver.TREE,'b7fff12cad8bc52b34be4107c9791298592bb291')
  def test_build_success_sets_acceptance_window_before_link_audit(self):
   with tempfile.TemporaryDirectory() as d:
    b=staged.StagedBuild(CI,{'stage':'B','max_total_seconds':3300,'stage_downstream_reserve_seconds':1050,'stage_build_max_seconds':2100,'stage_min_build_window_seconds':120});b.root=Path(d);b.build=Path(d)/'build';b.build.mkdir();(b.root/'logs').mkdir();(b.root/'logs/build.txt').write_text('log')
@@ -213,7 +213,7 @@ class MaterialSelection(unittest.TestCase):
   policy=json.loads((CI/staged.MATERIAL_POLICY_FILE).read_text())
   excluded=policy['excluded_product_linux_only_material']
   self.assertEqual({x['path'] for x in excluded},{'cmake/pgo/headless-linux-x64.profdata','tools/pgo/record.sh'})
-  self.assertFalse(paths & {x['path'] for x in excluded});self.assertEqual(len(paths),2440)
+  self.assertFalse(paths & {x['path'] for x in excluded});self.assertEqual(len(paths),2441);self.assertIn("LEGAL.md",paths)
   self.assertEqual(next(x['git_blob'] for x in excluded if x['path'].endswith('.profdata')),'79cad0404d3a1338879ea872173b4b23d71f4c28')
  def test_public_policy_copied_for_both_material_packages(self):
   source=__import__('inspect').getsource(staged.StagedBuild.stage_materials)

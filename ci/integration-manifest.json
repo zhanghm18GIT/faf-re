@@ -1,7 +1,7 @@
 {
-  "base_commit": "293153660c359066d637f1ddac718801e38a8118",
-  "base_tree": "12b6c285e91cf9c05005780c82ff25553c04c9ef",
-  "planned_integrated_tree": "ef844b5d98194249c7434e984c0c12dfa3b042a7",
+  "base_commit": "6c93e3625d96d5041b3336e88e3692b88c1ec0c2",
+  "base_tree": "0bb3313bf8ada1d309fdfb54f58846e0e6420196",
+  "planned_integrated_tree": "b7fff12cad8bc52b34be4107c9791298592bb291",
   "submodule_gitlinks": [
     {
       "path": "dependencies/FX11",
@@ -87,7 +87,7 @@
     "package": "Headers/libraries build only; exclude SDK from distribution"
   },
   "build_file_sha256": {
-    "README.md": "20e2875516b73732e42e5b025f7d2348c8922466658de36e54dd18b67b084221",
+    "README.md": "b570b6757d77903190a5d36050bd97db3b107a882b0bcda23fecd5fa2083cc98",
     "CONTRIBUTING.md": "fe838973d5eb6b25ee36417a4d7870b815689c5fc305c878ffa495e2eb6ced60",
     "CMakeLists.txt": "a6a9a64a319c6ddf169ceaf0f48443b37e7c42328f9d98a1fbf3bc1b71b0d198",
     "CMakePresets.json": "5a75d6eb1dc4358f3df4a89f2d9bf522d9a49d101d1879fcb4d4c0c3d3e1b35b",
@@ -100,12 +100,13 @@
     "tests/CMakeLists.txt": "5ddae03371f8d2c9b12df012d9bc6d6549d9de43bafdaff807c581a6999c282a",
     "tests/lua/CoroutineTests.cpp": "d062cc39ec0db875374db41fcc7a170f8ee5f93f4273465cfc28cbe5b0fbb4e3",
     "tools/difffuzz/dump.cmake": "c0e56008b121fb6f29814d2af65dda0fafeec821f2310a4d51ef795ef5f37ed1",
-    "cmake/FafBuildInfo.cmake": "577fcb7c69e401d7d55860f69df275e4e878a3c95ab118380f6f56bc94e24b63",
+    "cmake/FafBuildInfo.cmake": "b6be3f7263b391334212d1786c800390440acc9c0b38c48e336bbdc49fbb1545",
     "tests/effect_scan/EffectScanTests.cpp": "c32ca0c39a75ebd92915dc064483cadac976e9bdea50f654900d4e7a1de59ec1",
     "src/gpg/gal/backends/d3d11/EffectScan.h": "ed844a1045d01f2576b821ef79fa7267ae204e2ed2665690ddd38776f57ec955",
     "src/gpg/gal/backends/d3d11/EffectSourceD3D11.cpp": "09c852b157aa699f795b82292f2dfeb4c242cb1a1197cc2ece345fd0ecd9f461",
     "src/gpg/gal/backends/d3d11/EffectSourceD3D11.h": "58e5c1d102121530180216a25f8fc2d91fd07e215b854dfc3a3714595089e0e0",
-    "src/moho/render/GpuPathSettings.cpp": "63be29eb74b36d30040b5b9790f192ebc786117960ac380763e21480921829de"
+    "src/moho/render/GpuPathSettings.cpp": "63be29eb74b36d30040b5b9790f192ebc786117960ac380763e21480921829de",
+    "LEGAL.md": "2734e8094a106816377b08813ca45d1d237bb6b7431fdd2f71f1b456b1ad71f1"
   },
   "hook_files": [
     {

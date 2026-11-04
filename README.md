@@ -1,3 +1,5 @@
+CURRENT INERT CANDIDATE: balanced native resume via appveyor-resume-a.yml / appveyor-resume-b.yml. Read ci/README-RESUME.md. Older single-job and staged sections below are historical reference, not the current activation instructions. No configuration is activated.
+
 # Experimental single-job x64 RE build
 
 The current entry is `appveyor-single.yml`, which calls `ci/run-single-build.ps1` with `ci/execution-single.json`. That contract is inert until separately reviewed and activated for one manual free build. Keep push, PR and scheduled triggers disabled.
@@ -8,7 +10,7 @@ The following A/B documentation is historical reference only. Both A/B contracts
 
 # Historical A/B configuration (disabled)
 
-This configuration branch builds public upstream `293153660c359066d637f1ddac718801e38a8118` with the three rendering replacements in `ci/integration-manifest.json`, producing product tree `ef844b5d98194249c7434e984c0c12dfa3b042a7`. It is not an official release. The historical branch name contains `302eb`; that is not the product source identity.
+This configuration branch builds public upstream `6c93e3625d96d5041b3336e88e3692b88c1ec0c2` with the three rendering replacements in `ci/integration-manifest.json`, producing product tree `b7fff12cad8bc52b34be4107c9791298592bb291`. It is not an official release. The historical branch name contains `302eb`; that is not the product source identity.
 
 ## Two manual stages
 

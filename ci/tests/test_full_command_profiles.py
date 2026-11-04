@@ -11,7 +11,7 @@ class Profiles(unittest.TestCase):
  def setUp(self):
   self.raw=P.read_bytes();self.data=json.loads(self.raw);self.rows=self.data['fixtures']
  def test_frozen_complete_fixture_identity(self):
-  self.assertEqual(hashlib.sha256(self.raw).hexdigest(),'8581d3778a2ef09a2b583e78a1c4bd149202f08250d113e08834a07398ea6357');self.assertEqual(len(self.rows),4)
+  self.assertEqual(hashlib.sha256(self.raw).hexdigest(),'d93bd14e5b68547cd6ecbb5b3e77ec0261811a8408263fd1cc42de06081156b0');self.assertEqual(len(self.rows),4)
   for r in self.rows:
    self.assertGreater(len(r['argv']),100);self.assertEqual(set(r),{'profile','command','argv','policy','baseline_result'})
  def test_all_full_profiles(self):

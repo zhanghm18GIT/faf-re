@@ -25,14 +25,14 @@ import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
 
-BASE = "293153660c359066d637f1ddac718801e38a8118"
-BASE_TREE = "12b6c285e91cf9c05005780c82ff25553c04c9ef"
-TREE = "ef844b5d98194249c7434e984c0c12dfa3b042a7"
-INTEGRATION_SHA = "d45b97292521e2711801d7f7314ff52233589ff8014ad191dc425037e303c561"
+BASE = "6c93e3625d96d5041b3336e88e3692b88c1ec0c2"
+BASE_TREE = "0bb3313bf8ada1d309fdfb54f58846e0e6420196"
+TREE = "b7fff12cad8bc52b34be4107c9791298592bb291"
+INTEGRATION_SHA = "6d8cdd7481db80e758c80a85d09dd1586a679b62b27edce106d33f14b228663d"
 LLVM_SHA = "3b568b5be1443d1a04c63261fa3a7aed16e126a8ed2196a1032aa8ed602144bd"
 LLVM_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.7/clang%2Bllvm-22.1.7-x86_64-pc-windows-msvc.tar.xz"
 LLVM_SIZE = 862033024
-EXE_NAME = "main_x64_test_293153_282-284"
+EXE_NAME = "main_x64_test_6c93e3_282-284"
 REQUIRED_TARGETS = ["faf_main", "faf_sim_math_tests", "faf_math_dump", "faf_coroutine_tests", "faf_effect_scan_tests"]
 REQUIRED_TESTS = ["math_dump", "sim_math"]
 TEST_REGEX = "^(sim_math|math_dump)$"
@@ -287,11 +287,11 @@ class Build:
         require(c.get("schema") == 1 and c.get("state") == "APPROVED_FOR_ONE_MANUAL_BUILD", "Draft contract is intentionally inert")
         require(c.get("root_go_reference") and "REQUIRED" not in c["root_go_reference"], "Final root GO missing")
         require(c.get("parallelism") in [1, 2] and 0 < c.get("max_total_seconds", 0) <= 3300, "Build resource bounds invalid")
-        if c.get("checkpoint_transport") == "native-project-cache-v1" and c.get("stage") == "A":
+        if (c.get("checkpoint_transport") == "native-project-cache-v1" and c.get("stage") == "A") or (c.get("mode") == "native-simple-build-resume-v1" and c.get("resume_stage") == "A"):
             require(c.get("upload_exact_package") is False, "Native cache producer must not publish artifact")
         else:
             require(c.get("upload_exact_package") is True, "Exact public package upload not enabled")
-        require(c.get("artifact_basename") == "faf-re-x64-293153-282-284", "Artifact basename must be exact reviewed value")
+        require(c.get("artifact_basename") == "faf-re-x64-6c93e3-282-284", "Artifact basename must be exact reviewed value")
         require(os.environ.get("APPVEYOR", "").lower() == "true", "Not an AppVeyor worker")
         require(os.environ.get("APPVEYOR_ACCOUNT_NAME", "").lower() == c["account"].lower(), "AppVeyor account mismatch")
         require(os.environ.get("APPVEYOR_PROJECT_SLUG") == c["project_slug"], "AppVeyor project mismatch")

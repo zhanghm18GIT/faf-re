@@ -2,8 +2,8 @@
   "schema": 1,
   "status": "REVIEWED_FOR_THIS_PUBLIC_EXPERIMENT",
   "review_reference": "staged-material-review-20261103-1359",
-  "composite_tree": "ef844b5d98194249c7434e984c0c12dfa3b042a7",
-  "public_source_allowlist_sha256": "ac265877efafec8b90361c358015c24d74ca9bca49fb0fed642cf00940de92a6",
+  "composite_tree": "b7fff12cad8bc52b34be4107c9791298592bb291",
+  "public_source_allowlist_sha256": "91d3c6f2d6bc94aa22b05451760d31e06cb0a07bde55177db0426f5c2e2db928",
   "root_license_absence_recorded": true,
   "distribution_scope": "Public experimental RE source build only; no official release or upstream endorsement",
   "material_policy": "exact-engine-allowlist-plus-pinned-dependency-source-v1",
@@ -35,7 +35,13 @@
   "material_selection_sha256": "e956ca6f465f67b966392bea1ed7712d80234b756d96cca599470f2ee9b8292c",
   "material_selection_review_status": "REVIEWED",
   "material_selection_review_reference": "material-coff-fix4-static-20261103-1824",
-  "product_source_review_reference": "source-293153-static-20261103-1722",
-  "product_source_review_report_sha256": "f1def5a106f6832388bca1bed0321ff68240226b51a632176668af586d07c0a5",
-  "product_source_review_scope": "Fixed Windows source selection only; final material-selection amendment remains separately gated"
+  "product_source_review_reference": "source-6c93e3-static-20261104-0540",
+  "product_source_review_report_sha256": "e1b4aeed270655d5b2cac6a689a496e2dc2fae028a8c90ce127e0c72a28f6bea",
+  "product_source_review_scope": "Fixed source identity and selected public source paths including upstream LEGAL.md; no runtime result or redistribution license inferred.",
+  "upstream_legal_notice": {
+    "path": "LEGAL.md",
+    "git_blob": "13e50049182bfbca396fd8cc8755174ae52f678a",
+    "sha256": "2734e8094a106816377b08813ca45d1d237bb6b7431fdd2f71f1b456b1ad71f1",
+    "repository_wide_open_source_license_granted": false
+  }
 }
