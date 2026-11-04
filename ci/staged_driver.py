@@ -200,6 +200,7 @@ class StagedBuild(core.Build):
   query=self.build/'.cmake/api/v1/query';query.mkdir(parents=True,exist_ok=True);(query/'codemodel-v2').write_text('')
   self.extra_cmake_arguments=['-DCMAKE_SUPPRESS_REGENERATION=ON','-DCMAKE_EXPORT_COMPILE_COMMANDS=ON']
   super().configure()
+  self.receipt['public_option_source']=command_admission.verify_public_option_source(self.source/'dependencies/ffmpeg/faf/x64/sources.cmake')
   need(core.read_cache(self.build/'CMakeCache.txt').get('CMAKE_SUPPRESS_REGENERATION')=='ON','Required immutable-stage supervision missing')
   data=json.loads(self.command([self.ctest,'--test-dir',self.build,'--show-only=json-v1','-R',EFFECT_REGEX],name='effect-discovery'))
   single_test(data,'effect_scan','faf_effect_scan_tests.exe',False)
@@ -229,7 +230,11 @@ class StagedBuild(core.Build):
   for e in expanded:
    if e['output'] not in objects:continue
    result=build_graph.validate_compile_argv(build_graph.windows_argv(e['command']),self.llvm/'bin/clang-cl.exe',self.build,roots,{'/vctoolsdir':self.msvc,'/winsdkdir':self.sdk,'/winsdkversion':v})
-   strict=command_admission.validate(build_graph.windows_argv(e['command']),compiler=str(self.llvm/'bin/clang-cl.exe'),cwd=str(self.build),source=e['file'],output=e['output'],read_roots=[str(x) for x in roots],write_root=str(self.build),sysroots={'/vctoolsdir':str(self.msvc),'/winsdkdir':str(self.sdk),'/winsdkversion':v})
+   try:
+    strict=command_admission.validate(build_graph.windows_argv(e['command']),compiler=str(self.llvm/'bin/clang-cl.exe'),cwd=str(self.build),source=e['file'],output=e['output'],read_roots=[str(x) for x in roots],write_root=str(self.build),sysroots={'/vctoolsdir':str(self.msvc),'/winsdkdir':str(self.sdk),'/winsdkversion':v})
+   except command_admission.AdmissionError as exc:
+    detail=json.loads(str(exc));detail['output']=e['output'];detail['target']=next(r['target'] for r in graph['records'] if r['output']==e['output'])
+    raise core.Blocked(json.dumps(detail,sort_keys=True,separators=(',',':'))) from None
    seen.append({'output':e['output'],'argv_sha256':result['argv_sha256'],'closed_grammar_sha256':strict['argv_sha256']})
    for k,n in result['sysroot_occurrences'].items():occurrences[k].add(n)
   need(len(seen)==len(objects),'Compile input reconciliation incomplete')
@@ -490,7 +495,7 @@ class StagedBuild(core.Build):
   print('PUBLIC_ARTIFACT_RECEIPT '+json.dumps({'appveyor':self.receipt['appveyor'],'artifact':self.receipt['artifact'],'stage':self.stage_name,'state':self.receipt['state']},sort_keys=True),flush=True)
  def cache_precompile_tests(self):
   # Synthetic-only: verifies the integrated guard chain, not filesystem isolation.
-  for pattern in ['test_cache_transport.py','test_cache_ready.py','test_command_admission.py','test_structured_checkpoint.py','test_structured_objects.py']:
+  for pattern in ['test_cache_transport.py','test_cache_ready.py','test_command_admission.py','test_structured_checkpoint.py','test_structured_objects.py','test_full_command_profiles.py']:
    self.command([sys.executable,'-I','-B','-m','unittest','discover','-s',self.here/'tests','-p',pattern,'-q'],cap=90,name='precompile-'+pattern[:-3])
   self.receipt['cache_precompile_tests']='PASS_SYNTHETIC_GUARD_CHAIN_NOT_READ_ISOLATION'
  def stage_native_cache(self):
@@ -516,12 +521,12 @@ class StagedBuild(core.Build):
    self.validate_contract();self.verify_configuration_checkout();self.start_workspace();self.windows_cleanup_fixture()
    for method in [self.tools_and_runtime,self.source_assembly,self.configure]:
     print('PHASE '+method.__name__+' '+str(round(time.monotonic()-self.started,3)),flush=True);method()
+    if method.__name__=='source_assembly':self.cache_precompile_tests()
    self.prepare_materials();self.owned_baseline=self.owned_identity();self.external_before=self.external_identity()
    need(self.external_before.public_summary()['backend']=='windows-handles','Actual Windows fingerprint backend required')
    self.receipt['external_input_fingerprint']=self.external_before.public_summary()
    self.receipt['checkpoint_policy_preflight']=checkpoint.validate_policy(self.checkpoint_policy(),self.metadata())
    print('CHECKPOINT_POLICY_PREFLIGHT '+json.dumps(self.receipt['checkpoint_policy_preflight'],sort_keys=True),flush=True)
-   self.cache_precompile_tests()
    self.phase='precompile-content-acceptance'
    self.receipt['checkpoint_content_preflight']=checkpoint.preflight_available_content(self.checkpoint_policy(),self.metadata(),self.checkpoint_boundary)
    self.receipt['public_material_selection']={'policy_sha256':self.material_selection_sha,'omitted_exact_non_build_files':len(self.material_selection['omitted_non_build_material']),'retained_exact_vms_text_files':len(self.material_selection['retained_vms_text']),'original_checkout_unchanged':True}

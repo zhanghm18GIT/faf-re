@@ -29,3 +29,5 @@ Run `python -B -m unittest discover -s ci/tests -v` for local synthetic protocol
 No client success is claimed until B completes its required targets and tests. Artifact upload acceptance is not delivery: retrieve the exact final artifact, verify its hash and deliver it separately. Raw build logs are not cache payloads. Uncertain child termination blocks promotion.
 
 The Windows export retains the exact reviewed material policy, including omission of the Linux-only PGO artifacts listed there; it is not a complete Linux PGO source bundle. Product presets and compilation rules are unchanged. See `ci/README-PACKAGE.md`, `ci/TESTING.md` and `ci/REBUILD.md` for final package use and reconstruction.
+
+Compiler command admission checks four complete CMake-generated command profiles before configure, including the fixed FFmpeg option list. The FFmpeg option-source file is hash-checked after configure acquires it and before graph admission. Native Windows command-line roundtrips run on the worker; Linux fixture generation is not evidence of the lost worker command. Rejections report argument position, category and hashes without raw argument values.

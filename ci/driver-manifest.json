@@ -49,8 +49,8 @@
     },
     {
       "path": "command_admission.py",
-      "sha256": "0a6732aa3115fdb6b793ea68761eedafbb002b5cf2d815fd6e1b8fbda7d5a891",
-      "size": 4452
+      "sha256": "6cebeb46e5f9b069afad45cf2b30e978eaea647a97135698fc6d89f1056c25df",
+      "size": 7277
     },
     {
       "path": "dependency-recipe.json",
@@ -84,7 +84,7 @@
     },
     {
       "path": "run-client-build.ps1",
-      "sha256": "aba04f6b2c31a32744013c2dcf05970257de96f1a9bee2655c38ea51b9cdce7f",
+      "sha256": "3c6058d907b5fe180cbca0f5da8915903e4c8f54b582724ab3419247ad12be69",
       "size": 4585
     },
     {
@@ -94,13 +94,18 @@
     },
     {
       "path": "staged_driver.py",
-      "sha256": "6a1ebc7301d2b58729af3bcedf1f3129328478d1a5f49e7c110420a5345d2336",
-      "size": 48254
+      "sha256": "c5a251ebc6e6f61381242f085e92d7efe759a10ebb761304840a5f35ef13edab",
+      "size": 48766
     },
     {
       "path": "structured_objects.py",
       "sha256": "4fb9b2e50cb0afd5605e1e2076030948e006d3e1d52e3c65c496f1385d808100",
       "size": 17865
+    },
+    {
+      "path": "tests/fixtures/command_profiles.json",
+      "sha256": "8581d3778a2ef09a2b583e78a1c4bd149202f08250d113e08834a07398ea6357",
+      "size": 31446
     },
     {
       "path": "tests/test_build_capture.py",
@@ -126,6 +131,11 @@
       "path": "tests/test_command_admission.py",
       "sha256": "aa17400a0c13cbf8d638de36abf03adeeec657d55f549d3f64d6a5a48ed145db",
       "size": 2419
+    },
+    {
+      "path": "tests/test_full_command_profiles.py",
+      "sha256": "d0ea39f418431c93d03cadb9f85c79fbe7874989021d094ae60651ab9f80d5cb",
+      "size": 4253
     },
     {
       "path": "tests/test_owned_cleanup.py",
