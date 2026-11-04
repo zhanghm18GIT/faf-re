@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "root-free-public-artifact-relay-A-20261104-1255-independent-review-4c57ff3d6a468011d641ed35ddaefd30ef94c43f86f2b0d5661b490769299773",
+  "state": "DRAFT_NOT_AUTHORIZED",
+  "root_go_reference": null,
   "reviewed_driver_manifest_sha256": "1de90b54ec435c11f789ad54d7eb7871d151f91d44d3627228a312f3b22bd1d0",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": "f0be5885b5ff25321abe99fa43d106d7cd8d087f",
+    "parent_commit": null,
     "tracked_files": [
       ".gitattributes",
       "README.md",
