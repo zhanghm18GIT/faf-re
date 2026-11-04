@@ -10,12 +10,12 @@
     {
       "path": "README-PACKAGE.md",
       "size": 2432,
-      "sha256": "4f201a513b3bce5d0c68da5df9d50377eb27da23222f631ebf816ae852ce9b05"
+      "sha256": "ab103e535d61763313efa2c5847689f39a7bcaf0ab3b5cbc198d720cd93c6da8"
     },
     {
       "path": "README-RESUME.md",
       "size": 6668,
-      "sha256": "280fbc490f2c8d7ce9f7d83df3ba9034fc80ca1634414ca947b46905eec69e6d"
+      "sha256": "64ddc4b3f8f7dd80e82678f4193451af01a1b825e54438599fe099257576d1d3"
     },
     {
       "path": "README-SINGLE.md",
@@ -24,13 +24,13 @@
     },
     {
       "path": "README-TRANSFER.md",
-      "size": 2201,
-      "sha256": "2f2a24dae81974a8fe72a36da848f5b79f03a41c4ed4ec31bc068ab971d1ff57"
+      "size": 3101,
+      "sha256": "82a49c18c7ea9591838c883079762be8389674115c65012f36f16e8566c41892"
     },
     {
       "path": "REBUILD.md",
       "size": 7280,
-      "sha256": "4cd711e69a470af36f2038264f81e2a72f68218b23d941fa853bafb40d1adf91"
+      "sha256": "137a09b5902195154966836c5a99df65ea7ab03a854ff9fbcfebf9603cd09111"
     },
     {
       "path": "TESTING.md",
@@ -39,13 +39,13 @@
     },
     {
       "path": "artifact-recipe.json",
-      "size": 288,
-      "sha256": "f3984cd6efa5cc8aa7f4951afccd1d192d33cabcf6887a480cd2a160944ee69f"
+      "size": 320,
+      "sha256": "a0aaea920bc09463f988314ed73b2c67fd85f247e9586a69421411909b17d27f"
     },
     {
       "path": "artifact_driver.py",
-      "size": 13214,
-      "sha256": "b96425d2db30353770dac2491005b3d528209a4d5c8fcd54346d809cb9d34e75"
+      "size": 15995,
+      "sha256": "3380392830d280b0b2e5f54f2eabd3ea5340e12c58e054c82c64efee4d8e5403"
     },
     {
       "path": "artifact_transfer.py",
@@ -95,7 +95,7 @@
     {
       "path": "driver.py",
       "size": 61071,
-      "sha256": "535927170f94f2dbc62193409dc6e4e13a8fa9bb9215c8b2480872ea21d76c1f"
+      "sha256": "c27236e906720cf24ef42df934bdb3768068fe5f63a6df17a81a576d9ffc8d9d"
     },
     {
       "path": "exact_timestamp.py",
@@ -105,7 +105,7 @@
     {
       "path": "integration-manifest.json",
       "size": 10606,
-      "sha256": "044401a4c5d6fbd5745edb596037c66fd31ffd4bb59e37bc567a098fc291b31d"
+      "sha256": "680f030ab6458ba914bb48a5bfa8e5d593868af740c499b085b20430b3e74540"
     },
     {
       "path": "owned_cleanup.py",
@@ -119,8 +119,8 @@
     },
     {
       "path": "public-source-allowlist.json",
-      "size": 368099,
-      "sha256": "d4c7d05623e154161742783d9a51577e376706f62091f5db8a80871a0a20894b"
+      "size": 368072,
+      "sha256": "ca341cf8d5dd3f35171388cc101692d55415ffe8363cda7cdb18fbcf8d1cd70a"
     },
     {
       "path": "resume-recipe.json",
@@ -134,8 +134,8 @@
     },
     {
       "path": "resume_driver.py",
-      "size": 21708,
-      "sha256": "975e0a70ee885962573acd3e32ee26656cbf01076153001ba76192bc30e3df7f"
+      "size": 22729,
+      "sha256": "1a876430788cb7dd8dc798aa037538e45cbe5c02d25cf57ac7c71cd2df77b658"
     },
     {
       "path": "resume_ready.py",
@@ -149,8 +149,8 @@
     },
     {
       "path": "run-artifact-build.ps1",
-      "size": 3895,
-      "sha256": "995d8aff48f2a2958f85ff27bc9a757ed1f06847f0e4d747cf14e314554c621d"
+      "size": 3899,
+      "sha256": "693e69192150c991c5ecdfeab8c3f8d2b90d84e13504a2b1b19d3074d88e8a12"
     },
     {
       "path": "run-client-build.ps1",
@@ -160,7 +160,7 @@
     {
       "path": "run-resume-build.ps1",
       "size": 4305,
-      "sha256": "852d0b2d8d8bab4262a42da099a078880b5266e99525d6fc471a188778214e06"
+      "sha256": "ec03a6dac9209fc241c078ba70097ceabfe87b1e2156b8263bb6ac22cdc6e59e"
     },
     {
       "path": "run-single-build.ps1",
@@ -190,17 +190,17 @@
     {
       "path": "tests/fixtures/command_profiles.json",
       "size": 31653,
-      "sha256": "afe19c2aa2614d232016fd493c6867a9c3466e25cfbadbb5d54897f533a44667"
+      "sha256": "145b87defb87f61ee48bfda602da5420732e845bb1d676263083e33837296c67"
     },
     {
       "path": "tests/fixtures/source_pin_evidence.json.gz",
-      "size": 1641758,
-      "sha256": "0574e7ba561a73b4a350ebdf094aba2c6f656cf7e6366ab6954ca9884ea59fd9"
+      "size": 1642127,
+      "sha256": "9189bb3d13540f05718896e9585f74c6723478c1b9729046974969fba5f2df41"
     },
     {
       "path": "tests/test_artifact_driver.py",
-      "size": 10475,
-      "sha256": "ab5decf929af7271b5f6b9f0dba77b7896da157ef22040cb51c431486d33d723"
+      "size": 13104,
+      "sha256": "6dc0118f046dce9e419ddb420c1dc734b29d8740f52f9efce140499191d910f4"
     },
     {
       "path": "tests/test_artifact_transfer.py",
@@ -250,7 +250,7 @@
     {
       "path": "tests/test_full_command_profiles.py",
       "size": 4253,
-      "sha256": "2480c3c8fc78662bc764ace10ea3ac2e571fff90fa6fff199220de906e889f7f"
+      "sha256": "8fdfd2eb153ce85d63a013ab8ea361ea58cb43e4f8d64ca3db70d0c4859be9da"
     },
     {
       "path": "tests/test_owned_cleanup.py",
@@ -261,6 +261,11 @@
       "path": "tests/test_public_literal.py",
       "size": 6826,
       "sha256": "de0e9dd392b49d92c226a780f4031f4c7d15437e9ca70085d86a63344421f859"
+    },
+    {
+      "path": "tests/test_relay_protocol.py",
+      "size": 7896,
+      "sha256": "729a22cf5d255975eba932861aec1510691abd5dc05285144200be83af22c2f8"
     },
     {
       "path": "tests/test_resume_bundle.py",
@@ -300,7 +305,7 @@
     {
       "path": "tests/test_staged_driver.py",
       "size": 24772,
-      "sha256": "0d484c7db3a4c1ef0816e566131d2e11ed54e2df2ad5a30be7b5672b9d79d5c2"
+      "sha256": "d9592c81f0c7986ee76fe01a00ba023c09a486901057f9abfd01752477527077"
     },
     {
       "path": "tests/test_structured_checkpoint.py",

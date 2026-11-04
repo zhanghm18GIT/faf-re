@@ -2,7 +2,8 @@
   "schema": 1,
   "base_dependency_recipe": "fc1de769fedc4365d670e7e67c4e93b673e1fd2900ceb84bc21670e513423e5d",
   "mode": "public-artifact-build-resume-v1",
-  "engine_object_count": 300,
+  "engine_object_count": 450,
   "selection": "nondependency-source-src-c-cpp-obj-sorted-output-v1",
-  "bundle_limit": 900000000
+  "bundle_limit": 900000000,
+  "producer_object_count": 150
 }

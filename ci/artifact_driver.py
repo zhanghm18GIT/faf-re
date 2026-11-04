@@ -11,11 +11,13 @@ import resume_driver as resume
 import resume_bundle, resume_transport as cache_transport, artifact_transfer as transfer
 import build_capture
 need=core.require
-COUNT=resume.COUNT
+COUNT=450
+PRODUCER_COUNT=150
 class ArtifactBuild(resume.ResumeBuild):
+    ENGINE_OBJECT_COUNT=COUNT
     def validate_contract(self):
         core.Build.validate_contract(self)
-        need(self.c.get('mode')=='public-artifact-build-resume-v1' and self.c.get('resume_stage') in ['A','B'],'Unknown resume mode')
+        need(self.c.get('mode')=='public-artifact-build-resume-v1' and self.c.get('resume_stage') in ['A','R','B'],'Unknown resume mode')
         self.resume_stage=self.c['resume_stage']
         need(self.c.get('max_total_seconds')==3300 and self.c.get('parallelism')==2,'Resource bounds changed')
         need(self.c.get('build_reserve_seconds')==390,'Finalization reserve changed')
@@ -29,23 +31,68 @@ class ArtifactBuild(resume.ResumeBuild):
         need(self.recipe_key==self.c['dependency_recipe_sha256'],'Dependency recipe mismatch')
         self.resume_recipe=core.read_json(self.here/'artifact-recipe.json');self.resume_key=shared.json_hash(self.resume_recipe)
         need(self.resume_key==self.c['resume_recipe_sha256'],'Resume recipe mismatch')
-        need(self.resume_recipe=={'schema':1,'base_dependency_recipe':self.recipe_key,'mode':'public-artifact-build-resume-v1','engine_object_count':COUNT,'selection':'nondependency-source-src-c-cpp-obj-sorted-output-v1','bundle_limit':900000000},'Unreviewed recipe')
+        need(self.resume_recipe=={'schema':1,'base_dependency_recipe':self.recipe_key,'mode':'public-artifact-build-resume-v1','engine_object_count':COUNT,'producer_object_count':PRODUCER_COUNT,'selection':'nondependency-source-src-c-cpp-obj-sorted-output-v1','bundle_limit':900000000},'Unreviewed recipe')
         need(os.environ.get('APPVEYOR_SKIP_FINALIZE_ON_EXIT','').lower()=='true' and os.environ.get('APPVEYOR_SAVE_CACHE_ON_ERROR','').lower()=='false','Provider finalization controls')
         pin=self.c.get('resume_input')
         if self.resume_stage=='A':need(pin is None and self.c['upload_exact_package'] is True,'Producer must explicitly publish transfer')
         else:
-            need(type(pin) is dict and set(pin)=={'url','size','sha256','inner','producer'},'Separate producer receipt required')
-            transfer.pin({'size':pin['size'],'sha256':pin['sha256']});cache_transport.expected(pin['inner'])
-            need(pin['url']=='https://ci.appveyor.com/api/buildjobs/'+pin['producer']['job_id']+'/artifacts/resume-transfer.zip','Exact producer artifact URL required')
-            need(set(pin['producer'])=={'build_id','job_id','configuration_commit'},'Producer identity fields')
-            import re
-            need(re.fullmatch(r'[0-9]+',pin['producer']['build_id']) and re.fullmatch(r'[a-z0-9]+',pin['producer']['job_id']) and re.fullmatch(r'[a-f0-9]{40}',pin['producer']['configuration_commit']),'Producer identity invalid')
+            self.validate_input_pin(pin,expects_parent=self.resume_stage=='B')
         self.producer_deadline=None
         self.receipt.update(mode=self.c['mode'],resume_stage=self.resume_stage,completion_guarantee=False,
           trust_model='fixed public source and official tools on fresh controlled worker; no arbitrary-source isolation or artifact confidentiality guarantee')
 
-    def transfer_metadata(self):
-        return {'mode':self.c['mode'],'producer':self.producer(),'base':core.BASE,'tree':core.TREE,'recipe':self.resume_key,'driver_manifest_sha256':self.c['reviewed_driver_manifest_sha256'],'material_policy_sha256':self.material_selection_sha}
+    def validate_input_pin(self,pin,*,expects_parent):
+        need(type(pin) is dict and set(pin)=={'url','size','sha256','inner','producer','predecessor'},'Separate producer chain required')
+        transfer.pin({'size':pin['size'],'sha256':pin['sha256']});cache_transport.expected(pin['inner'])
+        producer=pin['producer']
+        need(type(producer) is dict and set(producer)=={'build_id','job_id','configuration_commit'},'Producer identity fields')
+        import re
+        need(all(type(producer[k]) is str for k in producer),'Producer identity types')
+        need(re.fullmatch(r'[0-9]+',producer['build_id']) and re.fullmatch(r'[a-z0-9]+',producer['job_id']) and re.fullmatch(r'[a-f0-9]{40}',producer['configuration_commit']),'Producer identity invalid')
+        need(pin['url']=='https://ci.appveyor.com/api/buildjobs/'+producer['job_id']+'/artifacts/resume-transfer.zip','Exact producer artifact URL required')
+        if expects_parent:
+            self.validate_input_pin(pin['predecessor'],expects_parent=False)
+            need(pin['predecessor']['producer']!=producer,'Producer cannot be its own predecessor')
+        else:need(pin['predecessor'] is None,'Unexpected predecessor depth')
+
+    def select_objects(self):
+        super().select_objects()
+        full=list(self.selection)
+        count=PRODUCER_COUNT if self.resume_stage=='A' else COUNT
+        self.selection=full[:count];self.selected=[r['output'] for r in self.selection]
+        input_count=PRODUCER_COUNT if self.resume_stage=='R' else COUNT
+        self.input_selection=[] if self.resume_stage=='A' else full[:input_count]
+        self.receipt['resume_selection'].update(count=count,sha256=shared.json_hash(self.selection))
+        print('ARTIFACT_SELECTION '+json.dumps({'role':self.resume_stage,'input_count':len(self.input_selection),'output_count':count,'selection_sha256':shared.json_hash(self.selection)}),flush=True)
+
+    def output_predecessor(self):
+        return self.c['resume_input'] if self.resume_stage=='R' else None
+
+    def transfer_metadata(self,*,incoming=False):
+        pin=self.c['resume_input'] if incoming else None
+        return {'mode':self.c['mode'],'producer':pin['producer'] if incoming else self.producer(),'predecessor':pin['predecessor'] if incoming else self.output_predecessor(),'engine_object_count':(PRODUCER_COUNT if self.resume_stage=='R' else COUNT) if incoming else (PRODUCER_COUNT if self.resume_stage=='A' else COUNT),'base':core.BASE,'tree':core.TREE,'recipe':self.resume_key,'driver_manifest_sha256':self.c['reviewed_driver_manifest_sha256'],'material_policy_sha256':self.material_selection_sha}
+
+    def bundle_spec(self,selection=None):
+        names,outputs,meta=super().bundle_spec(selection)
+        meta['predecessor']=self.output_predecessor()
+        return names,outputs,meta
+
+    def restore_spec(self):
+        names,outputs,meta=resume.ResumeBuild.bundle_spec(self,self.input_selection)
+        meta['predecessor']=self.c['resume_input']['predecessor']
+        return names,outputs,meta
+
+    def restore_producer(self):
+        return self.c['resume_input']['producer']
+
+    def restored_selected(self):
+        return [r['output'] for r in self.input_selection]
+
+    def producer_groups(self):
+        if self.resume_stage=='R':
+            need(len(self.input_selection)==PRODUCER_COUNT and self.selection[:PRODUCER_COUNT]==self.input_selection,'Relay prefix mismatch')
+            return list(resume.batches(self.selected[PRODUCER_COUNT:COUNT]))
+        return super().producer_groups()
 
     def material_inputs(self):
         # Reuse fresh source selection/hash records already checked at this boundary.
@@ -94,9 +141,9 @@ class ArtifactBuild(resume.ResumeBuild):
         return {**self.c['resume_input']['inner'],'producer':self.c['resume_input']['producer']}
 
     def receive(self):
-        p=self.c['resume_input'];outer=self.root/'out/resume-transfer.zip';self.bundle=self.root/'out/checkpoint.zip'
+        p=self.c['resume_input'];outer=self.root/'out/incoming-transfer.zip';self.bundle=self.root/'out/incoming-checkpoint.zip'
         self.download_fixed(p['url'],outer,p['size'],300)
-        self.transfer_receipt=transfer.verify(outer,{'size':p['size'],'sha256':p['sha256']},self.transfer_metadata(),p['inner'],destination=self.bundle,tick=lambda:self.remaining(1))
+        self.transfer_receipt=transfer.verify(outer,{'size':p['size'],'sha256':p['sha256']},self.transfer_metadata(incoming=True),p['inner'],destination=self.bundle,tick=lambda:self.remaining(1))
 
     def restore(self):
         materials=self.material_inputs();expected=sorted([transfer.row(n,s,h) for n,(_,s,h) in materials.items()],key=lambda r:r['path'])
@@ -120,15 +167,16 @@ class ArtifactBuild(resume.ResumeBuild):
         # CLI alone receives provider service variables; never serialize them.
         self.command([self.appveyor,'PushArtifact',self.pending_transfer,'-FileName','resume-transfer.zip'],cwd=self.transfer_dir,env=dict(os.environ),cap=330,name='upload',started_callback=lambda:setattr(self,'upload_attempted',True))
         self.upload_accepted=True;self.receipt['state']='UPLOAD_ACCEPTED_RETRIEVAL_NOT_VERIFIED'
-        print('PUBLIC_ARTIFACT_RECEIPT '+json.dumps({'appveyor':self.receipt['appveyor'],'artifact':self.receipt['artifact'],'stage':'A','state':self.receipt['state']}),flush=True)
+        print('PUBLIC_ARTIFACT_RECEIPT '+json.dumps({'appveyor':self.receipt['appveyor'],'artifact':self.receipt['artifact'],'stage':self.resume_stage,'state':self.receipt['state']}),flush=True)
 
     def run(self):
         result=1
         try:
             for fn in [self.validate_contract,self.verify_configuration_checkout,self.start_workspace,self.windows_cleanup_fixture]:self.run_phase(fn)
-            if self.resume_stage=='B':self.run_phase(self.receive)
+            if self.resume_stage in ['R','B']:self.run_phase(self.receive)
             for fn in [self.tools_and_runtime,self.source_assembly,self.configure,self.prepare_build_info,self.select_objects,self.capture_before]:self.run_phase(fn)
-            if self.resume_stage=='A':
+            if self.resume_stage=='R':self.run_phase(self.restore)
+            if self.resume_stage in ['A','R']:
                 for fn in [self.build_producer,self.check_after,self.seal,self.clean_before_upload,self.stage_transfer]:self.run_phase(fn)
             else:
                 for fn in [self.restore,self.compile_and_test,self.check_after,self.stage_package,self.clean_before_upload,self.upload]:self.run_phase(fn)
@@ -142,7 +190,7 @@ class ArtifactBuild(resume.ResumeBuild):
                 else:
                     try:self.verify_owner();self.remove_junctions();self.remove_owned(self.owned_root)
                     except Exception as exc:result=1;print('CLEANUP_INCOMPLETE '+type(exc).__name__,flush=True)
-        if result==0 and self.resume_stage=='A':
+        if result==0 and self.resume_stage in ['A','R']:
             try:self.publish_transfer()
             except Exception as exc:
                 result=1;self.receipt['state']='BLOCKED_UPLOAD_UNCERTAIN' if self.upload_attempted else 'BLOCKED'

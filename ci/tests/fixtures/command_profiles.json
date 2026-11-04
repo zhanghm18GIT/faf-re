@@ -9,7 +9,7 @@
     "raw_ninja_compdb_sha256": "17eb3c6f67604da480973b5845bda80364d7e8c38beabad612eb73fccd26640f",
     "full_local_fixtures_sha256": "08f5702288e3adba4d7c37f47c96fe4ca7b4605cec57d1e5bc72c661c4ae1512",
     "limits": "Synthetic source/include paths, macro fixture, forced compiler identity; not actual Windows worker commands. Windows command quoting reconstructed with Python list2cmdline; native Windows parser not tested. Bare /Fd preserved exactly as generated. Full dependency graph not reproduced. Original source_base records the original fixture; unchanged codegen/dependency pins support current fixed-source applicability.",
-    "current_fixed_source_base": "412a93eef79527f91d5fec7509cf6e4288c55006"
+    "current_fixed_source_base": "019418f30dac857eae186027305fc0fcded50469"
   },
   "fixtures": [
     {

@@ -1,4 +1,4 @@
-CURRENT INERT CANDIDATE: public structured artifact A → B via appveyor-artifact-a.yml / appveyor-artifact-b.yml. Read ci/README-TRANSFER.md. Native cache is disabled for this route. Both artifact contracts require separate review and activation; B also requires an independently pinned completed A artifact. Older single-job and cache sections below are historical reference, not current activation instructions.
+CURRENT INERT CANDIDATE: public artifact Producer A → Continuation R → Final B via appveyor-artifact-a.yml / appveyor-artifact-r.yml / appveyor-artifact-b.yml. Read ci/README-TRANSFER.md. Common recipe fixes A150/R450; native cache is disabled. All three roles require separate activation; R and B require independently pinned exact producer chains. Older sections below are historical, not current activation instructions.
 
 # Historical single-job x64 RE build (disabled)
 
@@ -10,7 +10,7 @@ The following A/B documentation is historical reference only. Both A/B contracts
 
 # Historical A/B configuration (disabled)
 
-This configuration branch builds public upstream `412a93eef79527f91d5fec7509cf6e4288c55006` with the three rendering replacements in `ci/integration-manifest.json`, producing product tree `8ec6720641e94ef109dc4ba96e2fe85fa2350490`. It is not an official release. The historical branch name contains `302eb`; that is not the product source identity.
+This configuration branch builds public upstream `019418f30dac857eae186027305fc0fcded50469` with the three rendering replacements in `ci/integration-manifest.json`, producing product tree `4d57de802cb8e9bbd2127f1501e523362e9cac0f`. It is not an official release. The historical branch name contains `302eb`; that is not the product source identity.
 
 ## Two manual stages
 

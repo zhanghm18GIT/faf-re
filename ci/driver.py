@@ -25,14 +25,14 @@ import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
 
-BASE = "412a93eef79527f91d5fec7509cf6e4288c55006"
-BASE_TREE = "4e529401f50b056ebbd535007afe73dbe4b2357f"
-TREE = "8ec6720641e94ef109dc4ba96e2fe85fa2350490"
-INTEGRATION_SHA = "044401a4c5d6fbd5745edb596037c66fd31ffd4bb59e37bc567a098fc291b31d"
+BASE = "019418f30dac857eae186027305fc0fcded50469"
+BASE_TREE = "c84c4bedc23aa72560768e8ef4458351e7bd0d77"
+TREE = "4d57de802cb8e9bbd2127f1501e523362e9cac0f"
+INTEGRATION_SHA = "680f030ab6458ba914bb48a5bfa8e5d593868af740c499b085b20430b3e74540"
 LLVM_SHA = "3b568b5be1443d1a04c63261fa3a7aed16e126a8ed2196a1032aa8ed602144bd"
 LLVM_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.7/clang%2Bllvm-22.1.7-x86_64-pc-windows-msvc.tar.xz"
 LLVM_SIZE = 862033024
-EXE_NAME = "main_x64_test_412a93_282-284"
+EXE_NAME = "main_x64_test_019418_282-284"
 REQUIRED_TARGETS = ["faf_main", "faf_sim_math_tests", "faf_math_dump", "faf_coroutine_tests", "faf_effect_scan_tests"]
 REQUIRED_TESTS = ["math_dump", "sim_math"]
 TEST_REGEX = "^(sim_math|math_dump)$"
@@ -291,7 +291,7 @@ class Build:
             require(c.get("upload_exact_package") is False, "Native cache producer must not publish artifact")
         else:
             require(c.get("upload_exact_package") is True, "Exact public package upload not enabled")
-        require(c.get("artifact_basename") == "faf-re-x64-412a93-282-284", "Artifact basename must be exact reviewed value")
+        require(c.get("artifact_basename") == "faf-re-x64-019418-282-284", "Artifact basename must be exact reviewed value")
         require(os.environ.get("APPVEYOR", "").lower() == "true", "Not an AppVeyor worker")
         require(os.environ.get("APPVEYOR_ACCOUNT_NAME", "").lower() == c["account"].lower(), "AppVeyor account mismatch")
         require(os.environ.get("APPVEYOR_PROJECT_SLUG") == c["project_slug"], "AppVeyor project mismatch")

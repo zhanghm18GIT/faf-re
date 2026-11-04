@@ -1,7 +1,7 @@
 {
-  "base_commit": "412a93eef79527f91d5fec7509cf6e4288c55006",
-  "base_tree": "4e529401f50b056ebbd535007afe73dbe4b2357f",
-  "planned_integrated_tree": "8ec6720641e94ef109dc4ba96e2fe85fa2350490",
+  "base_commit": "019418f30dac857eae186027305fc0fcded50469",
+  "base_tree": "c84c4bedc23aa72560768e8ef4458351e7bd0d77",
+  "planned_integrated_tree": "4d57de802cb8e9bbd2127f1501e523362e9cac0f",
   "submodule_gitlinks": [
     {
       "path": "dependencies/FX11",
@@ -105,7 +105,7 @@
     "src/gpg/gal/backends/d3d11/EffectScan.h": "ed844a1045d01f2576b821ef79fa7267ae204e2ed2665690ddd38776f57ec955",
     "src/gpg/gal/backends/d3d11/EffectSourceD3D11.cpp": "09c852b157aa699f795b82292f2dfeb4c242cb1a1197cc2ece345fd0ecd9f461",
     "src/gpg/gal/backends/d3d11/EffectSourceD3D11.h": "58e5c1d102121530180216a25f8fc2d91fd07e215b854dfc3a3714595089e0e0",
-    "src/moho/render/GpuPathSettings.cpp": "63be29eb74b36d30040b5b9790f192ebc786117960ac380763e21480921829de",
+    "src/moho/render/GpuPathSettings.cpp": "d4f295af5205f344f7971fb0ecb9f8c11b464ef591ac5fbe40d75716c019af4a",
     "LEGAL.md": "2734e8094a106816377b08813ca45d1d237bb6b7431fdd2f71f1b456b1ad71f1"
   },
   "hook_files": [

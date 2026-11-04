@@ -30,6 +30,7 @@ def batches(outputs):
     if batch:yield batch
 
 class ResumeBuild(single.SingleBuild):
+    ENGINE_OBJECT_COUNT=COUNT
     def validate_contract(self):
         core.Build.validate_contract(self)
         need(self.c.get('mode')=='native-simple-build-resume-v1' and self.c.get('resume_stage') in ['A','B'],'Unknown resume mode')
@@ -138,31 +139,36 @@ class ResumeBuild(single.SingleBuild):
             need(out.casefold() not in seen,'Duplicate engine output');seen.add(out.casefold())
             need(Path(e['directory'])==self.build and out in target_names,'Engine target absent from actual Ninja graph')
             rows.append({'output':out,'source':p.relative_to(self.source).as_posix(),'command_sha256':hashlib.sha256(e['command'].encode()).hexdigest()})
-        rows.sort(key=lambda r:r['output']);need(len(rows)>=COUNT,'Insufficient actual engine object targets')
-        self.selection=rows[:COUNT];self.selected=[r['output'] for r in self.selection]
-        self.receipt['resume_selection']={'count':COUNT,'sha256':shared.json_hash(self.selection),'available_engine_objects':len(rows)}
+        rows.sort(key=lambda r:r['output']);count=self.ENGINE_OBJECT_COUNT;need(len(rows)>=count,'Insufficient actual engine object targets')
+        self.selection=rows[:count];self.selected=[r['output'] for r in self.selection]
+        self.receipt['resume_selection']={'count':count,'sha256':shared.json_hash(self.selection),'available_engine_objects':len(rows)}
         print('RESUME_SELECTION '+json.dumps(self.receipt['resume_selection']),flush=True)
 
     def producer(self):
         if self.resume_stage=='B':return self.c['resume_input']['producer']
         a=self.receipt['appveyor'];return {'build_id':a['build_id'],'job_id':a['job_id'],'configuration_commit':a['provider_commit']}
 
-    def bundle_spec(self):
+    def bundle_spec(self,selection=None):
+        selection=self.selection if selection is None else selection
+        selected=[r['output'] for r in selection]
         names=sorted(row['path'] for row in self.owned_baseline['records'] if row['root']=='source')
         generated={row['path'] for row in self.owned_baseline['records'] if row['root']=='generated'}
-        outputs=sorted(set(self.graph['outputs'])|set(self.selected)|{'.ninja_log','.ninja_deps'}|generated)
+        outputs=sorted(set(self.graph['outputs'])|set(selected)|{'.ninja_log','.ninja_deps'}|generated)
         meta={'recipe':self.resume_key,'dependency_recipe':self.recipe_key,'base':core.BASE,'tree':core.TREE,
               'driver_manifest_sha256':self.c['reviewed_driver_manifest_sha256'],'tools':self.receipt['tools'],
               'graph_identity':self.graph['identity'],'compile_argv_identity':self.compile_argv_identity,
-              'build_info_command_sha256':hashlib.sha256(self.build_info_command.encode()).hexdigest(),'selection':self.selection,'source_identity':self.owned_baseline['sha256'],
+              'build_info_command_sha256':hashlib.sha256(self.build_info_command.encode()).hexdigest(),'selection':selection,'source_identity':self.owned_baseline['sha256'],
               'controlled_environment':self.effective_env_identity,'glob_membership':self.owned_baseline['mbedtls_actual_glob'],
               'cache_selections':self.receipt['cache_selections']}
         return names,outputs,meta
 
+    def producer_groups(self):
+        return [list(build_graph.TARGETS),*list(batches(self.selected))]
+
     def build_producer(self):
         self.producer_deadline=time.monotonic()+min(2400,self.remaining(3300)-600)
         need(self.producer_deadline>time.monotonic(),'No producer compile window')
-        groups=[list(build_graph.TARGETS),*list(batches(self.selected))]
+        groups=self.producer_groups()
         for i,group in enumerate(groups):
             limit=int(min(self.producer_deadline-time.monotonic(),self.remaining(3300)-600))
             need(limit>0,'Shared producer compile deadline exhausted')
@@ -179,19 +185,25 @@ class ResumeBuild(single.SingleBuild):
         return [self.msvc/'include',self.msvc/'atlmfc/include',Path(self.c['windows_sdk_root'])/'Include'/self.c['windows_sdk_headers_version'],self.llvm/'lib/clang/22/include',self.source/'dependencies/dxsdk/Include']
 
     def external_header_rows(self):
+        started=time.monotonic()
         text=self.command([self.ninja,'-C',self.build,'-t','deps'],cap=120,name='resume-actual-header-deps')
-        paths=set()
+        queried=time.monotonic();raw=set()
         for line in text.splitlines():
             if not line.startswith('    '):continue
-            value=line[4:];need(value and value==value.strip(),'Unexpected Ninja deps path format')
-            p=Path(value);p=p if p.is_absolute() else self.build/p
-            p=p.resolve()
-            if p.is_relative_to(self.build):continue
-            if p.is_relative_to(self.source) and not p.is_relative_to(self.source/'dependencies/dxsdk/Include'):continue
-            need(any(p.is_relative_to(r.resolve()) for r in self.external_header_roots()),'Actual header outside declared sysroots')
-            paths.add(p)
+            value=line[4:];need(value and value==value.strip(),'Unexpected Ninja deps path format');raw.add(value)
+        roots=[r.resolve() for r in self.external_header_roots()]
+        build=self.build.resolve();source=self.source.resolve();dxsdk=(self.source/'dependencies/dxsdk/Include').resolve()
+        paths=set()
+        for value in sorted(raw):
+            p=Path(value);p=(p if p.is_absolute() else self.build/p).resolve()
+            if p.is_relative_to(build):continue
+            if p.is_relative_to(source) and not p.is_relative_to(dxsdk):continue
+            need(any(p.is_relative_to(r) for r in roots),'Actual header outside declared sysroots');paths.add(p)
         need(paths and len(paths)<=50000,'Actual external header inventory empty/oversized')
-        return [{'path':str(p),'size':p.stat().st_size,'sha256':core.sha(p)} for p in sorted(paths)]
+        classified=time.monotonic()
+        rows=[{'path':str(p),'size':p.stat().st_size,'sha256':core.sha(p)} for p in sorted(paths)]
+        print('EXTERNAL_HEADER_TIMING '+json.dumps({'query_seconds':round(queried-started,3),'classify_seconds':round(classified-queried,3),'hash_seconds':round(time.monotonic()-classified,3),'unique_raw_paths':len(raw),'unique_external_headers':len(paths)}),flush=True)
+        return rows
 
     def verify_external_headers(self,rows):
         need(type(rows) is list and 0<len(rows)<=50000,'External header inventory bound')
@@ -217,18 +229,28 @@ class ResumeBuild(single.SingleBuild):
     def bundle_input(self):
         return self.c['resume_input']
 
+    def restore_spec(self):
+        return self.bundle_spec()
+
+    def restore_producer(self):
+        return self.producer()
+
+    def restored_selected(self):
+        return self.selected
+
     def restore(self):
-        names,outputs,meta=self.bundle_spec();p=self.bundle_input()
-        report=resume_bundle.restore(self.bundle,{'size':p['size'],'sha256':p['sha256']},source=self.source,build=self.build,source_names=names,output_names=outputs,metadata=meta,producer=self.producer(),verify_external=self.verify_external_headers,verified_source=self.verified_source,tick=lambda:self.remaining(1))
+        names,outputs,meta=self.restore_spec();p=self.bundle_input()
+        selected=self.restored_selected()
+        report=resume_bundle.restore(self.bundle,{'size':p['size'],'sha256':p['sha256']},source=self.source,build=self.build,source_names=names,output_names=outputs,metadata=meta,producer=self.restore_producer(),verify_external=self.verify_external_headers,verified_source=self.verified_source,tick=lambda:self.remaining(1))
         # -n predicts downstream compilation before restat and cannot prove reuse.
         # Execute bounded updates; admit only the exact verified BuildInfo command,
         # and require every cached object/archive and generated header unchanged.
-        stable_names=sorted(set(self.graph['outputs'])|set(self.selected)|set(BUILD_INFO_HEADERS))
+        stable_names=sorted(set(self.graph['outputs'])|set(selected)|set(BUILD_INFO_HEADERS))
         before=[row for row in report.pop('verified_outputs') if row['path'] in set(stable_names)]
         need([row['path'] for row in before]==stable_names,'Restored comparison baseline incomplete')
         verification_deadline=time.monotonic()+120
         commands_run=0
-        for group in [list(build_graph.TARGETS),*list(batches(self.selected))]:
+        for group in [list(build_graph.TARGETS),*list(batches(selected))]:
             args=[self.ninja,'-C',self.build,'-v',*group]
             need(len(subprocess.list2cmdline([str(a) for a in args]))<8000,'Reuse command length bound')
             limit=min(30,int(verification_deadline-time.monotonic()));need(limit>0,'Reuse verification deadline')

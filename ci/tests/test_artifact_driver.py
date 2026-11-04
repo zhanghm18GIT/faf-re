@@ -7,13 +7,33 @@ import driver as core
 class ArtifactDriverTests(unittest.TestCase):
  def make(self,stage='A'):
   b=a.ArtifactBuild(CI,json.loads((CI/f'execution-artifact-{stage.lower()}.json').read_text()));b.resume_stage=stage;return b
+ def test_fixed_profiles_bind_recipe_and_preserve_legacy_300(self):
+  import resume_driver as legacy
+  self.assertEqual(a.COUNT,450);self.assertEqual(a.PRODUCER_COUNT,150);self.assertEqual(a.ArtifactBuild.ENGINE_OBJECT_COUNT,450);self.assertEqual(legacy.ResumeBuild.ENGINE_OBJECT_COUNT,300)
+  self.assertEqual(json.loads((CI/'artifact-recipe.json').read_text())['engine_object_count'],450)
+  self.assertEqual(json.loads((CI/'resume-recipe.json').read_text())['engine_object_count'],300)
+  for stage in 'ARB':
+   b=self.make(stage)
+   with tempfile.TemporaryDirectory() as td:
+    root=Path(td);b.source=root/'source';(b.source/'src').mkdir(parents=True);b.build=root/'build';b.ninja=Path('ninja');b.graph={'outputs':[]};rows=[];files=[]
+    for i in range(451):
+     path=b.source/'src'/('file'+str(i)+'.cpp');path.write_text('public');files.append({'path':path.relative_to(b.source).as_posix()});rows.append({'output':'src/CMakeFiles/engine.dir/'+str(i).zfill(4)+'.obj','file':str(path),'directory':str(b.build),'command':'clang-cl '+str(path)})
+    outputs=[json.dumps(rows),json.dumps(rows),'\n'.join(x['command'] for x in rows),'\n'.join(x['output']+': CXX_COMPILER' for x in rows)]
+    b.command=Mock(side_effect=outputs)
+    with patch.object(core,'read_json',return_value={'files':files}):b.select_objects()
+    count=150 if stage=='A' else 450
+    self.assertEqual(b.selected,[x['output'] for x in rows[:count]]);self.assertEqual(b.receipt['resume_selection']['count'],count)
+    self.assertEqual([len(x) for x in legacy.batches(b.selected)],[50]*(count//50))
+    if stage=='R':self.assertEqual(sum(b.producer_groups(),[]),[x['output'] for x in rows[150:450]])
  def test_inert_contracts(self):
-  for st in 'AB':
+  for st in 'ARB':
    b=self.make(st);self.assertEqual(b.c['state'],'DRAFT_NOT_AUTHORIZED');self.assertIsNone(b.c['resume_input']);self.assertIsNone(b.c['root_go_reference'])
  def test_real_contract_validation(self):
-  for st in 'AB':
+  for st in 'ARB':
    b=self.make(st);b.c.update(state='APPROVED_FOR_ONE_MANUAL_BUILD',root_go_reference='local fixture only')
-   if st=='B':b.c['resume_input']={'url':'https://ci.appveyor.com/api/buildjobs/abc123/artifacts/resume-transfer.zip','size':100,'sha256':'a'*64,'inner':{'size':50,'sha256':'b'*64},'producer':{'build_id':'123','job_id':'abc123','configuration_commit':'c'*40}}
+   if st in ['R','B']:b.c['resume_input']={'url':'https://ci.appveyor.com/api/buildjobs/abc123/artifacts/resume-transfer.zip','size':100,'sha256':'a'*64,'inner':{'size':50,'sha256':'b'*64},'producer':{'build_id':'123','job_id':'abc123','configuration_commit':'c'*40},'predecessor':None}
+   if st=='B':
+    parent=json.loads(json.dumps(b.c['resume_input']));parent['producer']['job_id']='parent123';parent['url']='https://ci.appveyor.com/api/buildjobs/parent123/artifacts/resume-transfer.zip';b.c['resume_input']['predecessor']=parent
    env={'APPVEYOR':'True','APPVEYOR_ACCOUNT_NAME':b.c['account'],'APPVEYOR_PROJECT_SLUG':b.c['project_slug'],'APPVEYOR_BUILD_WORKER_IMAGE':'Visual Studio 2022','APPVEYOR_SKIP_FINALIZE_ON_EXIT':'true','APPVEYOR_ARTIFACT_UPLOAD_TIMEOUT':'300','APPVEYOR_BUILD_ID':'123','APPVEYOR_BUILD_VERSION':'1','APPVEYOR_JOB_ID':'abc123','APPVEYOR_FORCED_BUILD':'true','APPVEYOR_CACHE_SKIP_SAVE':'true','APPVEYOR_CACHE_SKIP_RESTORE':'true','APPVEYOR_SAVE_CACHE_ON_ERROR':'false'}
    with self.subTest(stage=st),patch.dict(os.environ,env,clear=True),patch.object(core,'validate_interpreter'):b.validate_contract()
    for key in ['APPVEYOR_CACHE_SKIP_SAVE','APPVEYOR_CACHE_SKIP_RESTORE','APPVEYOR_SKIP_FINALIZE_ON_EXIT','APPVEYOR_SAVE_CACHE_ON_ERROR']:
@@ -44,6 +64,14 @@ class ArtifactDriverTests(unittest.TestCase):
   for fail in ['tools_and_runtime','source_assembly','configure','build_producer','check_after','seal','clean_before_upload','stage_transfer','full-cleanup']:
    with self.subTest(fail=fail),tempfile.TemporaryDirectory() as td:
     b=self.make();self.setup_run(b,Path(td)/'owned',fail);self.assertEqual(b.run(),1);b.publish_transfer.assert_not_called()
+ def test_relay_order_and_failure_matrix(self):
+  for fail in [None,'receive','restore','build_producer','check_after','seal','full-cleanup']:
+   with self.subTest(fail=fail),tempfile.TemporaryDirectory() as td:
+    b=self.make('R');seen=self.setup_run(b,Path(td)/'owned',fail)
+    self.assertEqual(b.run(),0 if fail is None else 1);b.compile_and_test.assert_not_called();b.upload.assert_not_called()
+    if fail is None:
+     self.assertLess(seen.index('restore'),seen.index('build_producer'));self.assertLess(seen.index('build_producer'),seen.index('seal'));self.assertLess(seen.index('full-cleanup'),seen.index('publish_transfer'))
+    else:b.publish_transfer.assert_not_called()
  def test_uncertain_child_no_publication(self):
   with tempfile.TemporaryDirectory() as td:
    b=self.make();self.setup_run(b,Path(td)/'owned');b.child_uncertain=True;self.assertEqual(b.run(),1);b.publish_transfer.assert_not_called()
@@ -105,6 +133,6 @@ class ArtifactDriverTests(unittest.TestCase):
     self.assertEqual(result.returncode==0,code==0);self.assertEqual(marker.exists(),code==0)
  def test_entry_never_enables_native_cache(self):
   ps=(CI/'run-artifact-build.ps1').read_text();self.assertIn("$env:APPVEYOR_CACHE_SKIP_SAVE = 'true'",ps);self.assertIn("$env:APPVEYOR_CACHE_SKIP_RESTORE = 'true'",ps);self.assertIn("$env:APPVEYOR_SAVE_CACHE_ON_ERROR = 'false'",ps);self.assertNotIn("= 'false'",ps.replace("$env:APPVEYOR_SAVE_CACHE_ON_ERROR = 'false'",''));self.assertTrue(ps.rstrip().endswith('Exit-AppveyorBuild'));self.assertNotIn('resume_ready.py',ps)
-  for st in 'ab':
+  for st in 'arb':
    y=(CI.parent/f'appveyor-artifact-{st}.yml').read_text();self.assertNotIn('\ncache:',y);self.assertIn("APPVEYOR_CACHE_SKIP_RESTORE: 'true'",y)
 if __name__=='__main__':unittest.main()

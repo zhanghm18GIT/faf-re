@@ -119,7 +119,7 @@ class StageChecks(unittest.TestCase):
  def test_contracts_inert_fixed_source_and_limits(self):
   for stage in 'ab':
    c=json.loads((CI/f'execution-stage-{stage}.json').read_text());self.assertEqual(c['state'],'DRAFT_NOT_AUTHORIZED');self.assertFalse(c['upload_exact_package']);self.assertIsNone(c['root_go_reference']);self.assertIsNone(c['checkpoint_input']);self.assertEqual(c['parallelism'],2);self.assertEqual(c['max_total_seconds'],3300);self.assertEqual(c['source_review_status'],'REVIEWED_FIXED_PRODUCT')
-  self.assertEqual(driver.BASE,'412a93eef79527f91d5fec7509cf6e4288c55006');self.assertEqual(driver.TREE,'8ec6720641e94ef109dc4ba96e2fe85fa2350490')
+  self.assertEqual(driver.BASE,'019418f30dac857eae186027305fc0fcded50469');self.assertEqual(driver.TREE,'4d57de802cb8e9bbd2127f1501e523362e9cac0f')
  def test_build_success_sets_acceptance_window_before_link_audit(self):
   with tempfile.TemporaryDirectory() as d:
    b=staged.StagedBuild(CI,{'stage':'B','max_total_seconds':3300,'stage_downstream_reserve_seconds':1050,'stage_build_max_seconds':2100,'stage_min_build_window_seconds':120});b.root=Path(d);b.build=Path(d)/'build';b.build.mkdir();(b.root/'logs').mkdir();(b.root/'logs/build.txt').write_text('log')

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][ValidateSet('A','B')][string]$Stage)
+param([Parameter(Mandatory=$true)][ValidateSet('A','R','B')][string]$Stage)
 # Ordinary repository install phase. No embedded payload or source ref writes.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -16,7 +16,7 @@ $driverDir = $PSScriptRoot
 $python = 'C:\Python312-x64\python.exe'
 $entry = Join-Path $driverDir 'artifact_driver.py'
 $contract = Join-Path $driverDir ('execution-artifact-' + $Stage.ToLowerInvariant() + '.json')
-if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'b96425d2db30353770dac2491005b3d528209a4d5c8fcd54346d809cb9d34e75') {
+if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '3380392830d280b0b2e5f54f2eabd3ea5340e12c58e054c82c64efee4d8e5403') {
     throw 'Driver entry SHA-256 mismatch'
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw 'Documented installed x64 Python missing; no fallback or installation' }

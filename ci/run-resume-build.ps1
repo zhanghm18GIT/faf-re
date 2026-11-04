@@ -13,7 +13,7 @@ $driverDir = $PSScriptRoot
 $python = 'C:\Python312-x64\python.exe'
 $entry = Join-Path $driverDir 'resume_driver.py'
 $contract = Join-Path $driverDir ('execution-resume-' + $Stage.ToLowerInvariant() + '.json')
-if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '975e0a70ee885962573acd3e32ee26656cbf01076153001ba76192bc30e3df7f') {
+if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '1a876430788cb7dd8dc798aa037538e45cbe5c02d25cf57ac7c71cd2df77b658') {
     throw 'Driver entry SHA-256 mismatch'
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw 'Documented installed x64 Python missing; no fallback or installation' }

@@ -1,7 +1,7 @@
 {
-  "base": "412a93eef79527f91d5fec7509cf6e4288c55006",
-  "composite_tree": "8ec6720641e94ef109dc4ba96e2fe85fa2350490",
-  "selection": "Explicit tracked Windows public source and build/relink support paths: prior 2441-path export, minus 26 upstream-deleted unused source files, plus six new upstream src files. Includes LEGAL.md. Excludes .github, report-only .clang-tidy, runner/game material, dependency binary archives, Linux-only profile/recording material and unrelated tools. Full upstream root identity is separately pinned; this is a filtered source export, not a complete upstream checkout.",
+  "base": "019418f30dac857eae186027305fc0fcded50469",
+  "composite_tree": "4d57de802cb8e9bbd2127f1501e523362e9cac0f",
+  "selection": "Explicit tracked Windows public source and build/relink support paths: same 2421 paths as previous export with eight updated source/document blobs. Includes LEGAL.md. Excludes .github, report-only .clang-tidy, runner/game material, dependency binary archives, Linux-only profile/recording material and unrelated tools. Full upstream root identity is separately pinned; this is a filtered source export, not a complete upstream checkout.",
   "files": [
     {
       "path": ".gitmodules",
@@ -195,7 +195,7 @@
     },
     {
       "path": "docs/SWITCHES.md",
-      "git_blob": "7067a533dd57ccc12ca38132f02f403337f6a07d",
+      "git_blob": "b2ccfd8ed841e2695433c0156cb03008bfc05517",
       "mode": "100644"
     },
     {
@@ -970,7 +970,7 @@
     },
     {
       "path": "src/gpg/gal/PlacedResources.h",
-      "git_blob": "c4c1b287a039b73159f3076ba33efa94fea26930",
+      "git_blob": "e31f5e9a0d8d71beda6606ef0a39b1334b8007f7",
       "mode": "100644"
     },
     {
@@ -1275,7 +1275,7 @@
     },
     {
       "path": "src/gpg/gal/backends/d3d12/D3D12Core.cpp",
-      "git_blob": "ef24a2a81ef90c2e6249bd7da004b77364fa15bf",
+      "git_blob": "491138bf9ea3dbeb18724bf040b75716b95d19df",
       "mode": "100644"
     },
     {
@@ -3090,7 +3090,7 @@
     },
     {
       "path": "src/moho/animation/CAniActor.h",
-      "git_blob": "cca84335866a6be60bfa68ddcf90338287eb17a4",
+      "git_blob": "0267c295ddb7ab15dedf9e99be83638f3ed81a82",
       "mode": "100644"
     },
     {
@@ -3120,7 +3120,7 @@
     },
     {
       "path": "src/moho/animation/CAniPose.h",
-      "git_blob": "4f146dd0e5b334e0688574f5c1aa95ec82cd2daf",
+      "git_blob": "93999b6a17cb9263b1240cc888d83c3d771617fb",
       "mode": "100644"
     },
     {
@@ -6670,7 +6670,7 @@
     },
     {
       "path": "src/moho/render/GpuPathSettings.cpp",
-      "git_blob": "702f3858d5a31dcd72fab27b93c33f9dad52594c",
+      "git_blob": "0fae9ebf324db07fd0e200036c32ebbfd772eee1",
       "mode": "100644"
     },
     {
@@ -9250,7 +9250,7 @@
     },
     {
       "path": "src/moho/sim/SimBlockLane.h",
-      "git_blob": "23d5411479f9652a389db06b19c4795f575ee7e4",
+      "git_blob": "09618be22002c2da2b0cc0ea24799c1e079d7034",
       "mode": "100644"
     },
     {
@@ -10335,7 +10335,7 @@
     },
     {
       "path": "src/moho/unit/core/Unit.cpp",
-      "git_blob": "04692ec424f64d0049ef4995fd989a3f01aa903c",
+      "git_blob": "8cc13353911737a13c9403f9bed148b92a2423a2",
       "mode": "100644"
     },
     {
