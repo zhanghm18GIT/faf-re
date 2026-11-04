@@ -214,8 +214,11 @@ class ResumeBuild(single.SingleBuild):
         p=self.c['resume_input'];self.bundle=self.root/'out/checkpoint.zip'
         cache_transport.receive(self.cache_dir/'checkpoint.zip',self.bundle,{'size':p['size'],'sha256':p['sha256']})
 
+    def bundle_input(self):
+        return self.c['resume_input']
+
     def restore(self):
-        names,outputs,meta=self.bundle_spec();p=self.c['resume_input']
+        names,outputs,meta=self.bundle_spec();p=self.bundle_input()
         report=resume_bundle.restore(self.bundle,{'size':p['size'],'sha256':p['sha256']},source=self.source,build=self.build,source_names=names,output_names=outputs,metadata=meta,producer=self.producer(),verify_external=self.verify_external_headers,verified_source=self.verified_source,tick=lambda:self.remaining(1))
         # -n predicts downstream compilation before restat and cannot prove reuse.
         # Execute bounded updates; admit only the exact verified BuildInfo command,

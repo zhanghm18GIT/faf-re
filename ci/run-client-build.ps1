@@ -83,4 +83,3 @@ if ($Stage -eq 'A') {
 }
 # B retains finalizer skip after its exact tested-client upload. No matrix/fallback.
 Exit-AppveyorBuild
-throw 'Exit-AppveyorBuild returned unexpectedly; do not continue pipeline'

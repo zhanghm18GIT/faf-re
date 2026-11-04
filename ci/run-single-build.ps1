@@ -70,4 +70,3 @@ try {
 if ($LASTEXITCODE -ne 0) { throw "Bounded RE driver failed with exit code $LASTEXITCODE. No retry or artifact fallback." }
 # Finalizers remain disabled; only the driver's exact checked package may upload.
 Exit-AppveyorBuild
-throw 'Exit-AppveyorBuild returned unexpectedly; do not continue pipeline'

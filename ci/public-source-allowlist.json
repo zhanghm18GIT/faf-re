@@ -1,7 +1,7 @@
 {
-  "base": "6c93e3625d96d5041b3336e88e3692b88c1ec0c2",
-  "composite_tree": "b7fff12cad8bc52b34be4107c9791298592bb291",
-  "selection": "Explicit tracked Windows public source and build/relink support paths: previous 2440 paths plus upstream LEGAL.md. Excludes .github, runner, game material, dependency binary archives, Linux-only .profdata and profile-recording script, and upstream nightly-release tooling. Full upstream root identity is separately pinned; this is a filtered source export, not a complete upstream checkout.",
+  "base": "412a93eef79527f91d5fec7509cf6e4288c55006",
+  "composite_tree": "8ec6720641e94ef109dc4ba96e2fe85fa2350490",
+  "selection": "Explicit tracked Windows public source and build/relink support paths: prior 2441-path export, minus 26 upstream-deleted unused source files, plus six new upstream src files. Includes LEGAL.md. Excludes .github, report-only .clang-tidy, runner/game material, dependency binary archives, Linux-only profile/recording material and unrelated tools. Full upstream root identity is separately pinned; this is a filtered source export, not a complete upstream checkout.",
   "files": [
     {
       "path": ".gitmodules",
@@ -195,7 +195,7 @@
     },
     {
       "path": "docs/SWITCHES.md",
-      "git_blob": "0e28c34ed48764c3dead328549b98bad863a84ce",
+      "git_blob": "7067a533dd57ccc12ca38132f02f403337f6a07d",
       "mode": "100644"
     },
     {
@@ -260,17 +260,17 @@
     },
     {
       "path": "src/gpg/core/algorithms/AStarSearch.h",
-      "git_blob": "ff973ac0b55cdc05c041fbae09987398f9c8f047",
+      "git_blob": "9dee07ff6b065546b8780751a3111477efa4ef49",
       "mode": "100644"
     },
     {
       "path": "src/gpg/core/algorithms/Cluster.cpp",
-      "git_blob": "8c33be74370f41334f4eff8be24133f4f271e7bd",
+      "git_blob": "b7531b5e02a6d7d185949e4cd69f113548aa543c",
       "mode": "100644"
     },
     {
       "path": "src/gpg/core/algorithms/Cluster.h",
-      "git_blob": "62637bdeff6de401cb75e2c620ac44aec09fc13f",
+      "git_blob": "5549700e6cb6258365e899414bc3982fd991015c",
       "mode": "100644"
     },
     {
@@ -295,7 +295,7 @@
     },
     {
       "path": "src/gpg/core/containers/ArchiveSerialization.cpp",
-      "git_blob": "370f07efb755aa320af796288be5090f8ff665df",
+      "git_blob": "9ee6a25089e914a47040044c3a020fb1767123a2",
       "mode": "100644"
     },
     {
@@ -365,7 +365,7 @@
     },
     {
       "path": "src/gpg/core/containers/FastVectorIFormationInstanceReflection.cpp",
-      "git_blob": "a5af3d67e411968096a363f23daa315c0b1dc1e4",
+      "git_blob": "d946803733280d54d4f2f01048bc8ac73cc8dbdd",
       "mode": "100644"
     },
     {
@@ -385,7 +385,7 @@
     },
     {
       "path": "src/gpg/core/containers/FastVectorUIntReflection.cpp",
-      "git_blob": "0746725ef9eb3491e8548388e4fd3fd19575d84d",
+      "git_blob": "5e9dffe195131d83e3262090df60ce2a9939baf2",
       "mode": "100644"
     },
     {
@@ -434,13 +434,18 @@
       "mode": "100644"
     },
     {
+      "path": "src/gpg/core/containers/TrackedPointerIndex.h",
+      "git_blob": "4cb6ff194f151b11843e6be64e25af1458502fd4",
+      "mode": "100644"
+    },
+    {
       "path": "src/gpg/core/containers/WriteArchive.cpp",
-      "git_blob": "650f3dd851e8e437ce7d85649ef14cc634820208",
+      "git_blob": "01fc8dde267ccc32d5f8d4d203d35565cb8c7eeb",
       "mode": "100644"
     },
     {
       "path": "src/gpg/core/containers/WriteArchive.h",
-      "git_blob": "a4b35f440defcc1a078b9c935ecbe645a6c1c42b",
+      "git_blob": "78acb28b7f99b252ab47a8e4923d3841a286b2e6",
       "mode": "100644"
     },
     {
@@ -706,16 +711,6 @@
     {
       "path": "src/gpg/core/streams/Stream.h",
       "git_blob": "5456242abf71d8c16dc5488b4696e2e20d81c24f",
-      "mode": "100644"
-    },
-    {
-      "path": "src/gpg/core/streams/ZLibDeflateRuntime.cpp",
-      "git_blob": "371c6a84fadef8d95c2881b2c3bf496cd17aea39",
-      "mode": "100644"
-    },
-    {
-      "path": "src/gpg/core/streams/ZLibDeflateRuntime.h",
-      "git_blob": "aeb1400df6e283dbdec40c7433e4f018260c5a2b",
       "mode": "100644"
     },
     {
@@ -1590,7 +1585,7 @@
     },
     {
       "path": "src/headless/HeadlessMain.cpp",
-      "git_blob": "5b6090502a042a8a78f8a95b6c7167e4122a1fb2",
+      "git_blob": "f7f954f347fc4f3a04bb2875f7b80f3900221786",
       "mode": "100644"
     },
     {
@@ -1644,6 +1639,16 @@
       "mode": "100644"
     },
     {
+      "path": "src/headless/ReplayKeyframes.cpp",
+      "git_blob": "915453e629319e1b00a28aaf6b09787ee5fdb185",
+      "mode": "100644"
+    },
+    {
+      "path": "src/headless/ReplayKeyframes.h",
+      "git_blob": "cb13575088172dc275343b11e0c28968660f615d",
+      "mode": "100644"
+    },
+    {
       "path": "src/headless/ReplayLaunchCheck.cpp",
       "git_blob": "5ee59c2d20f5ebdd394a1d7dfcee1aa6558e518b",
       "mode": "100644"
@@ -1675,12 +1680,12 @@
     },
     {
       "path": "src/headless/ReplayRunner.cpp",
-      "git_blob": "228ef18c577f9e6960ec5977cf76b2dab3216e97",
+      "git_blob": "db34b531fc5ad16de61225f0ae76eddf48b45919",
       "mode": "100644"
     },
     {
       "path": "src/headless/ReplayRunner.h",
-      "git_blob": "8a20d8d2eac00dea53cfde481f6b5ea947546c5d",
+      "git_blob": "1872d28bd459a449360ab1f546a81c3d39d8ecca",
       "mode": "100644"
     },
     {
@@ -1735,7 +1740,7 @@
     },
     {
       "path": "src/headless/sources.cmake",
-      "git_blob": "7c51078c5af38c0a0765a820521c4dec6a88fea9",
+      "git_blob": "9b01494e5a6795327ac35e25058f3dc8aefa2886",
       "mode": "100644"
     },
     {
@@ -1869,86 +1874,6 @@
       "mode": "100644"
     },
     {
-      "path": "src/libpng/PngCommonRuntime.cpp",
-      "git_blob": "b91d281ddecf8e7bd825a86c63131646d1ff1480",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngCommonRuntime.h",
-      "git_blob": "fa857c45f9dcb1a43b642c9a1f5ce6d68c74c150",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngInfoRuntime.cpp",
-      "git_blob": "fa4efae80ccf5238adb14d5feaae1b013b4e22a7",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngInfoRuntime.h",
-      "git_blob": "1878378d60ccfd471c998dd68d13999825cb8cc5",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngMemRuntime.cpp",
-      "git_blob": "c13670a71d7d0d7384b251a21e3da761be193443",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngMemRuntime.h",
-      "git_blob": "3bdbdd2e2db092fc8ffbbc1b36768156141b7783",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngReadRuntime.cpp",
-      "git_blob": "44f9fc7b8ad7da2141c11aafba9855a8474d5b57",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngReadRuntime.h",
-      "git_blob": "0c3d96fd54b75f63d05a616f8aeb5abcdf7c4dfa",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngSetRuntime.cpp",
-      "git_blob": "6fde6409bfd67052ee9f3356454c9664b07b779b",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngSetRuntime.h",
-      "git_blob": "2c594c10e5f8c44aeadcd382b7f03e6a6d24c991",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngStructLayout.h",
-      "git_blob": "7712b81bcb70c25a947545069da253845bd85581",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngStructRuntime.h",
-      "git_blob": "14e62e2c53e5bc82fae973a9034d35dd0fc499ac",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngTransformRuntime.cpp",
-      "git_blob": "4fe9eb037f4eaa5e981ec752a8b90a57a5206075",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngTransformRuntime.h",
-      "git_blob": "1ad02bbc62bbd90d0aef3097b6e953bc2f079313",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngWriteRuntime.cpp",
-      "git_blob": "359f37abfdd058870e250eb4feed6917dc52a825",
-      "mode": "100644"
-    },
-    {
-      "path": "src/libpng/PngWriteRuntime.h",
-      "git_blob": "c9138c888cd4455237ce538a8f882a65378fdafe",
-      "mode": "100644"
-    },
-    {
       "path": "src/lua/LuaArena.cpp",
       "git_blob": "2f17b4790f5cc8b00cf7d5b5657c608dd7fa3d19",
       "mode": "100644"
@@ -2030,12 +1955,12 @@
     },
     {
       "path": "src/lua/LuaObject.cpp",
-      "git_blob": "123437cf0cd28cfb04b5789dd9af0a60932f79fd",
+      "git_blob": "0cb0d3ac9dd7338633a19b23eacbaa42f913bf69",
       "mode": "100644"
     },
     {
       "path": "src/lua/LuaObject.h",
-      "git_blob": "5267a748148739c03ab3fcc89ab3d576d23d2f57",
+      "git_blob": "da39451c28c2d3eefd9fb2c8a4d09ff0c4e11941",
       "mode": "100644"
     },
     {
@@ -2255,7 +2180,7 @@
     },
     {
       "path": "src/moho/ai/CAiFormationInstance.cpp",
-      "git_blob": "d3eccd3b7cc615fe99869f21184cd403cc9ab7b4",
+      "git_blob": "df3c1622fefb7b7915ca0a67250285c077b847de",
       "mode": "100644"
     },
     {
@@ -2265,7 +2190,7 @@
     },
     {
       "path": "src/moho/ai/CAiFormationInstanceTypeInfo.cpp",
-      "git_blob": "ce7ba08b312837920bc3817dbd6cb59a8afad9a1",
+      "git_blob": "fb4f2b5eb5d0a223f15f372065eab76e1df29c67",
       "mode": "100644"
     },
     {
@@ -2375,7 +2300,7 @@
     },
     {
       "path": "src/moho/ai/CAiPathSpline.cpp",
-      "git_blob": "5b1406a57035ea8cb63e56db3c40c7edf0dd9212",
+      "git_blob": "7f0772858820599edcc8f460e7acb6930708d536",
       "mode": "100644"
     },
     {
@@ -2445,7 +2370,7 @@
     },
     {
       "path": "src/moho/ai/CAiReconDBImplSerializer.cpp",
-      "git_blob": "792e5d92d6e9dcc31e0f0fbe3ca6446e4775273c",
+      "git_blob": "d188ac8fd87b2365740c21eed70ec9faabbc0fcf",
       "mode": "100644"
     },
     {
@@ -2465,7 +2390,7 @@
     },
     {
       "path": "src/moho/ai/CAiSiloBuildImpl.cpp",
-      "git_blob": "739ba2fc58de28c8e2409a8c04fad6f8b06e0771",
+      "git_blob": "f9cdf14d4735f26728922b708f1791a3f03da0cb",
       "mode": "100644"
     },
     {
@@ -2560,7 +2485,7 @@
     },
     {
       "path": "src/moho/ai/CAimManipulator.cpp",
-      "git_blob": "b8941a6c66451f9ae1fdd245071829a0d5982832",
+      "git_blob": "37424780e07b10598bc76c9eefa68d826afa8f02",
       "mode": "100644"
     },
     {
@@ -3015,7 +2940,7 @@
     },
     {
       "path": "src/moho/ai/IFormationInstanceCountedPtrReflection.cpp",
-      "git_blob": "5b817d8823abdcb653756b5dee1f7b185503e7b7",
+      "git_blob": "0f453742937be8908e676a398daad5cc6a544d74",
       "mode": "100644"
     },
     {
@@ -3190,7 +3115,7 @@
     },
     {
       "path": "src/moho/animation/CAniPose.cpp",
-      "git_blob": "ac811245f429b491b70691665415b1d5683b9a44",
+      "git_blob": "c1bae323c31f82a8d2d3b649d0f488cf1e1711e4",
       "mode": "100644"
     },
     {
@@ -3650,7 +3575,7 @@
     },
     {
       "path": "src/moho/audio/SAudioRequestFastVectorReflection.cpp",
-      "git_blob": "d2a38a5cf36e2292573d3f6711cd60d11ae70e83",
+      "git_blob": "6881433cad81942576232a178f50608e5e5b482f",
       "mode": "100644"
     },
     {
@@ -3865,7 +3790,7 @@
     },
     {
       "path": "src/moho/command/CCommandDb.cpp",
-      "git_blob": "8368727abbf8b6566b417442eecf5918428c04f7",
+      "git_blob": "515c4cdd9b610ea2b423672b86f9af20fe216b5e",
       "mode": "100644"
     },
     {
@@ -3915,7 +3840,7 @@
     },
     {
       "path": "src/moho/command/SSTICommandConstantData.cpp",
-      "git_blob": "4eae2f80d264e9777d456ad1d9e58afca72396ae",
+      "git_blob": "19249ca60689f4e10a8a54f3f511e36f4999f6e8",
       "mode": "100644"
     },
     {
@@ -4445,7 +4370,7 @@
     },
     {
       "path": "src/moho/effects/rendering/SEfxCurve.cpp",
-      "git_blob": "55bf3ede252499949261b29ab846e826b947994c",
+      "git_blob": "11da2cba689c2bd984468ccf85a3f3332b2670b1",
       "mode": "100644"
     },
     {
@@ -4530,7 +4455,7 @@
     },
     {
       "path": "src/moho/entity/Entity.cpp",
-      "git_blob": "42607cd7cc33a4e6468a1e46ccc3d60d6bbce85d",
+      "git_blob": "3ea55536464428f3200a18f9a1d3270a8e0ba40c",
       "mode": "100644"
     },
     {
@@ -4615,7 +4540,7 @@
     },
     {
       "path": "src/moho/entity/EntityFastVectorReflection.cpp",
-      "git_blob": "2702e8ca386fe8dc5e79454ccd2b291e10b8762a",
+      "git_blob": "6aeb7cc22a735c03897d7131f5505975745c3830",
       "mode": "100644"
     },
     {
@@ -4755,7 +4680,7 @@
     },
     {
       "path": "src/moho/entity/SSTIEntityConstantData.cpp",
-      "git_blob": "9a38e4972dde80b4d1ebcf28207224669b2ffd8a",
+      "git_blob": "b089cbcfe47d76c501b2f7a6e978c650a3bc0b78",
       "mode": "100644"
     },
     {
@@ -4765,7 +4690,7 @@
     },
     {
       "path": "src/moho/entity/SSTIEntityVariableData.cpp",
-      "git_blob": "ffb264f9eb36d01aa767c29299b3a42dfb4b59b2",
+      "git_blob": "94c0b5f47278ec07f2535c9c128d07a5b70385dd",
       "mode": "100644"
     },
     {
@@ -5025,7 +4950,7 @@
     },
     {
       "path": "src/moho/math/MathReflection.cpp",
-      "git_blob": "a9b1de49e4b740243b95f96858cd12f6207e7ee8",
+      "git_blob": "61ca51c549ac4cd9fdc5c477020b75fc3c8f6e5e",
       "mode": "100644"
     },
     {
@@ -5245,12 +5170,12 @@
     },
     {
       "path": "src/moho/misc/CZipFile.cpp",
-      "git_blob": "e9aa147d8df5cf94d34cbe67522bb511a1550ad1",
+      "git_blob": "2185b21c646887a6b7192d72c49e6e999298db6d",
       "mode": "100644"
     },
     {
       "path": "src/moho/misc/CZipFile.h",
-      "git_blob": "70fc7e9a319f100cb517ac4425a1b0153c28e971",
+      "git_blob": "76bc47de56b89e5dde449d751dbbdb054cb31e02",
       "mode": "100644"
     },
     {
@@ -5285,12 +5210,7 @@
     },
     {
       "path": "src/moho/misc/CrtRuntimeExportedHelpers.cpp",
-      "git_blob": "4592b2c9ba5fb257829a37ff46442342aeb2f599",
-      "mode": "100644"
-    },
-    {
-      "path": "src/moho/misc/CrtRuntimeHelpers.cpp",
-      "git_blob": "f248dda8c7d157ff9572a0927f386a7307bd7fa0",
+      "git_blob": "f20644d73d225f29634bb83e90632dec13403853",
       "mode": "100644"
     },
     {
@@ -5425,7 +5345,7 @@
     },
     {
       "path": "src/moho/misc/ReplaySessionSetup.cpp",
-      "git_blob": "e35fc6199cf81ca765fde0a90f3d32a63c7838a9",
+      "git_blob": "8394591cdc3d7183e626efa68f836c5e7aef3f1b",
       "mode": "100644"
     },
     {
@@ -5550,7 +5470,7 @@
     },
     {
       "path": "src/moho/misc/SessionStartup.h",
-      "git_blob": "fb0d290bd14bab6790d5ede712ac4d4c247894c5",
+      "git_blob": "10cf177b2c4c8d8538fd5731800f9cc3f4d0a40f",
       "mode": "100644"
     },
     {
@@ -5985,12 +5905,12 @@
     },
     {
       "path": "src/moho/net/CReplayClient.cpp",
-      "git_blob": "b82c2fdf25f8875be24dbb83330f8e3f65ef5e45",
+      "git_blob": "18a85f63a9933f97dbf6827e525ad2dcf30302f1",
       "mode": "100644"
     },
     {
       "path": "src/moho/net/CReplayClient.h",
-      "git_blob": "041b1ebceedbcc5994827d8e11b9d3f4898314f8",
+      "git_blob": "9e5f13ffe2dd548c8fe28f2cff150803f6dd5ced",
       "mode": "100644"
     },
     {
@@ -6285,7 +6205,7 @@
     },
     {
       "path": "src/moho/particles/CParticleTextureCountedPtr.cpp",
-      "git_blob": "751ca84bc9a49546ce2370ad7278ec4784bc1b8c",
+      "git_blob": "fd03e46ed475b26b39cba510eeb0d806167b0cda",
       "mode": "100644"
     },
     {
@@ -6400,12 +6320,12 @@
     },
     {
       "path": "src/moho/path/PathTables.cpp",
-      "git_blob": "cac3ae2c7a12e2b37d58633614ebd0eb8e227476",
+      "git_blob": "5221d27416ad96c3a300c347ea6d86f982374478",
       "mode": "100644"
     },
     {
       "path": "src/moho/path/PathTables.h",
-      "git_blob": "4630ab5a6a01c2ae11229f37b4127da3f4a1d380",
+      "git_blob": "beecbaaddafdaa7d80176fdf173ac9ef48c4bedd",
       "mode": "100644"
     },
     {
@@ -6475,7 +6395,7 @@
     },
     {
       "path": "src/moho/projectile/Projectile.cpp",
-      "git_blob": "d481188c11996526fae81440f0f15ab6b0aacb86",
+      "git_blob": "2bd0109a443ad752a4e3ea5f11d9642dd0ab5b7c",
       "mode": "100644"
     },
     {
@@ -6645,7 +6565,7 @@
     },
     {
       "path": "src/moho/render/Cartographic.cpp",
-      "git_blob": "2ad7ffc9ee867e7fc6768993d1a8fd881bf57434",
+      "git_blob": "afd15de1ad70f3cfe1a0b674566426f4ff6a7390",
       "mode": "100644"
     },
     {
@@ -8095,7 +8015,7 @@
     },
     {
       "path": "src/moho/serialization/CWeaponAttributesSerializer.cpp",
-      "git_blob": "7d2d4388ae50abf66dca21d365f9fed4d6458db9",
+      "git_blob": "9fecfe34256ff9b619c507a714caf9a2724702f5",
       "mode": "100644"
     },
     {
@@ -8505,7 +8425,7 @@
     },
     {
       "path": "src/moho/sim/CInfluenceMap.cpp",
-      "git_blob": "1a49e17f2b3f65118abc741807f2abd5e22acc16",
+      "git_blob": "1f70a758608ffb9035cd873f6690f447d61960b1",
       "mode": "100644"
     },
     {
@@ -8560,12 +8480,12 @@
     },
     {
       "path": "src/moho/sim/COGrid.cpp",
-      "git_blob": "9d9df240e1238eae8d98dfd8186860be72d3f869",
+      "git_blob": "cfa22d267d3785adc837fc15ec73563e55fd4fab",
       "mode": "100644"
     },
     {
       "path": "src/moho/sim/COGrid.h",
-      "git_blob": "e1c17df4d465eb41b9889c3cc12c337132c96191",
+      "git_blob": "8260758c56e155fd8cea173ee55c70209c0a6959",
       "mode": "100644"
     },
     {
@@ -8575,7 +8495,7 @@
     },
     {
       "path": "src/moho/sim/CPlatoon.cpp",
-      "git_blob": "bd45c865205b81e963cdc5bcf9575a03967e050a",
+      "git_blob": "d2cc9f7f5d72364b50e49a0c913875f77011d44c",
       "mode": "100644"
     },
     {
@@ -8715,7 +8635,7 @@
     },
     {
       "path": "src/moho/sim/CWldSession.cpp",
-      "git_blob": "cdbb3042dc6ebb54058fadf6ef7c222742d38048",
+      "git_blob": "03a8bbbb3f793db3027815e5d9802bfc1e5b9161",
       "mode": "100644"
     },
     {
@@ -8885,7 +8805,7 @@
     },
     {
       "path": "src/moho/sim/ISTIDriver.h",
-      "git_blob": "982f922031fe8daba878918db162d4040adb20c4",
+      "git_blob": "8df9a95a0e783a07f8d4b2813438223ec8106792",
       "mode": "100644"
     },
     {
@@ -8895,7 +8815,7 @@
     },
     {
       "path": "src/moho/sim/IdPool.cpp",
-      "git_blob": "9d08bf852c38d1dc3c3a996c704bdc5399877139",
+      "git_blob": "8b14a8a9360ee75ff50168499c5e4a21837fe5c9",
       "mode": "100644"
     },
     {
@@ -9025,7 +8945,7 @@
     },
     {
       "path": "src/moho/sim/ReconBlip.cpp",
-      "git_blob": "499ff433ef03d92cace405fbe55effd4f10dd5b7",
+      "git_blob": "905db7656fcc3edff1073a54d3d043278c054402",
       "mode": "100644"
     },
     {
@@ -9040,7 +8960,7 @@
     },
     {
       "path": "src/moho/sim/ReconBlipTypeInfo.cpp",
-      "git_blob": "c543055d5b25f498cd385a08dbe135d2fde9cd93",
+      "git_blob": "82ac674004a9af9593c41fe46c927b9e6cc6ff3e",
       "mode": "100644"
     },
     {
@@ -9295,12 +9215,17 @@
     },
     {
       "path": "src/moho/sim/Sim.cpp",
-      "git_blob": "53725d92b0bfcf05776a85a1fad37e79f9096b86",
+      "git_blob": "26eca28f578f2c590bfa79cfb23584e73139d2ad",
       "mode": "100644"
     },
     {
       "path": "src/moho/sim/Sim.h",
       "git_blob": "1555726119d1dbdbde5574298b9ef20688528363",
+      "mode": "100644"
+    },
+    {
+      "path": "src/moho/sim/SimArchiveMode.h",
+      "git_blob": "c1046f908080d6fcd064a95cc62e15df72dd9728",
       "mode": "100644"
     },
     {
@@ -9325,7 +9250,7 @@
     },
     {
       "path": "src/moho/sim/SimBlockLane.h",
-      "git_blob": "80e0236ab82f57ff185afebe17c3e2aebeb71c42",
+      "git_blob": "23d5411479f9652a389db06b19c4795f575ee7e4",
       "mode": "100644"
     },
     {
@@ -9345,12 +9270,12 @@
     },
     {
       "path": "src/moho/sim/SimDriver.cpp",
-      "git_blob": "a2ff9d6a8d0d98fcde6d4eaaea25a39440168228",
+      "git_blob": "0c894c75c428b18b07bd1578614b4edcc0dd7f1d",
       "mode": "100644"
     },
     {
       "path": "src/moho/sim/SimDriver.h",
-      "git_blob": "a9e541ceb120f2e3f7b02e0f09626d652081294e",
+      "git_blob": "717457c24a64785ddc7c51486f90befee674af6d",
       "mode": "100644"
     },
     {
@@ -9371,6 +9296,16 @@
     {
       "path": "src/moho/sim/SimJobStream.h",
       "git_blob": "8f9febb03c6e80f949b29f279b6376c70741245a",
+      "mode": "100644"
+    },
+    {
+      "path": "src/moho/sim/SimKeyframe.cpp",
+      "git_blob": "836094d665210601f48f1f29e505f8fc76478b96",
+      "mode": "100644"
+    },
+    {
+      "path": "src/moho/sim/SimKeyframe.h",
+      "git_blob": "9e41db49f72623217a75668abf32cf3c2829444a",
       "mode": "100644"
     },
     {
@@ -9515,7 +9450,7 @@
     },
     {
       "path": "src/moho/sim/WldSessionInfo.cpp",
-      "git_blob": "7cdc76bf66a17972662f3363a988571eb7b4af01",
+      "git_blob": "541eca3d4bd4decfef5466786c702135708807ef",
       "mode": "100644"
     },
     {
@@ -9570,7 +9505,7 @@
     },
     {
       "path": "src/moho/task/CTaskEvent.cpp",
-      "git_blob": "65ce5ffb6bb2275d0572701031ad861114d2910e",
+      "git_blob": "9af548c3de1c06a215f93f90c4fbe29a0cb1ca24",
       "mode": "100644"
     },
     {
@@ -9580,7 +9515,7 @@
     },
     {
       "path": "src/moho/task/CTaskThread.cpp",
-      "git_blob": "f0fdaa28eebfe13fd5bc6465767368ffa64e3296",
+      "git_blob": "7a65b387db89f84f255eae5a7df485118dfc61d8",
       "mode": "100644"
     },
     {
@@ -10160,7 +10095,7 @@
     },
     {
       "path": "src/moho/unit/CUnitCommand.cpp",
-      "git_blob": "7a0882be2b7f2e58de9b759f2210115f7bc2862e",
+      "git_blob": "531f6de90381e68f87ac4123828ec3d02cabe75c",
       "mode": "100644"
     },
     {
@@ -10210,7 +10145,7 @@
     },
     {
       "path": "src/moho/unit/CUnitMotion.cpp",
-      "git_blob": "0ff15c9238826ffecb76d06d6c1891260e6dc067",
+      "git_blob": "24a0d60342df6a5d743dfae23e5fab8827bd9d37",
       "mode": "100644"
     },
     {
@@ -10370,7 +10305,7 @@
     },
     {
       "path": "src/moho/unit/core/SInfoCacheReflection.cpp",
-      "git_blob": "fda3b6c50687af4a8a3aac5c4ec569579cd24606",
+      "git_blob": "71292bb61c46dc023bef8d20e60a3f2c5e91a27c",
       "mode": "100644"
     },
     {
@@ -10400,7 +10335,7 @@
     },
     {
       "path": "src/moho/unit/core/Unit.cpp",
-      "git_blob": "17ce8e4a0ab4413a8090288af07fa061bde2620d",
+      "git_blob": "04692ec424f64d0049ef4995fd989a3f01aa903c",
       "mode": "100644"
     },
     {
@@ -10420,7 +10355,7 @@
     },
     {
       "path": "src/moho/unit/core/UnitFastVectorReflection.cpp",
-      "git_blob": "e3d732eec477c68a4506fa028a8f937d634febeb",
+      "git_blob": "a538d4ac1b775e0db858151e90a5f84c180c2a5f",
       "mode": "100644"
     },
     {
@@ -10575,7 +10510,7 @@
     },
     {
       "path": "src/moho/unit/tasks/CFactoryBuildTask.cpp",
-      "git_blob": "77628b13eb52a281e6e3a8f956b5693753c79960",
+      "git_blob": "429702e310be0b637b9d132efaa1e06dbd69f60c",
       "mode": "100644"
     },
     {
@@ -10585,7 +10520,7 @@
     },
     {
       "path": "src/moho/unit/tasks/CFactoryBuildTaskTypeInfo.cpp",
-      "git_blob": "440452635f15a34f62d461ea76c5cd4d79463c45",
+      "git_blob": "87fa39f27a3e71bc79b6aad4d3cd119ef17a950d",
       "mode": "100644"
     },
     {
@@ -10805,17 +10740,17 @@
     },
     {
       "path": "src/moho/unit/tasks/CUnitFerryTask.cpp",
-      "git_blob": "e3aab2de9080b9b9612bdd09ba8418bb9e804bcd",
+      "git_blob": "c92189f74b334c8912bb197711571d8af2d36937",
       "mode": "100644"
     },
     {
       "path": "src/moho/unit/tasks/CUnitFerryTask.h",
-      "git_blob": "838d8c0e37d95290a236ffed3f4a537784616844",
+      "git_blob": "aa2e70482f2533c3cc82778eb147b02e2a29bc5e",
       "mode": "100644"
     },
     {
       "path": "src/moho/unit/tasks/CUnitFerryTaskTypeInfo.cpp",
-      "git_blob": "8039a5c5198f7351e7e0828ebb99faf83854da60",
+      "git_blob": "08642d91b68037e3d155fdad9d6dc35995106eb8",
       "mode": "100644"
     },
     {
@@ -11065,17 +11000,17 @@
     },
     {
       "path": "src/moho/unit/tasks/CUnitRepairTask.cpp",
-      "git_blob": "3744d2fa7e5ee9f3ca64ebbcd1cb602e95bb2986",
+      "git_blob": "4f90cda7cabb4bc1955fd8decbb44c32dd937917",
       "mode": "100644"
     },
     {
       "path": "src/moho/unit/tasks/CUnitRepairTask.h",
-      "git_blob": "0bb6deaeb3d11d60e8f2d2af45dd93be52426c55",
+      "git_blob": "8a4c5b38e9b4b5da89729fa6cc08f3525c7c4b4e",
       "mode": "100644"
     },
     {
       "path": "src/moho/unit/tasks/CUnitRepairTaskTypeInfo.cpp",
-      "git_blob": "c32af60dd7ca4e6d8fc7cfb8e75531c806ae68a2",
+      "git_blob": "a29c340692b82f1838ad36a297db18595d86a144",
       "mode": "100644"
     },
     {
@@ -11580,12 +11515,12 @@
     },
     {
       "path": "src/remote/client/RemoteSimDriver.cpp",
-      "git_blob": "f027d35cd944b9fe06debe5b4dd2b7fa903af84a",
+      "git_blob": "cc8d835e8c791530a47f0b7be8e755da50ffd160",
       "mode": "100644"
     },
     {
       "path": "src/remote/client/RemoteSimDriver.h",
-      "git_blob": "482644de8a4e3019e1ceb297ad2ccb179bca85a6",
+      "git_blob": "ffc3595ba88211a19dca3d12c536da1efd81a0a9",
       "mode": "100644"
     },
     {
@@ -11785,12 +11720,12 @@
     },
     {
       "path": "src/sim_sources.cmake",
-      "git_blob": "0c7a28eca7f95040671894a1c8929747129ae257",
+      "git_blob": "9ff683c57c67bce6326c84d1c746765cb43f0b91",
       "mode": "100644"
     },
     {
       "path": "src/sources.cmake",
-      "git_blob": "22784ce072239962aa34175fe1c27c43141fc186",
+      "git_blob": "783bc12a9d2e4009b1e4ab613792cee2e2f07853",
       "mode": "100644"
     },
     {
@@ -11801,41 +11736,6 @@
     {
       "path": "src/util/Debug.h",
       "git_blob": "5fb837fd0b0b6f983aa1edf2b1b244b4451475ec",
-      "mode": "100644"
-    },
-    {
-      "path": "src/zlib/ZLibAdlerRuntime.cpp",
-      "git_blob": "00e0b93a3fae892582727f13ed4d5a4f78c54212",
-      "mode": "100644"
-    },
-    {
-      "path": "src/zlib/ZLibCommon.h",
-      "git_blob": "6245abf4e83583df0fb11762e80c6e1a21e9dc09",
-      "mode": "100644"
-    },
-    {
-      "path": "src/zlib/ZLibCrcRuntime.cpp",
-      "git_blob": "afb8e7a00e7d8cc193eb4bf13e45d06feba4706a",
-      "mode": "100644"
-    },
-    {
-      "path": "src/zlib/ZLibDeflate.h",
-      "git_blob": "e82f64168256cb2b9d21da6bce2ef7478017ee36",
-      "mode": "100644"
-    },
-    {
-      "path": "src/zlib/ZLibDeflateRuntime.cpp",
-      "git_blob": "afca02e6d6e2d23e4328ca579cadf25ee26a43a6",
-      "mode": "100644"
-    },
-    {
-      "path": "src/zlib/ZLibInflate.h",
-      "git_blob": "7f772d75f8123ea40525052a475a36f82447c929",
-      "mode": "100644"
-    },
-    {
-      "path": "src/zlib/ZLibInflateRuntime.cpp",
-      "git_blob": "61c223c1bc2ba98d6c48da8616246777a913a16a",
       "mode": "100644"
     },
     {

@@ -96,5 +96,5 @@ class SourcePins(unittest.TestCase):
         for p in CI.glob('execution-*.json'):
             c=json.loads(p.read_text());self.assertEqual(c['dependency_recipe_sha256'],canonical(load('dependency-recipe.json')))
             self.assertEqual(c['distribution_review_sha256'],hashlib.sha256((CI/'distribution-review.json').read_bytes()).hexdigest())
-            if 'resume_recipe_sha256' in c:self.assertEqual(c['resume_recipe_sha256'],canonical(load('resume-recipe.json')))
+            if 'resume_recipe_sha256' in c:self.assertEqual(c['resume_recipe_sha256'],canonical(load('artifact-recipe.json' if c.get('mode')=='public-artifact-build-resume-v1' else 'resume-recipe.json')))
 if __name__=='__main__':unittest.main()

@@ -3,7 +3,7 @@
 The corresponding-source/engine directory contains the explicit reviewed public engine source/build files plus the exact pinned dependency sources as configured, including the recorded dependency patches. This is a source-based relinking mechanism for the statically linked FFmpeg libraries, not a bare attribution or an offer to provide sources later. The same source tree permits rebuilding the application with modified FFmpeg. Review the applicable component notices; no new root-level license is asserted here.
 
 Inputs and versions:
-- Original upstream base: 6c93e3625d96d5041b3336e88e3692b88c1ec0c2; three exact replacements and their hashes in SOURCE_MANIFEST.json.
+- Original upstream base: 412a93eef79527f91d5fec7509cf6e4288c55006; three exact replacements and their hashes in SOURCE_MANIFEST.json.
 - LLVM 22.1.7 clang-cl/lld-link; Visual Studio 2022 MSVC 19.44; Windows SDK headers version and approved x64 static UCRT version/path/hash recorded in BUILD_MANIFEST.json. Do not substitute 26100 static UCRT math.
 - CMake 3.31.6 and Ninja; fresh x64 Release build, parallelism at most 2.
 - FFmpeg pinned commit 8f9ea179334d8ff01292728b9704b7da1f712c5f contains the upstream 7.1.3 source and faf/CMakeLists.txt. All five FFmpeg libraries are built statically with the repository's restricted LGPL component configuration. No GPL/nonfree component is requested by this build recipe.

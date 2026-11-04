@@ -1,8 +1,8 @@
-CURRENT INERT CANDIDATE: balanced native resume via appveyor-resume-a.yml / appveyor-resume-b.yml. Read ci/README-RESUME.md. Older single-job and staged sections below are historical reference, not the current activation instructions. No configuration is activated.
+CURRENT INERT CANDIDATE: public structured artifact A → B via appveyor-artifact-a.yml / appveyor-artifact-b.yml. Read ci/README-TRANSFER.md. Native cache is disabled for this route. Both artifact contracts require separate review and activation; B also requires an independently pinned completed A artifact. Older single-job and cache sections below are historical reference, not current activation instructions.
 
-# Experimental single-job x64 RE build
+# Historical single-job x64 RE build (disabled)
 
-The current entry is `appveyor-single.yml`, which calls `ci/run-single-build.ps1` with `ci/execution-single.json`. That contract is inert until separately reviewed and activated for one manual free build. Keep push, PR and scheduled triggers disabled.
+The historical single-job entry is `appveyor-single.yml`, which calls `ci/run-single-build.ps1` with `ci/execution-single.json`. That contract is inert until separately reviewed and activated for one manual free build. Keep push, PR and scheduled triggers disabled.
 
 The single job uses the fixed product source described below, configures once, builds all five targets once, and requires both POST_BUILD math golden checks plus all four CTests. It exports only the final client package with required DLLs, corresponding source and notices. There is no intermediate checkpoint, cache transfer, restore rehearsal, or checkpoint precompile-test phase. See `ci/README-SINGLE.md` for the exact scope, deadline and failure behavior. Full completion within the provider limit is not established.
 
@@ -10,7 +10,7 @@ The following A/B documentation is historical reference only. Both A/B contracts
 
 # Historical A/B configuration (disabled)
 
-This configuration branch builds public upstream `6c93e3625d96d5041b3336e88e3692b88c1ec0c2` with the three rendering replacements in `ci/integration-manifest.json`, producing product tree `b7fff12cad8bc52b34be4107c9791298592bb291`. It is not an official release. The historical branch name contains `302eb`; that is not the product source identity.
+This configuration branch builds public upstream `412a93eef79527f91d5fec7509cf6e4288c55006` with the three rendering replacements in `ci/integration-manifest.json`, producing product tree `8ec6720641e94ef109dc4ba96e2fe85fa2350490`. It is not an official release. The historical branch name contains `302eb`; that is not the product source identity.
 
 ## Two manual stages
 

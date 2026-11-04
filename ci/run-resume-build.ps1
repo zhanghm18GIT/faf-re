@@ -13,7 +13,7 @@ $driverDir = $PSScriptRoot
 $python = 'C:\Python312-x64\python.exe'
 $entry = Join-Path $driverDir 'resume_driver.py'
 $contract = Join-Path $driverDir ('execution-resume-' + $Stage.ToLowerInvariant() + '.json')
-if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '896a46dee7cf8dc8f53d57141c73020ede32072dfbb813bfa1d67026d0675aa3') {
+if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '975e0a70ee885962573acd3e32ee26656cbf01076153001ba76192bc30e3df7f') {
     throw 'Driver entry SHA-256 mismatch'
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw 'Documented installed x64 Python missing; no fallback or installation' }
@@ -81,4 +81,3 @@ if ($Stage -eq 'A') {
     $env:APPVEYOR_SKIP_FINALIZE_ON_EXIT = 'false'
 }
 Exit-AppveyorBuild
-throw 'Exit-AppveyorBuild returned unexpectedly'

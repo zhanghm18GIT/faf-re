@@ -1,0 +1,11 @@
+# Public experimental intermediate build transfer
+
+This is not a tested client or an official release. Producer A normally completes dependencies and 300 selected engine objects from the fixed reviewed public source and official tools. Consumer B must match the separate producer artifact URL, whole-file size/SHA256, inner checkpoint size/SHA256, producer/config/source/tool identities and exact build inputs before reuse. B builds the client and then the test targets in the same directory; both post-build mathematical goldens and all four CTests remain required before final client publication.
+
+The outer package contains only checkpoint.zip, TRANSFER_RECEIPT.json and material/. The material directory supplies the selected corresponding source, rebuild information, notices and LEGAL.md. It does not grant a repository-wide open-source license or upstream endorsement. Retain applicable third-party notices and consult upstream LEGAL.md. The fixed experimental distribution review does not imply permission for arbitrary redistribution.
+
+Objects, libraries, Ninja metadata and structured provenance can contain fixed provider paths and compiler metadata. This is not a confidentiality boundary or an arbitrary-source sandbox. No ordinary logs, PDBs, credentials, user files, SDK/tool binaries or arbitrary workspace content are included. Only fixed reviewed sources and tools run on the fresh controlled worker.
+
+Native cache restore/save are disabled throughout both jobs. Successful entrypoint completion uses Exit-AppveyorBuild with APPVEYOR_SKIP_FINALIZE_ON_EXIT=true and never flips cache controls. No native cache entries are declared or manipulated. All supplied execution contracts are inert until separately reviewed activation. Neither runtime compatibility nor successful provider execution is established by local tests.
+
+A uploads exactly one resume-transfer.zip only after complete owned workspace cleanup. An uncertain upload is not retried automatically. B's artifact pin must refer to that exact producer, never a latest-build URL. Outer maximum is 400,000,000 compressed bytes. Limits and the 3300-second driver deadline can block completion; no successful build is promised.

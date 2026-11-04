@@ -10,12 +10,12 @@
     {
       "path": "README-PACKAGE.md",
       "size": 2432,
-      "sha256": "0cbba08cfb9f5a32e6307366f971d6563290aecd8b3733d7ff0d916b3df79ee1"
+      "sha256": "4f201a513b3bce5d0c68da5df9d50377eb27da23222f631ebf816ae852ce9b05"
     },
     {
       "path": "README-RESUME.md",
       "size": 6668,
-      "sha256": "d53bfaa264d42ae6dc2bd9e7caf137f4667d8f19de9b89fadfbc6354acce4d2f"
+      "sha256": "280fbc490f2c8d7ce9f7d83df3ba9034fc80ca1634414ca947b46905eec69e6d"
     },
     {
       "path": "README-SINGLE.md",
@@ -23,14 +23,34 @@
       "sha256": "7a56bf28b84ab67506e1c32ae7dc32cdec56ea63b00d9114c0a2ee5b9df2bb2b"
     },
     {
+      "path": "README-TRANSFER.md",
+      "size": 2201,
+      "sha256": "2f2a24dae81974a8fe72a36da848f5b79f03a41c4ed4ec31bc068ab971d1ff57"
+    },
+    {
       "path": "REBUILD.md",
       "size": 7280,
-      "sha256": "b860423d6d7bfe52b71a11088220fcb38764caa3715e543db55ae2e67b7681f1"
+      "sha256": "4cd711e69a470af36f2038264f81e2a72f68218b23d941fa853bafb40d1adf91"
     },
     {
       "path": "TESTING.md",
       "size": 2406,
       "sha256": "0dee01259bb3e12d1c1208d06691ed445d23e19580038a4bae8c529de17f9132"
+    },
+    {
+      "path": "artifact-recipe.json",
+      "size": 288,
+      "sha256": "f3984cd6efa5cc8aa7f4951afccd1d192d33cabcf6887a480cd2a160944ee69f"
+    },
+    {
+      "path": "artifact_driver.py",
+      "size": 13214,
+      "sha256": "b96425d2db30353770dac2491005b3d528209a4d5c8fcd54346d809cb9d34e75"
+    },
+    {
+      "path": "artifact_transfer.py",
+      "size": 5421,
+      "sha256": "5eec6e18c2ae02d3517657b7cf469127733277d5e759deef78e40cf33d7ac052"
     },
     {
       "path": "build_capture.py",
@@ -75,7 +95,7 @@
     {
       "path": "driver.py",
       "size": 61071,
-      "sha256": "fd738821b4e6fee400269567dcf9aafce68355033d71a6bdbdc5b213e9ea370a"
+      "sha256": "535927170f94f2dbc62193409dc6e4e13a8fa9bb9215c8b2480872ea21d76c1f"
     },
     {
       "path": "exact_timestamp.py",
@@ -85,7 +105,7 @@
     {
       "path": "integration-manifest.json",
       "size": 10606,
-      "sha256": "6d8cdd7481db80e758c80a85d09dd1586a679b62b27edce106d33f14b228663d"
+      "sha256": "044401a4c5d6fbd5745edb596037c66fd31ffd4bb59e37bc567a098fc291b31d"
     },
     {
       "path": "owned_cleanup.py",
@@ -99,8 +119,8 @@
     },
     {
       "path": "public-source-allowlist.json",
-      "size": 370919,
-      "sha256": "91d3c6f2d6bc94aa22b05451760d31e06cb0a07bde55177db0426f5c2e2db928"
+      "size": 368099,
+      "sha256": "d4c7d05623e154161742783d9a51577e376706f62091f5db8a80871a0a20894b"
     },
     {
       "path": "resume-recipe.json",
@@ -114,8 +134,8 @@
     },
     {
       "path": "resume_driver.py",
-      "size": 21644,
-      "sha256": "896a46dee7cf8dc8f53d57141c73020ede32072dfbb813bfa1d67026d0675aa3"
+      "size": 21708,
+      "sha256": "975e0a70ee885962573acd3e32ee26656cbf01076153001ba76192bc30e3df7f"
     },
     {
       "path": "resume_ready.py",
@@ -128,19 +148,24 @@
       "sha256": "09595f212283ae5740af467ae10a9d062922e507905dd9cbb623c874066070bc"
     },
     {
+      "path": "run-artifact-build.ps1",
+      "size": 3895,
+      "sha256": "995d8aff48f2a2958f85ff27bc9a757ed1f06847f0e4d747cf14e314554c621d"
+    },
+    {
       "path": "run-client-build.ps1",
-      "size": 4585,
-      "sha256": "4c468b4ead35f661e326160bdc5cbf42f2cb0465a06b786239148d2e358cfa19"
+      "size": 4510,
+      "sha256": "e626ac2ff826882608b8d6954e17a8a3afe2fb31d37ba762b034aa8a6ab204f3"
     },
     {
       "path": "run-resume-build.ps1",
-      "size": 4354,
-      "sha256": "f90406b3711a2a1106ff9d010a11a9dd12e37e21a69665e0f298c0a5d4a4c1a6"
+      "size": 4305,
+      "sha256": "852d0b2d8d8bab4262a42da099a078880b5266e99525d6fc471a188778214e06"
     },
     {
       "path": "run-single-build.ps1",
-      "size": 3727,
-      "sha256": "7cca26710a7ee059964e4f58e90aec54e03df7f2e5dc0e64522e6b1a7f5c571e"
+      "size": 3652,
+      "sha256": "4b91e21538067102d5372fa230706170df45515168e00849d1b7a99b73d2a3b8"
     },
     {
       "path": "single_driver.py",
@@ -165,12 +190,22 @@
     {
       "path": "tests/fixtures/command_profiles.json",
       "size": 31653,
-      "sha256": "d93bd14e5b68547cd6ecbb5b3e77ec0261811a8408263fd1cc42de06081156b0"
+      "sha256": "afe19c2aa2614d232016fd493c6867a9c3466e25cfbadbb5d54897f533a44667"
     },
     {
       "path": "tests/fixtures/source_pin_evidence.json.gz",
-      "size": 1576620,
-      "sha256": "5c58e018f9b331d73fe5d7b7150ce86c25345d985b267da20aff2131910086e9"
+      "size": 1641758,
+      "sha256": "0574e7ba561a73b4a350ebdf094aba2c6f656cf7e6366ab6954ca9884ea59fd9"
+    },
+    {
+      "path": "tests/test_artifact_driver.py",
+      "size": 10475,
+      "sha256": "ab5decf929af7271b5f6b9f0dba77b7896da157ef22040cb51c431486d33d723"
+    },
+    {
+      "path": "tests/test_artifact_transfer.py",
+      "size": 3867,
+      "sha256": "40b0c3c811fd1aa21be18af250280def316b4fb6593be42a0b831ed6f7620c11"
     },
     {
       "path": "tests/test_build_capture.py",
@@ -208,9 +243,14 @@
       "sha256": "7d82e82940566300a59c9f07b41468ced05c84c0886244f93e5889576d6a4eea"
     },
     {
+      "path": "tests/test_finalizer_return.py",
+      "size": 2669,
+      "sha256": "afdadd99aa9b75a37aed0b5e05e66c7170eac05beed66314e15039870db4e906"
+    },
+    {
       "path": "tests/test_full_command_profiles.py",
       "size": 4253,
-      "sha256": "6a33fb00cace32a56f807de178dfe98f24c08b76543b42c3f85b8840ecfdc846"
+      "sha256": "2480c3c8fc78662bc764ace10ea3ac2e571fff90fa6fff199220de906e889f7f"
     },
     {
       "path": "tests/test_owned_cleanup.py",
@@ -254,13 +294,13 @@
     },
     {
       "path": "tests/test_source_pin_consistency.py",
-      "size": 7429,
-      "sha256": "64d217cfa189ca4ee930f7ed3e053fba48a3f86b3cd7bd6047387f11d1cc8b61"
+      "size": 7509,
+      "sha256": "fad3c7520337b0f8c38fffd6bbd3c8584a0aa431f91fdc0c9cd95ef433f40602"
     },
     {
       "path": "tests/test_staged_driver.py",
       "size": 24772,
-      "sha256": "54aa791648a528ee124ae891ddb1a6153d058dfa0cc97d3acd001961dc7b9b15"
+      "sha256": "0d484c7db3a4c1ef0816e566131d2e11ed54e2df2ad5a30be7b5672b9d79d5c2"
     },
     {
       "path": "tests/test_structured_checkpoint.py",
