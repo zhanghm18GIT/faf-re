@@ -20,6 +20,54 @@ class CleanupTests(unittest.TestCase):
      e=PermissionError(errno.EACCES,'synthetic denial');e.winerror=winerror;raise e
    return original(path,*args,**kwargs)
   return unlink,calls
+ def test_real_composite_index_file_target(self):
+  target=self.root/'composite.index';target.write_bytes(b'public synthetic index')
+  self.run_clean(target)
+  self.assertFalse(target.exists());self.owner();self.assertTrue(self.file.exists())
+ def test_direct_regular_file_never_walks_or_chmods(self):
+  with mock.patch.object(os,'walk',side_effect=AssertionError('file must not walk')),mock.patch.object(os,'chmod') as chmod:
+   self.run_clean(self.file);chmod.assert_not_called()
+  self.assertFalse(self.file.exists());self.assertTrue(self.tree.is_dir());self.owner()
+ def test_direct_file_readonly_preflight_never_walks_or_deletes(self):
+  with mock.patch.object(os,'walk',side_effect=AssertionError('file must not walk')),mock.patch.object(os,'unlink') as unlink:
+   receipt=clean.preflight_owned_tree(self.root,self.file,owner_check=self.owner);unlink.assert_not_called()
+  self.assertFalse(receipt['deletion_performed']);self.assertEqual(self.file.read_text(),'owned')
+ def test_direct_readonly_file_retries_once(self):
+  self.file.chmod(0o444);unlink,calls=self.deny_unlink()
+  with mock.patch.object(os,'unlink',side_effect=unlink),mock.patch.object(os,'chmod',wraps=os.chmod) as chmod:
+   self.run_clean(self.file);self.assertEqual(chmod.call_count,1)
+  self.assertEqual(len(calls),2);self.assertFalse(self.file.exists());self.owner()
+ def test_direct_readonly_hardlink_denial_never_chmods(self):
+  outside=Path(self.tmp.name)/'outside';os.link(self.file,outside);self.file.chmod(0o444);unlink,calls=self.deny_unlink(always=True)
+  with mock.patch.object(os,'unlink',side_effect=unlink),mock.patch.object(os,'chmod') as chmod:
+   with self.assertRaises(PermissionError):self.run_clean(self.file)
+   chmod.assert_not_called()
+  self.assertEqual(outside.read_text(),'owned');self.assertTrue(self.file.exists())
+ def test_direct_symlink_rejected_before_unlink(self):
+  outside=Path(self.tmp.name)/'outside';outside.write_text('external');link=self.root/'link';link.symlink_to(outside)
+  with mock.patch.object(os,'unlink') as unlink:
+   with self.assertRaisesRegex(clean.CleanupError,'UNEXPECTED_REPARSE_POINT'):self.run_clean(link)
+   unlink.assert_not_called()
+  self.assertEqual(outside.read_text(),'external')
+ def test_regular_file_cannot_be_owned_root(self):
+  with mock.patch.object(os,'unlink') as unlink:
+   with self.assertRaisesRegex(clean.CleanupError,'INVALID_OWNED_ROOT'):
+    clean.remove_owned_path(self.file,self.file,owner_check=lambda:None)
+   unlink.assert_not_called()
+  self.assertTrue(self.file.exists())
+ def test_root_prewalk_catches_link_before_any_deletion(self):
+  outside=Path(self.tmp.name)/'outside';outside.write_text('external');(self.root/'bad').symlink_to(outside)
+  with mock.patch.object(os,'unlink') as unlink:
+   with self.assertRaises(clean.CleanupError):self.run_clean(self.root)
+   unlink.assert_not_called()
+  self.owner();self.assertTrue(self.file.exists())
+ @unittest.skipUnless(os.name=='nt','actual Windows read-only file semantics')
+ def test_windows_native_direct_readonly_file(self):
+  self.file.chmod(stat.S_IREAD)
+  self.assertTrue(self.file.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY)
+  self.run_clean(self.file)
+  self.assertFalse(self.file.exists());self.owner()
+  self.assertEqual([v for k,v in self.events if k=='CLEANUP_READONLY_RETRY'],[{'relative_path':'source/object','result':'removed'}])
  def test_ordinary_tree_no_chmod(self):
   with mock.patch.object(os,'chmod',wraps=os.chmod) as chmod:self.run_clean();chmod.assert_not_called()
   self.assertFalse(self.tree.exists());self.owner()

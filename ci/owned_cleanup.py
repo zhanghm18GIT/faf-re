@@ -74,9 +74,12 @@ def _operate_owned_path(root,target,*,owner_check,emit=lambda *x:None,max_entrie
    if failure is not exc:diagnostic(getattr(function,'__name__','unknown'),p,failure)
    raise
  try:
-  check(target)
+  target_stat=check(target)
   def scan_error(exc):raise exc
-  for directory,dirs,files in os.walk(target,followlinks=False,onerror=scan_error):
+  # os.walk on a regular file raises ENOTDIR on Windows. Validate the
+  # file directly; only directory targets have descendants to prewalk.
+  walk=os.walk(target,followlinks=False,onerror=scan_error) if stat.S_ISDIR(target_stat.st_mode) else ()
+  for directory,dirs,files in walk:
    check(Path(directory),prewalk=True)
    for name in list(dirs):
     p=Path(directory)/name

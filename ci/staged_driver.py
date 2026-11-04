@@ -185,7 +185,16 @@ class StagedBuild(core.Build):
   retries=[v for k,v in events if k=='CLEANUP_READONLY_RETRY']
   need(retries==[{'relative_path':'cleanup-fixture/readonly.txt','result':'removed'}] and not fixture.exists(),'Expected one actual fixture-only read-only retry')
   self.verify_owner()
-  self.receipt['windows_cleanup_fixture']='PASS_SINGLE_OWNED_READONLY_FILE_ONLY'
+  # Direct-file targets occur in real cleanup (composite.index and out extras).
+  direct=self.root/'cleanup-direct.index';direct.write_bytes(b'public direct-file fixture\n')
+  owned_cleanup.remove_owned_path(self.root,direct,owner_check=self.verify_owner,max_seconds=self.remaining(10))
+  need(not direct.exists(),'Direct regular-file cleanup failed')
+  direct.write_bytes(b'public direct-readonly fixture\n');os.chmod(direct,stat.S_IREAD)
+  events=[]
+  owned_cleanup.remove_owned_path(self.root,direct,owner_check=self.verify_owner,max_seconds=self.remaining(10),emit=lambda k,v:events.append((k,v)))
+  need(not direct.exists() and [v for k,v in events if k=='CLEANUP_READONLY_RETRY']==[{'relative_path':'cleanup-direct.index','result':'removed'}],'Direct read-only file cleanup failed')
+  self.verify_owner()
+  self.receipt['windows_cleanup_fixture']='PASS_DIRECTORY_AND_DIRECT_REGULAR_READONLY_FILES'
   print('WINDOWS_CLEANUP_FIXTURE '+json.dumps({'state':self.receipt['windows_cleanup_fixture'],'large_tree_cleanup':'NOT_ESTABLISHED'}),flush=True)
  def tools_and_runtime(self):
   super().tools_and_runtime()
