@@ -75,7 +75,7 @@
     {
       "path": "driver.py",
       "size": 61071,
-      "sha256": "2751361fd090c7e6dee96d85785eb6681a07ff5108200a57574c71cd068c7223"
+      "sha256": "fd738821b4e6fee400269567dcf9aafce68355033d71a6bdbdc5b213e9ea370a"
     },
     {
       "path": "exact_timestamp.py",
@@ -150,7 +150,7 @@
     {
       "path": "source-material-policy.json",
       "size": 10630,
-      "sha256": "e956ca6f465f67b966392bea1ed7712d80234b756d96cca599470f2ee9b8292c"
+      "sha256": "c60b66d92619cda4f24bfe20c652f803566a6de4a5b52899f053f8dffa3e48c7"
     },
     {
       "path": "staged_driver.py",
@@ -166,6 +166,11 @@
       "path": "tests/fixtures/command_profiles.json",
       "size": 31653,
       "sha256": "d93bd14e5b68547cd6ecbb5b3e77ec0261811a8408263fd1cc42de06081156b0"
+    },
+    {
+      "path": "tests/fixtures/source_pin_evidence.json.gz",
+      "size": 1576620,
+      "sha256": "5c58e018f9b331d73fe5d7b7150ce86c25345d985b267da20aff2131910086e9"
     },
     {
       "path": "tests/test_build_capture.py",
@@ -248,9 +253,14 @@
       "sha256": "aaffcb3b3de55e95f3bbaa71b69cd7de0e0177b81f149dd6d8cc1f2f79273ef9"
     },
     {
+      "path": "tests/test_source_pin_consistency.py",
+      "size": 7429,
+      "sha256": "64d217cfa189ca4ee930f7ed3e053fba48a3f86b3cd7bd6047387f11d1cc8b61"
+    },
+    {
       "path": "tests/test_staged_driver.py",
       "size": 24772,
-      "sha256": "942efb3ca821e51e4140f7fdf1d36d2f7e356e36479cd4bbc20ce257c7847359"
+      "sha256": "54aa791648a528ee124ae891ddb1a6153d058dfa0cc97d3acd001961dc7b9b15"
     },
     {
       "path": "tests/test_structured_checkpoint.py",

@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "root-free-latest-resume-A-20261104-0540-independent-review-3e9cd637c66a340390168cecd6d00585abb15abd4d3e0c08196809240f44e4a3",
-  "reviewed_driver_manifest_sha256": "3e8aea65fa161fccbc5f8b298b8094bfd8bff6611a4106be3d4fd88876d37c60",
+  "root_go_reference": "root-free-source-pin-fix-A-20261104-0608-independent-review-ad383f714963a91770990dd25e14588d31fbb4b887916d08dd85688a36a145a3",
+  "reviewed_driver_manifest_sha256": "69fdef07eed23d55b2d8bb8d6c768d1435d8ae4fdfe0b7d8b1bb669f2b275bef",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
   "preflight_receipt": "preflight-receipt.json",
   "preflight_receipt_sha256": "ab6ded7934c8031cc15851595188da75eb7832d170a50a249ca2b3104b170bdb",
   "distribution_review": "distribution-review.json",
-  "distribution_review_sha256": "88a3c8d489266e06b1bc3f0870735559d94e451bdea086d5dae67dca83b5360c",
+  "distribution_review_sha256": "fe167e4d0d1dbfe56bf480808ded84b84c70847783ef3a66daae1ede341c6ece",
   "ucrt": {
     "version": "10.0.22000.0",
     "source": "pinned-official-nuget",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": "abfe5690df0059155198ed51a8061b3025168bb4",
+    "parent_commit": "b351f2930cdccdd67e099652b3e4c9f98116919f",
     "tracked_files": [
       ".gitattributes",
       "README.md",
@@ -74,6 +74,7 @@
       "ci/staged_driver.py",
       "ci/structured_objects.py",
       "ci/tests/fixtures/command_profiles.json",
+      "ci/tests/fixtures/source_pin_evidence.json.gz",
       "ci/tests/test_build_capture.py",
       "ci/tests/test_cache_ready.py",
       "ci/tests/test_cache_transport.py",
@@ -90,6 +91,7 @@
       "ci/tests/test_resume_transport.py",
       "ci/tests/test_single_driver.py",
       "ci/tests/test_single_locator.py",
+      "ci/tests/test_source_pin_consistency.py",
       "ci/tests/test_staged_driver.py",
       "ci/tests/test_structured_checkpoint.py",
       "ci/tests/test_structured_objects.py",

@@ -49,7 +49,7 @@ GOLDEN_BLOBS = {
     "src/gpg/gal/backends/d3d11/EffectScan.h": "2a57555b82f2740ea0759067be7c500d8f680330",
     "tests/lua/CoroutineTests.cpp": "0dc3a8b9e98395092d17e19a2bd2b89ec597db48",
     "tools/difffuzz/dump.cmake": "8b4ed92a0e7d969b7461a661743d96cb939d02d7",
-    "cmake/FafBuildInfo.cmake": "5bf0a288b9bda00993158e9b34026670807b2926",
+    "cmake/FafBuildInfo.cmake": "f0c43c24596bf792598f080ddc77708d78366294",
 }
 # Components' public source trees only; never walk source root, worker, or caches.
 # Executable/archive media are excluded even if present in upstream sample trees.

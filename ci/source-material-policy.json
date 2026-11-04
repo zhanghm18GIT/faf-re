@@ -231,8 +231,8 @@
   "excluded_product_linux_only_material": [
     {
       "path": "cmake/pgo/headless-linux-x64.profdata",
-      "git_blob": "79cad0404d3a1338879ea872173b4b23d71f4c28",
-      "bytes": 3921112,
+      "git_blob": "299ebff16ac8fdae982494dd4978b458cbae295c",
+      "bytes": 3954616,
       "reason": "Linux-only profiling artifact; not consumed by Windows client preset; excluded from public source payload. Binary policy unchanged."
     },
     {

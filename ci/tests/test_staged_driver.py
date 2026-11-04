@@ -214,7 +214,7 @@ class MaterialSelection(unittest.TestCase):
   excluded=policy['excluded_product_linux_only_material']
   self.assertEqual({x['path'] for x in excluded},{'cmake/pgo/headless-linux-x64.profdata','tools/pgo/record.sh'})
   self.assertFalse(paths & {x['path'] for x in excluded});self.assertEqual(len(paths),2441);self.assertIn("LEGAL.md",paths)
-  self.assertEqual(next(x['git_blob'] for x in excluded if x['path'].endswith('.profdata')),'79cad0404d3a1338879ea872173b4b23d71f4c28')
+  self.assertEqual(next(x['git_blob'] for x in excluded if x['path'].endswith('.profdata')),'299ebff16ac8fdae982494dd4978b458cbae295c')
  def test_public_policy_copied_for_both_material_packages(self):
   source=__import__('inspect').getsource(staged.StagedBuild.stage_materials)
   self.assertIn('SOURCE_MATERIAL_POLICY.json',source)
