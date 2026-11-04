@@ -1,0 +1,38 @@
+DETAIL revision=base oldPass=0 pageBoundary=0 intact=0 snapshotSerial=1 recordingSerial=2
+PASS base overflow counterexample/control
+DETAIL revision=base oldPass=0 pageBoundary=1 intact=0 snapshotSerial=1 recordingSerial=2
+PASS base overflow counterexample/control
+DETAIL revision=base oldPass=1 pageBoundary=0 intact=1 snapshotSerial=1 recordingSerial=2
+PASS base overflow counterexample/control
+DETAIL revision=base oldPass=1 pageBoundary=1 intact=0 snapshotSerial=1 recordingSerial=2
+PASS base overflow counterexample/control
+DETAIL revision=head oldPass=0 pageBoundary=0 intact=1 snapshotSerial=2 recordingSerial=2
+PASS head overflow snapshot survives overwrite
+DETAIL revision=head oldPass=0 pageBoundary=1 intact=1 snapshotSerial=2 recordingSerial=2
+PASS head overflow snapshot survives overwrite
+DETAIL revision=head oldPass=1 pageBoundary=0 intact=1 snapshotSerial=2 recordingSerial=2
+PASS head overflow snapshot survives overwrite
+DETAIL revision=head oldPass=1 pageBoundary=1 intact=1 snapshotSerial=2 recordingSerial=2
+PASS head overflow snapshot survives overwrite
+PASS same serial/version/table cache hit
+PASS constant version invalidation
+PASS constant serial invalidation
+PASS same serial/version/table cache hit
+PASS constant version invalidation
+PASS constant serial invalidation
+PASS descriptor exact-fit boundary
+PASS descriptor oversize rejected after retry
+PASS no constant allocation for empty store
+PASS texture cache invalidation frame/epoch/version/surface
+PASS texture cache invalidation frame/epoch/version/surface
+PASS texture cache invalidation frame/epoch/version/surface
+PASS texture cache invalidation frame/epoch/version/surface
+PASS upload-threshold submit after table
+PASS upload-threshold submit after table
+PASS upload-threshold submit after table
+PASS upload-threshold submit after table
+PASS uncompleted fence negative control
+PASS completed current page reused
+PASS completed oversized page released; no stale dereference
+PASS 256-byte alignment boundary
+29 cases passed

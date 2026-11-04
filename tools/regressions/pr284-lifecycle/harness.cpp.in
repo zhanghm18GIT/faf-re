@@ -1,0 +1,105 @@
+// CPU lifecycle fixture; NOT a D3D12 implementation or rendered acceptance test.
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <memory>
+#include <vector>
+#include <span>
+#include <mutex>
+#include <stdexcept>
+#include <iostream>
+using SIZE_T=std::size_t; using UINT64=std::uint64_t;
+struct D3D12_CPU_DESCRIPTOR_HANDLE {std::uint64_t ptr=0;};
+struct D3D12_GPU_DESCRIPTOR_HANDLE {std::uint64_t ptr=0;};
+constexpr std::uint64_t D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT=256;
+namespace gpg {template<class... T> void Warnf(T...) {}}
+void ThrowError(const char*,int,const char* s) {throw std::runtime_error(s);}
+std::uint64_t AlignUp(std::uint64_t n,std::uint64_t a){return (n+a-1)&~(a-1);}
+constexpr std::uint64_t kPageSize=8ULL<<20U, kIdlePageReserve=128ULL<<20U;
+struct FakeResource {std::uint8_t* Get(){return nullptr;}};
+struct UploadAllocation {std::uint8_t* resource; std::uint64_t offset; std::uint8_t* cpu; std::uint64_t gpu;};
+class UploadAllocator {
+ struct Page {FakeResource resource; std::unique_ptr<std::uint8_t[]> storage; std::uint8_t* cpu=nullptr; std::uint64_t gpu=0,size=0,used=0,lastSerial=0;bool busy=false;};
+ std::vector<std::unique_ptr<Page>> mPages; Page* mCurrent=nullptr;std::uint64_t mAllocatedBytes=0;
+ Page* NewPage(std::uint64_t n){auto p=std::make_unique<Page>();p->storage=std::make_unique<std::uint8_t[]>(n);p->cpu=p->storage.get();p->gpu=reinterpret_cast<std::uintptr_t>(p->cpu);p->size=n;mPages.push_back(std::move(p));return mPages.back().get();}
+ public: std::size_t PageCount() const {return mPages.size();} UploadAllocation Allocate(std::uint64_t,std::uint64_t,std::uint64_t);void Retire(std::uint64_t) noexcept;std::uint64_t TakeAllocatedBytes() noexcept;std::uint64_t BusyBytes() const noexcept;
+};
+struct FakeHeap {D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescriptorHandleForHeapStart(){return {4096};} D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandleForHeapStart(){return {8192};}};
+struct DescriptorArena {std::uint32_t mUsed=0,mCapacity=262144,mIncrement=1;FakeHeap heap;FakeHeap* mHeap=&heap;bool Allocate(std::uint32_t,D3D12_CPU_DESCRIPTOR_HANDLE&,D3D12_GPU_DESCRIPTOR_HANDLE&);void Reset(){mUsed=0;}};
+/*@CORE@*/
+namespace d3d12 {using UploadAllocation=::UploadAllocation;}
+struct BoundPass {bool valid=false;std::uint64_t constants=0,constantsSerial=0;std::uint8_t* constantsCpu=nullptr;std::uint32_t constantsBytes=0;};
+struct ProgramState {std::uint64_t constants=0,constantsSerial=0,constantsVersion=0;std::uint8_t* constantsCpu=nullptr;std::uint64_t tableFrame=~0ULL,tableEpoch=~0ULL,textureVersion=~0ULL,tableSurface=~0ULL;D3D12_GPU_DESCRIPTOR_HANDLE table;};
+struct Parameters {std::vector<std::uint8_t> data;std::uint64_t version=1,textureVersion=1;std::span<const std::uint8_t> Constants(){return data;}std::uint64_t Version(){return version;}};
+struct DeviceD3D12 {
+ UploadAllocator mUpload; BoundPass mPass; std::recursive_mutex mMutex;
+ struct Frame {DescriptorArena views;}; Frame mFrames[1];int mFrameIndex=0;
+ std::uint64_t mSubmittedSerial=0,mArenaEpoch=0,mFrameCount=0,surface=0;
+ std::uint64_t sinceSubmit=0,kSubmitAfter=96ULL<<20U;
+ bool mPreparingDraw=false;int mUploadSubmits=0,submits=0; bool completeAsync=true;
+ std::uint64_t RecordingSerial(){return mSubmittedSerial+1;}
+ // GPU queue/fence operations modeled as explicit completion. Critical order
+ // is guarded against both production source snapshots in generate.py.
+ void Submit(bool wait){++submits;++mSubmittedSerial;CarryBoundPass();if(wait||completeAsync)mUpload.Retire(mSubmittedSerial);}
+ bool CarryBoundPass();d3d12::UploadAllocation AllocateUpload(std::uint64_t,std::uint64_t);
+ D3D12_GPU_DESCRIPTOR_HANDLE AllocateTable(std::uint32_t,D3D12_CPU_DESCRIPTOR_HANDLE&);
+ void snapshot(ProgramState& state,Parameters& parameters,BoundPass& bound){
+/*@SNAP@*/
+ }
+ void bind(ProgramState& state,Parameters& parameters,bool fixed){
+  BoundPass bound;bound.valid=true;
+  if(!fixed)snapshot(state,parameters,bound);
+  // Cache condition transcribed from BindPass, without texture object copies.
+  if(state.tableFrame!=mFrameCount||state.tableEpoch!=mArenaEpoch||state.textureVersion!=parameters.textureVersion||state.tableSurface!=surface){
+   D3D12_CPU_DESCRIPTOR_HANDLE cpu;state.table=AllocateTable(64,cpu);
+   state.tableFrame=mFrameCount;state.tableEpoch=mArenaEpoch;state.textureVersion=parameters.textureVersion;state.tableSurface=surface;
+  }
+  if(fixed)snapshot(state,parameters,bound);
+  mPass=bound;
+ }
+};
+/*@CARRY@*/
+/*@TABLE@*/
+/*@UPLOAD@*/
+int tests=0;
+void check(bool b,const char* msg){if(!b)throw std::runtime_error(msg);}
+void pass(const char* n){++tests;std::cout<<"PASS "<<n<<'\n';}
+void corruption(bool fixed,bool previous,bool fillPage){
+ DeviceD3D12 d;ProgramState state,old;Parameters p{{0x5a,0x6b,0x7c,0x8d}},o{{0x31,0x32,0x33,0x34}};
+ if(previous)d.bind(old,o,fixed);
+ if(fillPage){auto a=d.mUpload.Allocate(kPageSize-(previous?512:256),256,d.RecordingSerial());std::memset(a.cpu,0,a.offset?1:1);}
+ d.mFrames[0].views.mUsed=262144;d.bind(state,p,fixed);
+ auto saved=d.mPass;auto a=d.AllocateUpload(kPageSize,256);std::memset(a.cpu,0xcc,kPageSize);
+ bool intact=std::memcmp(saved.constantsCpu,p.data.data(),4)==0;
+ // Carrying an old pass on the same upload page may protect new local data;
+ // a page boundary moves CarryBoundPass away and exposes retirement.
+ bool expectIntact=fixed || (previous&&!fillPage);
+ check(intact==expectIntact,"unexpected corruption outcome");
+ check(d.submits==1,"descriptor overflow should submit once");
+ if(fixed)check(saved.constantsSerial==d.RecordingSerial(),"head stale serial");
+ std::cout<<"DETAIL revision="<<(fixed?"head":"base")<<" oldPass="<<previous<<" pageBoundary="<<fillPage<<" intact="<<intact<<" snapshotSerial="<<saved.constantsSerial<<" recordingSerial="<<d.RecordingSerial()<<'\n';
+ pass(fixed?"head overflow snapshot survives overwrite":"base overflow counterexample/control");
+}
+int main(){try{
+ for(bool fixed:{false,true})for(bool old:{false,true})for(bool boundary:{false,true})corruption(fixed,old,boundary);
+ for(bool fixed:{false,true}){
+  DeviceD3D12 d;ProgramState s;Parameters p{{1,2,3}};d.bind(s,p,fixed);auto ptr=d.mPass.constantsCpu;auto table=s.table.ptr;auto used=d.mFrames[0].views.mUsed;
+  d.bind(s,p,fixed);check(d.mPass.constantsCpu==ptr&&d.submits==0&&s.table.ptr==table&&d.mFrames[0].views.mUsed==used,"cache hit");pass("same serial/version/table cache hit");
+  p.version++;p.data[0]=9;d.bind(s,p,fixed);check(d.mPass.constantsCpu!=ptr&&d.mPass.constantsCpu[0]==9,"version invalidation");pass("constant version invalidation");
+  d.Submit(false);d.bind(s,p,fixed);check(d.mPass.constantsSerial==d.RecordingSerial()&&d.mPass.constantsCpu[0]==9,"serial invalidation");pass("constant serial invalidation");
+ }
+ {DeviceD3D12 d;ProgramState s;Parameters p{{7}};d.mFrames[0].views.mUsed=262080;d.bind(s,p,true);check(d.submits==0&&d.mFrames[0].views.mUsed==262144,"exact fit");pass("descriptor exact-fit boundary");}
+ {DeviceD3D12 d;D3D12_CPU_DESCRIPTOR_HANDLE h;bool threw=false;try{d.AllocateTable(262145,h);}catch(std::runtime_error&){threw=true;}check(threw&&d.submits==1,"oversize rejection");pass("descriptor oversize rejected after retry");}
+ {DeviceD3D12 d;ProgramState s;Parameters p;d.mFrames[0].views.mUsed=262144;d.bind(s,p,true);check(d.mPass.constantsCpu==nullptr&&d.submits==1,"empty constants");pass("no constant allocation for empty store");}
+ for(int changed=0;changed<4;++changed){DeviceD3D12 d;ProgramState s;Parameters p{{2}};d.bind(s,p,true);if(changed==0)++d.mFrameCount;if(changed==1)++d.mArenaEpoch;if(changed==2)++p.textureVersion;if(changed==3)++d.surface;d.bind(s,p,true);check(d.mFrames[0].views.mUsed==128,"table invalidation");pass("texture cache invalidation frame/epoch/version/surface");}
+ for(bool old:{false,true})for(bool overflow:{false,true}){
+  DeviceD3D12 d;ProgramState s,o;Parameters p{{8}},q{{3}};if(old)d.bind(o,q,true);
+  d.kSubmitAfter=1024;d.sinceSubmit=1025;if(overflow)d.mFrames[0].views.mUsed=262144;
+  d.bind(s,p,true);check(d.mUploadSubmits==1&&d.submits==(overflow?2:1),"threshold branch not exercised");check(d.mPass.constantsSerial==d.RecordingSerial()&&d.mPass.constantsCpu[0]==8,"upload submit snapshot");check(s.tableEpoch==d.mArenaEpoch,"upload submit invalidated table");pass("upload-threshold submit after table");
+ }
+ {UploadAllocator a;auto x=a.Allocate(256,256,1);a.Retire(0);auto y=a.Allocate(256,256,2);check(x.cpu!=y.cpu,"uncompleted page retired");pass("uncompleted fence negative control");}
+ {UploadAllocator a;auto x=a.Allocate(256,256,1);a.Retire(1);auto y=a.Allocate(256,256,2);check(x.cpu==y.cpu,"completed page not reused");pass("completed current page reused");}
+ {UploadAllocator a;auto x=a.Allocate(kPageSize+256,256,1);(void)x;check(a.PageCount()==1,"oversize allocation");a.Retire(1);check(a.PageCount()==0,"oversize page retained");pass("completed oversized page released; no stale dereference");}
+ {UploadAllocator a;auto x=a.Allocate(1,256,1);auto y=a.Allocate(1,256,1);check(y.offset==256&&y.cpu-x.cpu==256,"CB alignment");pass("256-byte alignment boundary");}
+ std::cout<<tests<<" cases passed\n";return 0;
+ }catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<'\n';return 1;}}

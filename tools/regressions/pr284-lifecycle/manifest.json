@@ -1,0 +1,10 @@
+{
+  "head": "41840bd3236ad7dcf8bda9ccd9fc6059d3692cc4",
+  "base": "9ed4a96d517fed91c90e48accea1febfea673ce8",
+  "files": {
+    "sources/head-DeviceD3D12.cpp": "bbc568ea1ce26148b38ca6cd70938bb29b65145d14144373bfa5236f4d103d79",
+    "sources/D3D12Core.cpp": "60def338cc71b6cdda9954dfef784d3e7583c1668de4b2275f7ef22c20cfe4c8",
+    "sources/base-DeviceD3D12.cpp": "a2e387a88d5a209694d07a76a88ae3d8e6e5b6f8312a55fe797f913f7c95649f"
+  },
+  "extraction": "Exact allocator Allocate/Retire/BusyBytes/TakeAllocatedBytes, descriptor Allocate, CarryBoundPass, AllocateTable, snapshot; AllocateUpload static counters/config replaced by per-fixture members."
+}
