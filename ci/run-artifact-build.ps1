@@ -16,7 +16,7 @@ $driverDir = $PSScriptRoot
 $python = 'C:\Python312-x64\python.exe'
 $entry = Join-Path $driverDir 'artifact_driver.py'
 $contract = Join-Path $driverDir ('execution-artifact-' + $Stage.ToLowerInvariant() + '.json')
-if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne '3380392830d280b0b2e5f54f2eabd3ea5340e12c58e054c82c64efee4d8e5403') {
+if ((Get-FileHash -LiteralPath $entry -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'f2abe2d2e6345817afdef103b4cceb6c244d2a6ee645a4eb52dcc30ded4fd73f') {
     throw 'Driver entry SHA-256 mismatch'
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw 'Documented installed x64 Python missing; no fallback or installation' }

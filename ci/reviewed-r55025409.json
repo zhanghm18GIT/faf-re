@@ -1,0 +1,29 @@
+{
+  "url": "https://ci.appveyor.com/api/buildjobs/b78ur1l57651o71s/artifacts/resume-transfer.zip",
+  "size": 258251013,
+  "sha256": "85e72ae86771cf1677792eff7c488f9aae6faf41d2d8181c2c5711995bf0a8ca",
+  "inner": {
+    "size": 97002579,
+    "sha256": "072d5f863942355c73cb1cfc15b95f1a13bcec2758dc3263484e91541784e978"
+  },
+  "producer": {
+    "build_id": "55025409",
+    "job_id": "b78ur1l57651o71s",
+    "configuration_commit": "e70277ed67426dda054f897325c16a8988a0f2d9"
+  },
+  "predecessor": {
+    "url": "https://ci.appveyor.com/api/buildjobs/hldaal012sq53o7c/artifacts/resume-transfer.zip",
+    "size": 241765505,
+    "sha256": "86426b7fbc6ebdab7dec4f0ee9a4023d8a2cc315a6e20e595b5f6188abfcf7d3",
+    "inner": {
+      "size": 80517283,
+      "sha256": "4f832deb6c6942f8a7c70527e9376e36fa2bd59d9e481dacf51e7c5854bec8f1"
+    },
+    "producer": {
+      "build_id": "55025153",
+      "job_id": "hldaal012sq53o7c",
+      "configuration_commit": "5bb946002c7ae872c87d6c0ddd394de5082db62f"
+    },
+    "predecessor": null
+  }
+}

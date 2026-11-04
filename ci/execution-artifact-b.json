@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "state": "APPROVED_FOR_ONE_MANUAL_BUILD",
-  "root_go_reference": "root-free-public-artifact-final-B-20261104-1430-source-review-4c57ff3d6a468011d641ed35ddaefd30ef94c43f86f2b0d5661b490769299773-verified-R55025409",
-  "reviewed_driver_manifest_sha256": "1de90b54ec435c11f789ad54d7eb7871d151f91d44d3627228a312f3b22bd1d0",
+  "root_go_reference": "root-free-public-artifact-final-B-20261104-1529-independent-review-40ef18589bca11cf7223ca7a8edd3c51bf0fde56d54ade7d9363cb72ca604fdd",
+  "reviewed_driver_manifest_sha256": "ab8b4398bddf42ee8932e0bae8ae2b310fc8f199b1292b33765b7fa4d24ba091",
   "account": "zhanghm18GIT",
   "project_slug": "faf-re",
   "expected_image": "Visual Studio 2022",
@@ -25,7 +25,7 @@
   "provider_configuration": {
     "repository": "zhanghm18GIT/faf-re",
     "branch": "ci/public-client-302eb-staged-20261103",
-    "parent_commit": "e70277ed67426dda054f897325c16a8988a0f2d9",
+    "parent_commit": "5a7017ca143f45a6649e1b8f044b0a69d2183a88",
     "tracked_files": [
       ".gitattributes",
       "README.md",
@@ -76,6 +76,7 @@
       "ci/resume_driver.py",
       "ci/resume_ready.py",
       "ci/resume_transport.py",
+      "ci/reviewed-r55025409.json",
       "ci/run-artifact-build.ps1",
       "ci/run-client-build.ps1",
       "ci/run-resume-build.ps1",
@@ -97,6 +98,7 @@
       "ci/tests/test_exact_timestamp.py",
       "ci/tests/test_finalizer_return.py",
       "ci/tests/test_full_command_profiles.py",
+      "ci/tests/test_math_ctest_bridge.py",
       "ci/tests/test_owned_cleanup.py",
       "ci/tests/test_public_literal.py",
       "ci/tests/test_relay_protocol.py",
@@ -153,5 +155,6 @@
       "predecessor": null
     }
   },
-  "resume_recipe_sha256": "4dc60f14608af98d185c09abd13fe12e558c107c92ef65f3ab3aadf1b4f0be16"
+  "resume_recipe_sha256": "4dc60f14608af98d185c09abd13fe12e558c107c92ef65f3ab3aadf1b4f0be16",
+  "reviewed_producer_bridge": "R55025409-math-timeout-v1"
 }

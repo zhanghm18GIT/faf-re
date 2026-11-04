@@ -13,6 +13,9 @@ import build_capture
 need=core.require
 COUNT=450
 PRODUCER_COUNT=150
+BRIDGE_ID='R55025409-math-timeout-v1'
+OLD_PRODUCER_MANIFEST='1de90b54ec435c11f789ad54d7eb7871d151f91d44d3627228a312f3b22bd1d0'
+BRIDGE_PIN_SHA='e107b21df40cda69cc3dbd84b81ead48c7b04292973fc5d10f1d14ce294b18fe'
 class ArtifactBuild(resume.ResumeBuild):
     ENGINE_OBJECT_COUNT=COUNT
     def validate_contract(self):
@@ -37,9 +40,29 @@ class ArtifactBuild(resume.ResumeBuild):
         if self.resume_stage=='A':need(pin is None and self.c['upload_exact_package'] is True,'Producer must explicitly publish transfer')
         else:
             self.validate_input_pin(pin,expects_parent=self.resume_stage=='B')
+        self.incoming_manifest()
         self.producer_deadline=None
         self.receipt.update(mode=self.c['mode'],resume_stage=self.resume_stage,completion_guarantee=False,
           trust_model='fixed public source and official tools on fresh controlled worker; no arbitrary-source isolation or artifact confidentiality guarantee')
+
+    def incoming_manifest(self):
+        bridge=self.c.get('reviewed_producer_bridge')
+        if bridge is None:return self.c['reviewed_driver_manifest_sha256']
+        need(bridge==BRIDGE_ID and self.resume_stage=='B','Reviewed producer bridge is final-B only')
+        path=self.here/'reviewed-r55025409.json';core.checked_hash(path,BRIDGE_PIN_SHA)
+        need(self.c['resume_input']==core.read_json(path),'Reviewed producer bridge requires exact R and A pins')
+        return OLD_PRODUCER_MANIFEST
+
+    def run_math_ctests(self):
+        if self.resume_stage!='B':return super().run_math_ctests()
+        deadline=time.monotonic()+self.remaining(420)
+        for name,timeout in [('sim_math',180),('math_dump',360)]:
+            cap=int(min(420,deadline-time.monotonic()))
+            need(cap>0,'Shared 420-second math CTest window exhausted')
+            junit=self.root/('ctest-'+name+'.xml')
+            print('CTEST_PHASE '+json.dumps({'test':name,'timeout_seconds':timeout,'shared_remaining_seconds':cap,'inputs_per_target':1000000 if name=='math_dump' else None,'retail_values_unchanged':name=='math_dump'}),flush=True)
+            self.command([self.ctest,'--test-dir',self.build,'-R','^'+name+'$','--output-on-failure','--no-tests=error','--timeout',str(timeout),'--parallel','1','--output-junit',junit],cap=cap,name='ctest-'+name)
+            core.validate_junit(junit,[name])
 
     def validate_input_pin(self,pin,*,expects_parent):
         need(type(pin) is dict and set(pin)=={'url','size','sha256','inner','producer','predecessor'},'Separate producer chain required')
@@ -70,7 +93,7 @@ class ArtifactBuild(resume.ResumeBuild):
 
     def transfer_metadata(self,*,incoming=False):
         pin=self.c['resume_input'] if incoming else None
-        return {'mode':self.c['mode'],'producer':pin['producer'] if incoming else self.producer(),'predecessor':pin['predecessor'] if incoming else self.output_predecessor(),'engine_object_count':(PRODUCER_COUNT if self.resume_stage=='R' else COUNT) if incoming else (PRODUCER_COUNT if self.resume_stage=='A' else COUNT),'base':core.BASE,'tree':core.TREE,'recipe':self.resume_key,'driver_manifest_sha256':self.c['reviewed_driver_manifest_sha256'],'material_policy_sha256':self.material_selection_sha}
+        return {'mode':self.c['mode'],'producer':pin['producer'] if incoming else self.producer(),'predecessor':pin['predecessor'] if incoming else self.output_predecessor(),'engine_object_count':(PRODUCER_COUNT if self.resume_stage=='R' else COUNT) if incoming else (PRODUCER_COUNT if self.resume_stage=='A' else COUNT),'base':core.BASE,'tree':core.TREE,'recipe':self.resume_key,'driver_manifest_sha256':self.incoming_manifest() if incoming else self.c['reviewed_driver_manifest_sha256'],'material_policy_sha256':self.material_selection_sha}
 
     def bundle_spec(self,selection=None):
         names,outputs,meta=super().bundle_spec(selection)
@@ -80,6 +103,7 @@ class ArtifactBuild(resume.ResumeBuild):
     def restore_spec(self):
         names,outputs,meta=resume.ResumeBuild.bundle_spec(self,self.input_selection)
         meta['predecessor']=self.c['resume_input']['predecessor']
+        meta['driver_manifest_sha256']=self.incoming_manifest()
         return names,outputs,meta
 
     def restore_producer(self):

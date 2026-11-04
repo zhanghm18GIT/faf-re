@@ -651,6 +651,11 @@ class Build:
         info["ffmpeg_configuration"] = {"config_git_blob": "2fe47091c8fcdd86483df1975efd962cf0b5f3a4", "gpl": False, "nonfree": False, "version3": False}
         self.receipt["dependencies"] = info
 
+    def run_math_ctests(self):
+        junit = self.root / "ctest.xml"
+        self.command([self.ctest, "--test-dir", self.build, "-R", TEST_REGEX, "--output-on-failure", "--no-tests=error", "--timeout", "180", "--parallel", "1", "--output-junit", junit], cap=420, name="ctest")
+        validate_junit(junit)
+
     def compile_and_test(self):
         self.phase = "build-and-goldens"
         self.verify_source()
@@ -665,9 +670,7 @@ class Build:
         self.phase = "ctest"
         discovery = self.command([self.ctest, "--test-dir", self.build, "--show-only=json-v1", "-R", TEST_REGEX], name="ctest-discovery-built")
         validate_test_discovery(json.loads(discovery), self.source)
-        junit = self.root / "ctest.xml"
-        self.command([self.ctest, "--test-dir", self.build, "-R", TEST_REGEX, "--output-on-failure", "--no-tests=error", "--timeout", "180", "--parallel", "1", "--output-junit", junit], cap=420, name="ctest")
-        validate_junit(junit)
+        self.run_math_ctests()
         self.verify_source()
         checked_hash(self.ucrt, self.c["ucrt"]["sha256"])
         lua_discovery = self.command([self.ctest, "--test-dir", self.build, "--show-only=json-v1", "-R", LUA_TEST_REGEX], name="ctest-lua-discovery-built")
