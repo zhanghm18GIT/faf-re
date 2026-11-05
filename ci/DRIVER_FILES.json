@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "status": "REVIEWED_FOR_AUTHORIZED_ACTIVATION",
+  "source_state": "LATEST_MASTER_PLUS_SEVEN_REVIEWED_PRS",
+  "base_commit": "a9225d2d2bcc17fca2075d7c534bee18f6c93273",
+  "candidate_tree": "ff340b16db5af1cbb76df051a9a7439c1dd08160",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 43,
+      "sha256": "aa292542c155fcc4079480dd5970b749eca3347477292b66420c0685dc50189a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 9139,
+      "sha256": "a88035e721f584514541f98e0db555f82c904c44052b7236a061b4e77991cb61"
+    },
+    {
+      "path": "appveyor.yml",
+      "bytes": 1313,
+      "sha256": "07adb5a31cc9bde5ac630321bd1f056c02a8b592615eb2f87c12c71627979fa0"
+    },
+    {
+      "path": "ci/REPLAY_ACCEPTANCE.json",
+      "bytes": 12599,
+      "sha256": "d0bfae93d7ee488297785d74dc6d2f741381001854f029bd8ac0467457f99ce6"
+    },
+    {
+      "path": "ci/authorization.json",
+      "bytes": 1074,
+      "sha256": "e20beea6719d422ee6e87d775079f1b74c18f51e0414f7440bb5752d898728b1"
+    },
+    {
+      "path": "ci/build-tools.json",
+      "bytes": 539,
+      "sha256": "9660e2cb5cfbf91f6023e498e0bd510cd85f5a941a63631971de08430e6c1d9c"
+    },
+    {
+      "path": "ci/candidate.patch",
+      "bytes": 55740,
+      "sha256": "7e4cdcad4ec35f040f85069ad6272b2168690ff59dea55ece0ddff9642245e97"
+    },
+    {
+      "path": "ci/check_install.py",
+      "bytes": 8077,
+      "sha256": "f934d5063f3a17f3ea31894b60138e8a008384e45cc705c5ad888404e2b6f0f6"
+    },
+    {
+      "path": "ci/dependencies.json",
+      "bytes": 7619243,
+      "sha256": "f3efce4251064dcffaa731831217c0ce4e3f33c93366bbe31c36092f918de0ee"
+    },
+    {
+      "path": "ci/driver.py",
+      "bytes": 18238,
+      "sha256": "345496b204ed363ff881274d56018101bd5b005426fd2dca2f91ab70b69bea93"
+    },
+    {
+      "path": "ci/finalize.py",
+      "bytes": 837,
+      "sha256": "54ee6bd68fce65a51596458e0d1e5ef7d9180940481de70ad8f084c9c28bd2ba"
+    },
+    {
+      "path": "ci/inputs.json",
+      "bytes": 1348457,
+      "sha256": "a35e62c797e01771bf1e64a6b37ca6bf63f7afb9ef1f2ae5b87c612d6a1721d0"
+    },
+    {
+      "path": "ci/join_job.py",
+      "bytes": 506,
+      "sha256": "cdf8c3f2778d24351d38ab34c863bd68456eb4cb038dc13a0849be14054c90d7"
+    },
+    {
+      "path": "ci/materials.json",
+      "bytes": 6724857,
+      "sha256": "27127dff899315544f4eb29f60717e981b8ef41ad9c957a4e3cb292fb3266642"
+    },
+    {
+      "path": "ci/native_checks.py",
+      "bytes": 5476,
+      "sha256": "4d5fbdfd124d4910503d0245680d19a08fdaaafa1414a36b8f764bace257a9fa"
+    },
+    {
+      "path": "ci/packaging_gate.py",
+      "bytes": 10556,
+      "sha256": "dd094b453da669ced2a581b0f65c91548fd7f24f5db91ba23471badf8017967d"
+    },
+    {
+      "path": "ci/run_once.py",
+      "bytes": 11230,
+      "sha256": "1d56befc56710454c4bfed96b7a8f657b446b778496154b1db9cdbc3eabeed4b"
+    },
+    {
+      "path": "ci/tests/test_appveyor_controls.py",
+      "bytes": 12991,
+      "sha256": "5d79a394a61169cc7a5093ec4ead411eb2256e93e4f2e6ed04a2c80679460894"
+    },
+    {
+      "path": "ci/tests/test_native_checks.py",
+      "bytes": 5032,
+      "sha256": "227e22386aabef1798d08631590635a2f4dbde4ae731f81191d520672e822a70"
+    },
+    {
+      "path": "ci/tests/test_packaging_gate.py",
+      "bytes": 8624,
+      "sha256": "2a11fb0c604c0bee87705907ebfdb7fc8b3e0eecdecc7ff8d61ad8404274bf94"
+    },
+    {
+      "path": "ci/tests/test_portable_tools.py",
+      "bytes": 2348,
+      "sha256": "a27b2c4b8cd270bf8f889a9fcded50efe88517d283a269a0bf221e95bd880975"
+    },
+    {
+      "path": "ci/tests/test_toolchain.py",
+      "bytes": 7994,
+      "sha256": "20f9b5cbd8aaacd914a59d90c90b10fa1936bf4acb528cb5d4ae5dd4784cca3e"
+    },
+    {
+      "path": "ci/toolchain.py",
+      "bytes": 18749,
+      "sha256": "fa1bb982f04fda5cc54c92106535e0f3fb5e457d566815855bbfcac4a8f3779a"
+    },
+    {
+      "path": "ci/ucrt-package.json",
+      "bytes": 977,
+      "sha256": "b0c18dbd3845f33aaad9215ea3e38f51c22695f93dbc15e4f8f14d828a6001a6"
+    },
+    {
+      "path": "ci/verify_draft.py",
+      "bytes": 1086,
+      "sha256": "d515da48f783c54108b2099cf8aaacd1c3b13bf06372474722058351d524552f"
+    },
+    {
+      "path": "ci/windows_job.py",
+      "bytes": 3369,
+      "sha256": "61b473849ea9c0fc936128821f9736d6d3349983418d1e3da1d0d39f3bad15d8"
+    }
+  ]
+}

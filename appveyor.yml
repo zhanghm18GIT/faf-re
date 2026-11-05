@@ -1,0 +1,52 @@
+# LOCAL INERT DRAFT. No publication or dispatch is authorized by this file.
+version: fresh-native.{build}
+image: Visual Studio 2022
+max_jobs: 1
+platform: x64
+configuration: Release
+branches:
+  only:
+    - dot-appveyor-fresh-native
+skip_tags: true
+skip_branch_with_pr: true
+clone_depth: 1
+shallow_clone: false
+build: off
+test: off
+deploy: off
+cache: []
+artifacts: []
+notifications: []
+services: []
+assembly_info:
+  patch: false
+dotnet_csproj:
+  patch: false
+environment:
+  APPVEYOR_CACHE_SKIP_RESTORE: 'true'
+  APPVEYOR_CACHE_SKIP_SAVE: 'true'
+  APPVEYOR_SAVE_CACHE_ON_ERROR: 'false'
+  APPVEYOR_ARTIFACT_UPLOAD_TIMEOUT: '60'
+  CMAKE_BUILD_PARALLEL_LEVEL: '2'
+  GIT_TERMINAL_PROMPT: '0'
+  GIT_LFS_SKIP_SMUDGE: '1'
+  PYTHONDONTWRITEBYTECODE: '1'
+init:
+  - ps: |
+      $env:FAF_JOB_STARTED_UTC = [DateTime]::UtcNow.ToString('o')
+install:
+  - ps: |
+      $ErrorActionPreference = 'Stop'
+      $python = 'C:\Python312-x64\python.exe'
+      if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw 'Expected x64 Python 3.12 missing' }
+      & $python -B .\ci\run_once.py
+      if ($LASTEXITCODE -ne 0) { throw 'Fresh candidate failed or blocked; no automatic retry' }
+before_build: []
+after_build: []
+before_test: []
+after_test: []
+before_deploy: []
+after_deploy: []
+on_success: []
+on_failure: []
+on_finish: []

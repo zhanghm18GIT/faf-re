@@ -1,0 +1,33 @@
+{
+  "state": "AUTHORIZED_FOR_ONE_REVIEWED_RUN",
+  "account": "zhanghm18GIT",
+  "project_slug": "faf-re",
+  "repository": "zhanghm18GIT/faf-re",
+  "repository_visibility": "public",
+  "branch": "dot-appveyor-fresh-native",
+  "plan": "Free",
+  "subscription_status": "Active",
+  "paid_budget_usd": 0,
+  "runner": "Visual Studio 2022",
+  "max_job_minutes": 60,
+  "work_deadline_minutes": 50,
+  "watchdog_minutes": 52,
+  "finalize_deadline_minutes": 55,
+  "max_attempts": 1,
+  "expected_build_number": 28,
+  "verified_utc": "2026-11-05T09:17:42.941184+00:00",
+  "grants": {
+    "publish_exact_reviewed_driver": true,
+    "one_manual_appveyor_job": true,
+    "temporary_appveyor_settings": true,
+    "restore_original_settings": true,
+    "windows_sdk_license": true,
+    "directx_sdk_license": true,
+    "public_diagnostics_and_product": true
+  },
+  "license_urls": [
+    "https://aka.ms/WinSDKLicenseURL",
+    "https://www.microsoft.com/en-us/download/details.aspx?id=6812"
+  ],
+  "approval_receipt_sha256": "089e34e948dba9e4392fb618f68898c7156d60b39c86ba1cd81673c90cd2ad78"
+}

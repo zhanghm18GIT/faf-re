@@ -1,0 +1,1339 @@
+diff --git a/src/gpg/gal/backends/common/ImageCodec.cpp b/src/gpg/gal/backends/common/ImageCodec.cpp
+index 350e56908b66101ad262b5cb8c4cfbd675aa4d4b..e2a2e462e5b46f8b93d514b55e529e664e6fa55b 100644
+--- a/src/gpg/gal/backends/common/ImageCodec.cpp
++++ b/src/gpg/gal/backends/common/ImageCodec.cpp
+@@ -1,6 +1,7 @@
+ // FAF addition, not in the shipped binary: see ImageCodec.h.
+ 
+ #include "ImageCodec.h"
++#include "TextureQuality.h"
+ 
+ #include <algorithm>
+ #include <cstdio>
+@@ -502,8 +503,12 @@ namespace gpg::gal::imaging
+     return tLastDecodeRoute;
+   }
+ 
+-  HRESULT ImageCodec::Decode(const void* const data, const std::size_t bytes, const DecodeOptions& options, Image& outImage)
++  HRESULT ImageCodec::Decode(
++    const void* const data, const std::size_t bytes, const DecodeOptions& requestedOptions, Image& outImage
++  )
+   {
++    DecodeOptions options = requestedOptions;
++    options.skipMipLevels = TextureQualityMipLevels(data, bytes, options.skipMipLevels);
+     tLastDecodeRoute = "direct";
+     if (gDdsDirectLoad && TryReadBlockCompressedDds(static_cast<const std::uint8_t*>(data), bytes, options, outImage)) {
+       if (VerifyRequested()) {
+@@ -561,9 +566,12 @@ namespace gpg::gal::imaging
+     if (!gTextureDecodeCache) {
+       return DecodeWithD3dx(data, bytes, options, outImage);
+     }
+-    const std::uint64_t key = DecodeCacheKey(data, bytes, options);
+-    const std::string path = DecodeCachePath(key);
+-    if (!path.empty() && ReadDecodeCache(path, key, outImage)) {
++    std::uint64_t key = DecodeCacheKey(data, bytes, options);
++    std::string path = DecodeCachePath(key);
++    // Reject pre-fix nonzero-skip cube/volume entries even if a permissive
++    // D3DX decoder recognizes a resource kind the header probe did not.
++    if (!path.empty() && ReadDecodeCache(path, key, outImage) &&
++        !(options.skipMipLevels != 0U && (outImage.cube || outImage.volume))) {
+       tLastDecodeRoute = "cache";
+       return S_OK;
+     }
+@@ -573,6 +581,13 @@ namespace gpg::gal::imaging
+     ::QueryPerformanceCounter(&end);
+     ::QueryPerformanceFrequency(&frequency);
+     const auto microseconds = static_cast<std::uint64_t>(1000000.0 * static_cast<double>(end.QuadPart - start.QuadPart) / static_cast<double>(frequency.QuadPart));
++    if (SUCCEEDED(result) && options.skipMipLevels != 0U && (outImage.cube || outImage.volume)) {
++      // Metadata is authoritative for unusual inputs. Never write a full
++      // cube/volume under the old quality-dependent identity.
++      options.skipMipLevels = 0U;
++      key = DecodeCacheKey(data, bytes, options);
++      path = DecodeCachePath(key);
++    }
+     if (SUCCEEDED(result) && !path.empty() && microseconds >= kDecodeCacheMinMicroseconds) {
+       tLastDecodeRoute = "d3dx, cached for later sessions";
+       // Written on a background thread from a copy, so the frame does not wait for the disk.
+@@ -634,7 +649,9 @@ namespace gpg::gal::imaging
+ 
+     ComPtr<ID3D11Resource> resource;
+     result = E_FAIL;
+-    if (options.skipMipLevels != 0U) {
++    const bool preserveTopMip = (info.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) != 0U ||
++      info.ResourceDimension == D3D11_RESOURCE_DIMENSION_TEXTURE3D;
++    if (!preserveTopMip && options.skipMipLevels != 0U) {
+       result = load(options.skipMipLevels, resource);
+     }
+     if (FAILED(result)) {
+diff --git a/src/gpg/gal/backends/common/TextureQuality.h b/src/gpg/gal/backends/common/TextureQuality.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..cccd2724bc343010993ac5e23a1a8f502fdc26cc
+--- /dev/null
++++ b/src/gpg/gal/backends/common/TextureQuality.h
+@@ -0,0 +1,41 @@
++#pragma once
++
++#include <cstddef>
++#include <cstdint>
++#include <cstring>
++
++namespace gpg::gal::imaging
++{
++  /**
++   * The original D3D9 loader applies texture quality's DDS mip skip only to
++   * 2D textures. Cubes and volumes use D3DX_DEFAULT, including their top mip.
++   * Inspect the resource kind before direct decode and cache lookup as well as
++   * D3DX loading. Do not alter 2D quality, resizing, or explicit mip limits.
++   */
++  [[nodiscard]] inline std::uint32_t TextureQualityMipLevels(
++    const void* const data, const std::size_t bytes, const std::uint32_t requestedSkip
++  ) noexcept
++  {
++    if (requestedSkip == 0U || data == nullptr || bytes < 128U) {
++      return requestedSkip;
++    }
++    const auto* const source = static_cast<const std::uint8_t*>(data);
++    const auto word = [source](const std::size_t offset) {
++      std::uint32_t value;
++      std::memcpy(&value, source + offset, sizeof(value));
++      return value;
++    };
++    if (word(0U) != 0x20534444U) { // DDS magic
++      return requestedSkip;
++    }
++    // DX10's topology supersedes legacy caps2. Only interpret the extension
++    // when the pixel format declares a FourCC and the whole extension exists.
++    if (bytes >= 148U && (word(80U) & 0x4U) != 0U && word(84U) == 0x30315844U) {
++      const std::uint32_t dimension = word(132U);
++      const std::uint32_t miscFlags = word(136U);
++      return dimension == 4U || (miscFlags & 0x4U) != 0U ? 0U : requestedSkip;
++    }
++    // Avoid stricter header validation than D3DX: it owns format validation.
++    return (word(112U) & (0x200U | 0x200000U)) != 0U ? 0U : requestedSkip;
++  }
++}
+diff --git a/src/gpg/gal/backends/d3d11/DeviceD3D11.cpp b/src/gpg/gal/backends/d3d11/DeviceD3D11.cpp
+index d9abc18e38281fd8dd2a7dd6f9036d5d8466e2c6..af5fee20ea3d6a786260cbc35da9565e63b62226 100644
+--- a/src/gpg/gal/backends/d3d11/DeviceD3D11.cpp
++++ b/src/gpg/gal/backends/d3d11/DeviceD3D11.cpp
+@@ -43,6 +43,7 @@
+ #include "gpg/gal/RenderTargetContext.hpp"
+ #include "gpg/gal/TextureContext.h"
+ #include "gpg/gal/VertexBufferContext.hpp"
++#include "gpg/gal/backends/common/TextureQuality.h"
+ 
+ namespace gpg::gal
+ {
+@@ -870,10 +871,10 @@ namespace gpg::gal
+       const char* const data = context->dataBuffer_.mBegin;
+       const SIZE_T bytes = context->DataSizeBytes();
+ 
+-      // The texture-quality option skips top mip levels (D3D9 passes it as
+-      // D3DX_SKIP_DDS_MIP_LEVELS, `reserved0x44_`); a file with too few
+-      // levels for that loads whole.
+-      const UINT skipLevels = context->reserved0x44_ & 0x1FU;
++      // Original D3D9 applies the quality skip only to 2D DDS textures;
++      // environment cubes and volumes retain their top mip. A 2D file with
++      // too few levels for the requested skip still falls back to loading whole.
++      const UINT skipLevels = imaging::TextureQualityMipLevels(data, bytes, context->reserved0x44_ & 0x1FU);
+       HRESULT result = E_FAIL;
+       if (skipLevels != 0U) {
+         D3DX11_IMAGE_LOAD_INFO loadInfo;
+diff --git a/src/gpg/gal/backends/d3d12/DeviceD3D12.cpp b/src/gpg/gal/backends/d3d12/DeviceD3D12.cpp
+index 37ed7237d6197246df8a58ef0cb1036289426c19..234965a02d4cf1815da08a1127eb75a1642e32c3 100644
+--- a/src/gpg/gal/backends/d3d12/DeviceD3D12.cpp
++++ b/src/gpg/gal/backends/d3d12/DeviceD3D12.cpp
+@@ -2844,24 +2844,6 @@ float4 SolidPS(float4 position : SV_Position) : SV_Target0 { return float4(1, 0,
+       }
+     }
+ 
+-    // $Globals, snapshotted as D3D9's BeginPass and Effects 11's Apply do.
+-    const std::span<const std::uint8_t> constants = parameters.Constants();
+-    if (!constants.empty()) {
+-      if (state.constants == 0U || state.constantsVersion != parameters.Version() || state.constantsSerial != RecordingSerial()) {
+-        const std::uint64_t bytes = (constants.size() + 255U) & ~static_cast<std::uint64_t>(255U);
+-        const d3d12::UploadAllocation upload = AllocateUpload(bytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+-        std::memcpy(upload.cpu, constants.data(), constants.size());
+-        state.constants = upload.gpu;
+-        state.constantsCpu = upload.cpu;
+-        state.constantsVersion = parameters.Version();
+-        state.constantsSerial = RecordingSerial();
+-      }
+-      bound.constants = state.constants;
+-      bound.constantsCpu = state.constantsCpu;
+-      bound.constantsBytes = static_cast<std::uint32_t>(constants.size());
+-      bound.constantsSerial = state.constantsSerial;
+-    }
+-
+     // The texture table: rebuilt when a binding changed or the frame moved on.
+     if (state.tableFrame != mFrameCount || state.tableEpoch != mArenaEpoch || state.textureVersion != parameters.TextureVersion() ||
+         state.tableSurface != outputContext_.surface.get()) {
+@@ -2922,6 +2904,27 @@ float4 SolidPS(float4 position : SV_Position) : SV_Target0 { return float4(1, 0,
+       state.textureVersion = parameters.TextureVersion();
+       state.tableSurface = outputContext_.surface.get();
+     }
++    // AllocateTable can submit and recycle upload pages on descriptor exhaustion.
++    // Snapshot this new pass only after that boundary; Submit carries mPass,
++    // not the local bound record being built here.
++    // $Globals, snapshotted as D3D9's BeginPass and Effects 11's Apply do.
++    const std::span<const std::uint8_t> constants = parameters.Constants();
++    if (!constants.empty()) {
++      if (state.constants == 0U || state.constantsVersion != parameters.Version() || state.constantsSerial != RecordingSerial()) {
++        const std::uint64_t bytes = (constants.size() + 255U) & ~static_cast<std::uint64_t>(255U);
++        const d3d12::UploadAllocation upload = AllocateUpload(bytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
++        std::memcpy(upload.cpu, constants.data(), constants.size());
++        state.constants = upload.gpu;
++        state.constantsCpu = upload.cpu;
++        state.constantsVersion = parameters.Version();
++        state.constantsSerial = RecordingSerial();
++      }
++      bound.constants = state.constants;
++      bound.constantsCpu = state.constantsCpu;
++      bound.constantsBytes = static_cast<std::uint32_t>(constants.size());
++      bound.constantsSerial = state.constantsSerial;
++    }
++
+     bound.textures = state.table;
+     bound.tableFrame = state.tableFrame;
+     bound.tableEpoch = state.tableEpoch;
+diff --git a/src/lua/LuaArena.cpp b/src/lua/LuaArena.cpp
+index 1ac0948af11b95e60871e9ad38efabc4c05ed7a8..0cef611f084badec4c6322f1603e0cd767e4e0eb 100644
+--- a/src/lua/LuaArena.cpp
++++ b/src/lua/LuaArena.cpp
+@@ -113,7 +113,13 @@ namespace
+   std::size_t gCommittedBytes = 0;
+   std::uint8_t gSpanClass[kSpanCount];
+   std::uint32_t gLargeSpans[kSpanCount]; // on a large block's first span: its span count
+-  std::vector<LargeRun>* gFreeRuns = nullptr; // made on first use: the range is reserved before the CRT starts
++  // Each free run owns at least one arena span; freeing needs no host-heap allocation.
++  LargeRun gFreeRuns[kSpanCount]{};
++  std::size_t gFreeRunCount = 0;
++  // A read-only summary of the free list; rebuilt only after its contents change.
++  std::uint32_t gAdjacentSpans[kSpanCount]{};
++  std::size_t gLargestAdjacentRun = 0;
++  bool gFreeRunsChanged = true;
+   GlobalClassLists gGlobal[kClassCount];
+   constinit thread_local ThreadLists tLists{};
+ 
+@@ -190,12 +196,17 @@ namespace
+     return first;
+   }
+ 
++  [[nodiscard]] std::size_t TakeFreeRun(std::size_t spans) noexcept;
++
+   [[nodiscard]] FreeBlock* CarveSpan(const std::uint32_t sizeClass, std::uint32_t& outCount) noexcept
+   {
+     std::size_t span = kSpanCount;
+     {
+       std::lock_guard<std::mutex> guard(gSpanLock);
+       span = TakeSpans(1u);
++      if (span == kSpanCount) {
++        span = TakeFreeRun(1u);
++      }
+       if (span == kSpanCount) {
+         return nullptr;
+       }
+@@ -283,31 +294,103 @@ namespace
+   };
+   thread_local ThreadExitGuard tExitGuard;
+ 
+-  [[nodiscard]] void* AllocateLarge(const std::size_t bytes) noexcept
++  // Preserve the old first-fit / swap-pop choice until it cannot satisfy a request.
++  [[nodiscard]] std::size_t TakeFreeRun(const std::size_t spans) noexcept
+   {
+-    const std::size_t spans = (bytes + kSpanBytes - 1u) / kSpanBytes;
+-    std::lock_guard<std::mutex> guard(gSpanLock);
+-    std::size_t first = kSpanCount;
+-    if (gFreeRuns == nullptr) {
+-      gFreeRuns = new std::vector<LargeRun>();
+-    }
+-    std::vector<LargeRun>& runs = *gFreeRuns;
+-    for (std::size_t index = 0; index < runs.size(); ++index) {
+-      if (runs[index].spans >= spans) {
+-        first = runs[index].firstSpan;
+-        runs[index].firstSpan += spans;
+-        runs[index].spans -= spans;
+-        if (runs[index].spans == 0u) {
+-          runs[index] = runs.back();
+-          runs.pop_back();
++    for (std::size_t index = 0; index < gFreeRunCount; ++index) {
++      LargeRun& run = gFreeRuns[index];
++      if (run.spans >= spans) {
++        gFreeRunsChanged = true;
++        const std::size_t first = run.firstSpan;
++        run.firstSpan += spans;
++        run.spans -= spans;
++        if (run.spans == 0u) {
++          run = gFreeRuns[--gFreeRunCount];
++        }
++        return first;
++      }
++    }
++    return kSpanCount;
++  }
++
++  // Do not reorder the list for an unsatisfiable request: Lua hashes pointer keys.
++  // The summary costs O(arena spans + free runs), once per changed free-list state.
++  void SummarizeAdjacentRuns() noexcept
++  {
++    if (!gFreeRunsChanged) {
++      return;
++    }
++    std::memset(gAdjacentSpans, 0, sizeof(gAdjacentSpans));
++    for (std::size_t index = 0; index < gFreeRunCount; ++index) {
++      const LargeRun& run = gFreeRuns[index];
++      gAdjacentSpans[run.firstSpan] = static_cast<std::uint32_t>(run.spans);
++    }
++    gLargestAdjacentRun = 0;
++    for (std::size_t first = 0; first < gNextSpan;) {
++      std::size_t spans = gAdjacentSpans[first];
++      if (spans == 0u) {
++        ++first;
++        continue;
++      }
++      while (first + spans < gNextSpan && gAdjacentSpans[first + spans] != 0u) {
++        const std::size_t next = gAdjacentSpans[first + spans];
++        gAdjacentSpans[first + spans] = 0;
++        spans += next;
++      }
++      gAdjacentSpans[first] = static_cast<std::uint32_t>(spans);
++      if (spans > gLargestAdjacentRun) {
++        gLargestAdjacentRun = spans;
++      }
++      first += spans;
++    }
++    gFreeRunsChanged = false;
++  }
++
++  [[nodiscard]] std::size_t TakeAdjacentRun(const std::size_t spans) noexcept
++  {
++    SummarizeAdjacentRuns();
++    if (spans > gLargestAdjacentRun) {
++      return kSpanCount;
++    }
++    std::size_t first = 0;
++    while (gAdjacentSpans[first] < spans) {
++      ++first;
++    }
++    const std::size_t end = first + spans;
++    for (std::size_t index = 0; index < gFreeRunCount;) {
++      LargeRun& run = gFreeRuns[index];
++      if (run.firstSpan >= first && run.firstSpan < end) {
++        const std::size_t runEnd = run.firstSpan + run.spans;
++        if (runEnd <= end) {
++          run = gFreeRuns[--gFreeRunCount];
++          continue;
+         }
+-        break;
++        run.firstSpan = end;
++        run.spans = runEnd - end;
+       }
++      ++index;
++    }
++    gFreeRunsChanged = true;
++    return first;
++  }
++
++  [[nodiscard]] void* AllocateLarge(const std::size_t bytes) noexcept
++  {
++    // Also prevents rounding overflow on an impossible request.
++    if (bytes > gReserveBytes) {
++      return nullptr;
+     }
++    const std::size_t spans = (bytes + kSpanBytes - 1u) / kSpanBytes;
++    std::lock_guard<std::mutex> guard(gSpanLock);
++    // A cached upper bound also rules out every individual run without rescanning it.
++    std::size_t first = (!gFreeRunsChanged && spans > gLargestAdjacentRun) ? kSpanCount : TakeFreeRun(spans);
+     if (first == kSpanCount) {
+       first = TakeSpans(spans);
+       if (first == kSpanCount) {
+-        return nullptr;
++        first = TakeAdjacentRun(spans);
++        if (first == kSpanCount) {
++          return nullptr;
++        }
+       }
+     }
+     gSpanClass[first] = kLargeStart;
+@@ -321,7 +404,10 @@ namespace
+   void FreeLarge(const std::size_t first) noexcept
+   {
+     std::lock_guard<std::mutex> guard(gSpanLock);
+-    gFreeRuns->push_back(LargeRun{first, gLargeSpans[first]});
++    // A valid live allocation contributes at least one span not in the free list,
++    // hence the list has room before its release. Invalid/double frees remain invalid.
++    gFreeRuns[gFreeRunCount++] = LargeRun{first, gLargeSpans[first]};
++    gFreeRunsChanged = true;
+   }
+ 
+   [[nodiscard]] std::size_t BlockBytes(const void* const block) noexcept
+diff --git a/src/moho/misc/CZipFile.cpp b/src/moho/misc/CZipFile.cpp
+index 470ce287adc1699d77ec262ef5d65c033d9b66e2..bef46d5948565f3654f018d8afc6637ef391c7ab 100644
+--- a/src/moho/misc/CZipFile.cpp
++++ b/src/moho/misc/CZipFile.cpp
+@@ -3,6 +3,7 @@
+ #include <zlib.h>
+ 
+ #include <algorithm>
++#include <bit>
+ #include <cstring>
+ #include <limits>
+ #include <memory>
+@@ -193,9 +194,9 @@ namespace
+       return false;
+     }
+ 
+-    if (entry.mCachedDataOffset >= 0) {
++    if (entry.mCachedDataOffset != -1) {
+       (void)stream.Seek(
+-        gpg::Stream::OriginBegin, static_cast<std::int64_t>(entry.mCachedDataOffset)
++        gpg::Stream::OriginBegin, static_cast<std::int64_t>(static_cast<std::uint32_t>(entry.mCachedDataOffset))
+       );
+       return true;
+     }
+@@ -225,12 +226,12 @@ namespace
+     const std::uint64_t skipSize = static_cast<std::uint64_t>(localHeader.mFileNameLength) +
+                                    static_cast<std::uint64_t>(localHeader.mExtraFieldLength);
+     const std::uint64_t dataOffset = stream.Seek(gpg::Stream::OriginCurr, static_cast<std::int64_t>(skipSize));
+-    if (dataOffset > static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max())) {
+-      entry.mLocalHeaderOffset = kInvalidZipOffset;
+-      return false;
++    // The cached lane stores the original 32-bit offset bits; -1 is reserved
++    // for an uncached value. Values outside that range stay uncached.
++    if (dataOffset < static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max())) {
++      const std::uint32_t cachedOffset = static_cast<std::uint32_t>(dataOffset);
++      entry.mCachedDataOffset = std::bit_cast<std::int32_t>(cachedOffset);
+     }
+-
+-    entry.mCachedDataOffset = static_cast<std::int32_t>(dataOffset);
+     return true;
+   }
+ } // namespace
+diff --git a/src/moho/particles/BeamRenderHelpers.cpp b/src/moho/particles/BeamRenderHelpers.cpp
+index a5011ac78ebb3a12604d65929d4b5c2c995950f5..6ce0170bf1d56e0caf2269400c7bbde82fb6a020 100644
+--- a/src/moho/particles/BeamRenderHelpers.cpp
++++ b/src/moho/particles/BeamRenderHelpers.cpp
+@@ -339,16 +339,15 @@ namespace moho
+    * Address: 0x00493AE0 (FUN_00493AE0, func_ParticleSelectTechnique2)
+    *
+    * What it does:
+-   * As above for a particle bucket, plus the drag flag -- which the shader
+-   * variable takes as a 4-byte payload even though the lane is one byte -- and
+-   * the extra `_REFRACT` suffix.
++   * As above for a particle bucket, plus the drag flag as a canonical 4-byte
++   * shader integer (0 or 1), and the extra `_REFRACT` suffix.
+    */
+   void SParticleRenderBucket::SelectTechnique() const
+   {
+-    const bool drag = dragEnabled;
++    const std::int32_t drag = dragEnabled ? 1 : 0;
+     ShaderVar& dragEnabledShaderVar = GetParticleDragEnabledShaderVar();
+     if (dragEnabledShaderVar.Exists()) {
+-      dragEnabledShaderVar.mEffectVariable->SetValue(&drag, 4U);
++      dragEnabledShaderVar.mEffectVariable->SetValue(&drag, sizeof(drag));
+     }
+ 
+     BindBeamTextureShaderVar(GetParticleTexture0ShaderVar(), texture0);
+diff --git a/src/moho/render/Shadow.cpp b/src/moho/render/Shadow.cpp
+index 0ce3bb27c58087988aec950322ec686876dba4cd..90a62286f46f12ec78d59a751512b03bf391d382 100644
+--- a/src/moho/render/Shadow.cpp
++++ b/src/moho/render/Shadow.cpp
+@@ -441,7 +441,7 @@ namespace moho
+    * When blur is on the depth map is turned into a variance map by two
+    * separable passes, shadow map -> A -> B, each drawing the unit quad.
+    */
+-  void Shadow::RenderShadowMap(TerrainCommon* const /*terrain*/, const GeomCamera3& viewCamera)
++  void Shadow::RenderShadowMap(TerrainCommon* const terrain, const GeomCamera3& viewCamera)
+   {
+     if (mShadowFidelity == 0) {
+       return;
+@@ -497,6 +497,7 @@ namespace moho
+     device->SetRenderTarget1(mShadowMap.get(), mDepthStencil.get(), true, -1, 1.0f, 0);
+     bindTargetWithBorder(mShadowMap);
+ 
++    terrain->DrawTerrainDepth(mCamera);
+ 
+     MeshRenderer* const meshRenderer = MeshRenderer::GetInstance();
+     meshRenderer->Batch(REN_GetGameTick(), REN_GetSimDeltaSeconds(), mCamera, viewCamera.viewport.r[1]);
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 56343e6fc85939bc7d725f559e81955e23115540..dadf62d959a9eb7c72a5546c7296e05322993f50 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -58,6 +58,12 @@ add_executable(faf_image_codec_tests EXCLUDE_FROM_ALL image_codec/ImageCodecTest
+ target_link_libraries(faf_image_codec_tests PRIVATE faf_engine)
+ add_test(NAME image_codec COMMAND faf_image_codec_tests)
+ 
++# The DDS topology rule is shared with D3D11 and can be checked without D3DX/WARP.
++add_executable(faf_texture_quality_tests EXCLUDE_FROM_ALL image_codec/TextureQualityTests.cpp)
++target_include_directories(faf_texture_quality_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
++add_test(NAME texture_quality COMMAND faf_texture_quality_tests)
++
++
+ # Engine addition (dedicated-server plan WPL.23): golden sim-math tests
+ # (tests/sim_math). Built with every build, and run right after it: a change
+ # that moves one result of the simulation's parity-sensitive arithmetic fails
+diff --git a/tests/image_codec/ImageCodecTests.cpp b/tests/image_codec/ImageCodecTests.cpp
+index 9a30d72a898436fb9f284b1103f5530eaac61b47..c15ee5f65c9f2f02f49c62d83567350aacb360cd 100644
+--- a/tests/image_codec/ImageCodecTests.cpp
++++ b/tests/image_codec/ImageCodecTests.cpp
+@@ -252,6 +252,119 @@ namespace
+     Check(SUCCEEDED(result) && reloaded.cube && reloaded.arraySize == 6U && SameLevels(source, reloaded), "a BC3 cube keeps its six faces", detail);
+   }
+ 
++  // The original applies texture-quality skip only to 2D. Run both decode
++  // routes; RGB cubes always use D3DX, while full-chain BC cubes can load direct.
++  void TestQualityKeepsCubeTopMip(ImageCodec& codec)
++  {
++    const bool oldDirect = gpg::gal::imaging::gDdsDirectLoad;
++    for (const bool direct : {false, true}) {
++      gpg::gal::imaging::gDdsDirectLoad = direct;
++      for (const DXGI_FORMAT format : {DXGI_FORMAT_BC3_UNORM, DXGI_FORMAT_B8G8R8A8_UNORM}) {
++        for (const bool cube : {false, true}) {
++          const Image source = MakeImage(format, 64U, 64U, 7U, cube);
++          std::vector<std::uint8_t> file;
++          const HRESULT written = ImageCodec::WriteDds(source, file);
++          Image baseline;
++          const HRESULT baselineRead = SUCCEEDED(written) ?
++            codec.Decode(file.data(), file.size(), DecodeOptions{}, baseline) : written;
++          const bool baselineShape = SUCCEEDED(baselineRead) && baseline.width == 64U && baseline.height == 64U &&
++            baseline.mipLevels == 7U && baseline.arraySize == (cube ? 6U : 1U) && baseline.cube == cube;
++          Check(baselineShape, "zero-skip baseline has the source dimensions");
++          if (!baselineShape) {
++            continue;
++          }
++          for (const std::uint32_t skip : {0U, 1U, 2U}) {
++            DecodeOptions options;
++            options.skipMipLevels = skip;
++            Image reloaded;
++            const HRESULT read =
++              SUCCEEDED(written) ? codec.Decode(file.data(), file.size(), options, reloaded) : written;
++            const std::uint32_t firstMip = cube ? 0U : skip;
++            Image expected;
++            expected.Allocate(baseline.format, 64U >> firstMip, 64U >> firstMip, 7U - firstMip, cube ? 6U : 1U);
++            expected.cube = cube;
++            for (std::uint32_t face = 0U; face < expected.arraySize; ++face) {
++              for (std::uint32_t mip = 0U; mip < expected.mipLevels; ++mip) {
++                const Image::Subresource& from = baseline.subresources[face * baseline.mipLevels + firstMip + mip];
++                const Image::Subresource& to = expected.subresources[face * expected.mipLevels + mip];
++                std::memcpy(expected.bytes.data() + to.offset, baseline.bytes.data() + from.offset, to.slicePitch);
++              }
++            }
++            char detail[96]{};
++            std::snprintf(
++              detail,
++              sizeof(detail),
++              "format %d, cube %u, direct %u, skip %u",
++              static_cast<int>(format),
++              cube ? 1U : 0U,
++              direct ? 1U : 0U,
++              skip
++            );
++            Check(
++              SUCCEEDED(read) && reloaded.cube == cube && SameLevels(expected, reloaded),
++              "texture quality skips only 2D mips",
++              detail
++            );
++          }
++        }
++      }
++    }
++    gpg::gal::imaging::gDdsDirectLoad = oldDirect;
++  }
++
++  // A synthetic uncompressed DDS volume: WriteDds deliberately does not encode volumes.
++  void TestQualityKeepsVolumeTopMip(ImageCodec& codec)
++  {
++    std::vector<std::uint8_t> file(128U, 0U);
++    const auto word = [&file](const std::size_t offset, const std::uint32_t value) {
++      std::memcpy(file.data() + offset, &value, sizeof(value));
++    };
++    word(0U, 0x20534444U);
++    word(4U, 124U);
++    word(8U, 0x82100FU); // CAPS, HEIGHT, WIDTH, PITCH, PIXELFORMAT, MIPMAPCOUNT, DEPTH
++    word(12U, 8U);
++    word(16U, 8U);
++    word(20U, 32U);
++    word(24U, 8U);
++    word(28U, 4U);
++    word(76U, 32U);
++    word(80U, 0x41U);
++    word(88U, 32U);
++    word(92U, 0x00FF0000U);
++    word(96U, 0x0000FF00U);
++    word(100U, 0x000000FFU);
++    word(104U, 0xFF000000U);
++    word(108U, 0x401008U); // COMPLEX, TEXTURE, MIPMAP
++    word(112U, 0x200000U); // VOLUME
++    for (std::uint32_t mip = 0U; mip < 4U; ++mip) {
++      const std::uint32_t side = 8U >> mip;
++      file.insert(file.end(), side * side * side * 4U, static_cast<std::uint8_t>(32U + mip));
++    }
++    for (const std::uint32_t skip : {0U, 1U, 2U}) {
++      DecodeOptions options;
++      options.skipMipLevels = skip;
++      Image reloaded;
++      const HRESULT read = codec.Decode(file.data(), file.size(), options, reloaded);
++      bool same = SUCCEEDED(read) && reloaded.volume && !reloaded.cube && reloaded.width == 8U &&
++        reloaded.height == 8U && reloaded.depth == 8U && reloaded.mipLevels == 4U && reloaded.subresources.size() == 4U;
++      std::size_t expectedOffset = 0U;
++      for (std::uint32_t mip = 0U; same && mip < 4U; ++mip) {
++        const std::uint32_t side = 8U >> mip;
++        const Image::Subresource& level = reloaded.subresources[mip];
++        const std::size_t levelBytes = static_cast<std::size_t>(side) * side * side * 4U;
++        same = level.width == side && level.height == side && level.depth == side &&
++          level.rowPitch == side * 4U && level.rowCount == side && level.slicePitch == side * side * 4U &&
++          level.offset == expectedOffset && expectedOffset + levelBytes <= reloaded.bytes.size();
++        for (std::size_t at = expectedOffset; same && at < expectedOffset + levelBytes; ++at) {
++          same = reloaded.bytes[at] == static_cast<std::uint8_t>(32U + mip);
++        }
++        expectedOffset += levelBytes;
++      }
++      same = same && expectedOffset == reloaded.bytes.size();
++      Check(same, "texture quality leaves volume dimensions and mip bytes unchanged");
++    }
++  }
++
+   /** Encode, which is D3DX11's writer where it has one: the same texels come back either way. */
+   void TestEncodeMatchesWriteDds(ImageCodec& codec)
+   {
+@@ -305,6 +418,8 @@ int main()
+   TestResizeKeepsColour(*codec);
+   TestReloadInBlockFormat(*codec);
+   TestCube(*codec);
++  TestQualityKeepsCubeTopMip(*codec);
++  TestQualityKeepsVolumeTopMip(*codec);
+   TestEncodeMatchesWriteDds(*codec);
+ 
+   std::printf("%d failed\n", gFailures);
+diff --git a/tests/image_codec/TextureQualityTests.cpp b/tests/image_codec/TextureQualityTests.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..f2543600f79792fc320a22212746f24a004b6f14
+--- /dev/null
++++ b/tests/image_codec/TextureQualityTests.cpp
+@@ -0,0 +1,84 @@
++// Engine addition: the original's texture-quality mip skip applies to 2D DDS,
++// not to cubes or volumes. This topology check needs no graphics device.
++
++#include <array>
++#include <cstdint>
++#include <cstdio>
++#include <cstring>
++
++#include "gpg/gal/backends/common/TextureQuality.h"
++
++namespace
++{
++  int gFailures = 0;
++
++  void Check(const bool condition, const char* const what)
++  {
++    if (!condition) {
++      std::printf("FAIL: %s\n", what);
++      ++gFailures;
++    }
++  }
++
++  void Put(std::uint8_t* const data, const std::size_t offset, const std::uint32_t value)
++  {
++    std::memcpy(data + offset, &value, sizeof(value));
++  }
++
++  void TestTopology(const std::uint32_t skip)
++  {
++    // Deliberately unaligned: DDS files need no word alignment.
++    std::array<std::uint8_t, 150U> storage{};
++    std::uint8_t* const data = storage.data() + 1U;
++    Put(data, 0U, 0x20534444U);
++    Put(data, 4U, 124U);
++    Put(data, 76U, 32U);
++    Put(data, 80U, 0x4U);
++    Put(data, 84U, 0x31545844U);
++    const auto effective = [&](const std::size_t bytes = 148U) {
++      return gpg::gal::imaging::TextureQualityMipLevels(data, bytes, skip);
++    };
++
++    Check(gpg::gal::imaging::TextureQualityMipLevels(nullptr, 0U, skip) == skip, "null input");
++    for (std::size_t bytes = 0U; bytes < 128U; ++bytes) {
++      Check(effective(bytes) == skip, "short legacy header");
++    }
++    Check(effective() == skip, "ordinary 2D preserves quality");
++    for (const std::uint32_t caps : {0x200U, 0xFE00U, 0x200000U, 0x200200U}) {
++      Put(data, 112U, caps);
++      Check(effective() == 0U, "legacy cube or volume retains top mip");
++    }
++    Put(data, 112U, 0U);
++    Put(data, 84U, 0x30315844U);
++    for (const std::uint32_t dimension : {3U, 4U}) {
++      for (const std::uint32_t misc : {0U, 4U}) {
++        for (const std::uint32_t legacyCaps : {0U, 0x200U, 0x200000U}) {
++          Put(data, 112U, legacyCaps);
++          Put(data, 132U, dimension);
++          Put(data, 136U, misc);
++          Put(data, 140U, 3U); // arrays do not themselves suppress 2D quality
++          Check(effective() == (dimension == 4U || misc == 4U ? 0U : skip), "DX10 topology supersedes legacy caps");
++        }
++      }
++    }
++    Put(data, 112U, 0U);
++    for (std::size_t bytes = 128U; bytes < 148U; ++bytes) {
++      Check(effective(bytes) == skip, "short DX10 extension");
++    }
++    Put(data, 80U, 0x41U); // RGB: the unused FourCC slot must not enable DX10
++    Check(effective() == skip, "RGB ignores unused FourCC slot");
++    Put(data, 112U, 0x200U);
++    Check(effective() == 0U, "RGB cube retains top mip");
++    Put(data, 0U, 0U);
++    Check(effective() == skip, "non-DDS input preserves quality");
++  }
++} // namespace
++
++int main()
++{
++  for (std::uint32_t skip = 0U; skip < 32U; ++skip) {
++    TestTopology(skip);
++  }
++  std::printf("%d failed\n", gFailures);
++  return gFailures == 0 ? 0 : 1;
++}
+diff --git a/tests/memory/LuaArenaLargeRunTests.cpp b/tests/memory/LuaArenaLargeRunTests.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..ea16ab6a1041c9d8900c14361669a098afed26fa
+--- /dev/null
++++ b/tests/memory/LuaArenaLargeRunTests.cpp
+@@ -0,0 +1,163 @@
++// Standalone x64 allocator tests; no game data or renderer required.
++// Compile from the repository root:
++// g++ -std=c++20 -O2 -pthread -Isrc tests/memory/LuaArenaLargeRunTests.cpp -o /tmp/lua-arena-tests
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <exception>
++#include <limits>
++#include <new>
++#include <string_view>
++#include <thread>
++#include <vector>
++
++#include "../../src/lua/LuaArena.cpp"
++
++namespace
++{
++  bool failNew = false;
++
++  void Check(const bool condition)
++  {
++    if (!condition) {
++      std::fputs("Lua arena regression failed\n", stderr);
++      std::abort();
++    }
++  }
++
++  std::vector<void*> FillArena()
++  {
++    std::vector<void*> blocks;
++    while (void* const block = lua::ArenaAllocate(16385)) {
++      blocks.push_back(block);
++    }
++    Check(blocks.size() == gReserveBytes / kSpanBytes);
++    return blocks;
++  }
++
++  void FullCapacity()
++  {
++    const auto blocks = FillArena();
++    for (std::size_t index = 0; index < blocks.size(); index += 2) {
++      lua::ArenaFree(blocks[index]);
++    }
++    for (std::size_t index = 1; index < blocks.size(); index += 2) {
++      lua::ArenaFree(blocks[index]);
++    }
++    void* const all = lua::ArenaAllocate(gReserveBytes);
++    Check(all != nullptr && reinterpret_cast<std::uintptr_t>(all) == gBase);
++    Check(lua::ArenaAllocate(16385) == nullptr);
++    lua::ArenaFree(all);
++    Check(lua::ArenaAllocate(gReserveBytes) != nullptr);
++    std::puts("Full arena joins adjacent runs and reuses the entire range");
++  }
++
++  void FailedRequestOrder()
++  {
++    const auto blocks = FillArena();
++    for (std::size_t index = blocks.size(); index-- > 0;) {
++      if (index % 2 != 0) {
++        lua::ArenaFree(blocks[index]);
++      }
++    }
++    const auto start = std::chrono::steady_clock::now();
++    for (int attempt = 0; attempt < 1000; ++attempt) {
++      Check(lua::ArenaAllocate(kSpanBytes + 1) == nullptr);
++    }
++    const auto milliseconds =
++      std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
++    Check(lua::ArenaAllocate(16385) == blocks.back());
++    std::printf("1000 failed requests preserve next allocation; %.3f ms\n", milliseconds);
++  }
++
++  void HostHeapFailure()
++  {
++    // No harness allocations after failNew. Reserving virtual space does not populate it.
++    static void* blocks[kSpanCount];
++    lua::ArenaReserve();
++    failNew = true;
++    std::size_t count = 0;
++    while (count < kSpanCount && (blocks[count] = lua::ArenaAllocate(16385)) != nullptr) {
++      ++count;
++    }
++    for (std::size_t index = 0; index < count; ++index) {
++      lua::ArenaFree(blocks[index]);
++    }
++    void* const all = lua::ArenaAllocate(count * kSpanBytes);
++    Check(all != nullptr);
++    lua::ArenaFree(all);
++    failNew = false;
++    std::puts("Large allocation, free and adjacent-run reuse work with host new disabled");
++  }
++
++  void Oversize()
++  {
++    void* const block = lua::ArenaAllocate(50000);
++    Check(block != nullptr);
++    std::memset(block, 42, 50000);
++    Check(lua::ArenaAllocate(std::numeric_limits<std::size_t>::max()) == nullptr);
++    Check(lua::ArenaReallocate(block, 50000, std::numeric_limits<std::size_t>::max()) == nullptr);
++    Check(static_cast<unsigned char*>(block)[49999] == 42);
++    lua::ArenaFree(block);
++    std::puts("Oversize requests fail without losing the old allocation");
++  }
++
++  void CrossThreadFree()
++  {
++    std::vector<void*> blocks(4096);
++    for (void*& block : blocks) {
++      block = lua::ArenaAllocate(65537);
++      Check(block != nullptr);
++      std::memset(block, 0x5a, 65537);
++    }
++    std::vector<std::thread> workers;
++    for (std::size_t worker = 0; worker < 8; ++worker) {
++      workers.emplace_back([&, worker] {
++        for (std::size_t index = worker; index < blocks.size(); index += 8) {
++          Check(static_cast<unsigned char*>(blocks[index])[65536] == 0x5a);
++          lua::ArenaFree(blocks[index]);
++          for (int iteration = 0; iteration < 100; ++iteration) {
++            void* const block = lua::ArenaAllocate(20001);
++            Check(block != nullptr);
++            std::memset(block, 1, 20001);
++            lua::ArenaFree(block);
++          }
++        }
++      });
++    }
++    for (auto& worker : workers) {
++      worker.join();
++    }
++    std::puts("Cross-thread free and 409600 allocate/free pairs pass");
++  }
++} // namespace
++
++void* operator new(const std::size_t bytes)
++{
++  if (!failNew) {
++    if (void* const allocation = std::malloc(bytes != 0 ? bytes : 1)) {
++      return allocation;
++    }
++  }
++  throw std::bad_alloc{};
++}
++
++void operator delete(void* const block) noexcept { std::free(block); }
++void operator delete(void* const block, std::size_t) noexcept { std::free(block); }
++
++int main(const int argc, char** const argv)
++{
++  std::set_terminate([] { std::fputs("Unexpected termination\n", stderr); std::_Exit(42); });
++  if (argc != 2) {
++    std::fputs("Expected: capacity | failed-order | host-oom | oversized | threads\n", stderr);
++    return 2;
++  }
++  const std::string_view mode(argv[1]);
++  if (mode == "capacity") FullCapacity();
++  else if (mode == "failed-order") FailedRequestOrder();
++  else if (mode == "host-oom") HostHeapFailure();
++  else if (mode == "oversized") Oversize();
++  else if (mode == "threads") CrossThreadFree();
++  else return 2;
++}
+diff --git a/tests/memory/LuaArenaPressureTests.cpp b/tests/memory/LuaArenaPressureTests.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..94604a61558f98ffcc8150aa3e7694e46a38d318
+--- /dev/null
++++ b/tests/memory/LuaArenaPressureTests.cpp
+@@ -0,0 +1,135 @@
++// Standalone x64 allocator test. From the repository root:
++// g++ -std=c++20 -O2 -pthread -Isrc tests/memory/LuaArenaPressureTests.cpp -o lua-arena-pressure
++// Compile this file alone: it includes the implementation to check internal invariants.
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <random>
++#include <vector>
++
++#if INTPTR_MAX == INT32_MAX
++#error This test requires the x64 Lua arena implementation.
++#endif
++
++#include "../../src/lua/LuaArena.cpp"
++
++namespace
++{
++  constexpr std::size_t kTestSpans = 257;
++  constexpr std::size_t kOperations = 100000;
++
++  struct LiveAllocation
++  {
++    void* pointer;
++    std::size_t spans;
++    unsigned char tag;
++  };
++
++  void Require(const bool condition, const char* const message)
++  {
++    if (!condition) {
++      std::fprintf(stderr, "%s\n", message);
++      std::abort();
++    }
++  }
++
++  std::size_t FirstSpan(const void* const pointer)
++  {
++    return (reinterpret_cast<std::uintptr_t>(pointer) - gBase) / kSpanBytes;
++  }
++
++  void CheckFreeRuns(const bool (&used)[kTestSpans])
++  {
++    bool free[kTestSpans]{};
++    Require(gFreeRunCount <= kTestSpans, "Free-run count exceeds capacity");
++    for (std::size_t index = 0; index < gFreeRunCount; ++index) {
++      const LargeRun run = gFreeRuns[index];
++      Require(run.spans > 0 && run.firstSpan < kTestSpans && run.spans <= kTestSpans - run.firstSpan,
++              "Free run is empty or out of bounds");
++      for (std::size_t offset = 0; offset < run.spans; ++offset) {
++        const std::size_t span = run.firstSpan + offset;
++        Require(!used[span] && !free[span], "Free runs overlap each other or a live allocation");
++        free[span] = true;
++      }
++    }
++    for (std::size_t span = 0; span < kTestSpans; ++span) {
++      Require(free[span] != used[span], "Free-list coverage differs from the occupancy map");
++    }
++  }
++}
++
++int main()
++{
++  lua::ArenaReserve();
++  Require(gReserveBytes >= kTestSpans * kSpanBytes, "Reserved arena is too small for this test");
++  // Restrict usable capacity without changing the OS reservation. This forces frequent
++  // pressure recovery cheaply; it does not test the OS reservation fallback branches.
++  // Run in a fresh standalone process. These internal-state checks and this capacity
++  // override must not run alongside other threads or other users of the arena.
++  gReserveBytes = kTestSpans * kSpanBytes;
++
++  std::vector<LiveAllocation> live;
++  bool used[kTestSpans]{};
++  std::mt19937 random(39148);
++  for (std::size_t span = 0; span < kTestSpans; ++span) {
++    void* const pointer = lua::ArenaAllocate(kSpanBytes);
++    Require(pointer != nullptr && FirstSpan(pointer) == span, "Initial fill failed");
++    std::memset(pointer, 17, kSpanBytes);
++    live.push_back({pointer, 1, 17});
++    used[span] = true;
++  }
++
++  for (std::size_t step = 0; step < kOperations; ++step) {
++    if (!live.empty() && random() % 2 != 0) {
++      const std::size_t index = random() % live.size();
++      const LiveAllocation allocation = live[index];
++      const std::size_t first = FirstSpan(allocation.pointer);
++      for (std::size_t offset = 0; offset < allocation.spans; ++offset) {
++        Require(used[first + offset], "Live allocation missing from occupancy map");
++        Require(static_cast<unsigned char*>(allocation.pointer)[offset * kSpanBytes] == allocation.tag,
++                "Live payload was overwritten");
++        used[first + offset] = false;
++      }
++      lua::ArenaFree(allocation.pointer);
++      live[index] = live.back();
++      live.pop_back();
++    } else {
++      const std::size_t spans = 1 + random() % 70;
++      std::size_t consecutive = 0;
++      bool possible = false;
++      for (const bool occupied : used) {
++        consecutive = occupied ? 0 : consecutive + 1;
++        if (consecutive >= spans) {
++          possible = true;
++        }
++      }
++      void* const pointer = lua::ArenaAllocate(spans * kSpanBytes);
++      Require((pointer != nullptr) == possible, "Allocation disagrees with contiguous free-space oracle");
++      if (pointer != nullptr) {
++        const std::size_t first = FirstSpan(pointer);
++        Require(first < kTestSpans && spans <= kTestSpans - first, "Allocation exceeds test capacity");
++        const auto tag = static_cast<unsigned char>(1 + random() % 254);
++        for (std::size_t offset = 0; offset < spans; ++offset) {
++          Require(!used[first + offset], "Allocation overlaps a live block");
++          used[first + offset] = true;
++          static_cast<unsigned char*>(pointer)[offset * kSpanBytes] = tag;
++        }
++        live.push_back({pointer, spans, tag});
++      }
++    }
++    CheckFreeRuns(used);
++  }
++
++  // Validate allocations still live at the end as well as those freed during the run.
++  for (const LiveAllocation allocation : live) {
++    for (std::size_t offset = 0; offset < allocation.spans; ++offset) {
++      Require(static_cast<unsigned char*>(allocation.pointer)[offset * kSpanBytes] == allocation.tag,
++              "Final live payload was overwritten");
++    }
++    lua::ArenaFree(allocation.pointer);
++  }
++  void* const whole = lua::ArenaAllocate(kTestSpans * kSpanBytes);
++  Require(whole != nullptr && FirstSpan(whole) == 0, "Whole-arena reuse failed");
++  lua::ArenaFree(whole);
++  std::puts("PASS: 100000 randomized operations; free-run coverage, overlap, payload and final reuse");
++}
+diff --git a/tests/memory/LuaArenaReuseTests.cpp b/tests/memory/LuaArenaReuseTests.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..d1b73b28260721f41e7c51f2a1c8c32ef9f1fb49
+--- /dev/null
++++ b/tests/memory/LuaArenaReuseTests.cpp
+@@ -0,0 +1,164 @@
++// Standalone x64 allocator tests. Each process limits usable arena capacity to 64 spans.
++// Run bash tools/test-lua-arena-reuse.sh; optionally set SANITIZER=undefined or SANITIZER=thread.
++#include <atomic>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <new>
++#include <limits>
++#include <thread>
++#include <vector>
++
++#include "../../src/lua/LuaArena.cpp"
++
++namespace
++{
++  bool failHostNew = false;
++
++  void Require(bool condition)
++  {
++    if (!condition) {
++      std::abort();
++    }
++  }
++
++  void FullCapacity()
++  {
++    std::vector<void*> blocks(gReserveBytes / 16);
++    void* const entireArena = lua::ArenaAllocate(gReserveBytes);
++    Require(entireArena != nullptr);
++    lua::ArenaFree(entireArena);
++
++    failHostNew = true;
++    for (std::size_t index = 0; index < blocks.size(); ++index) {
++      blocks[index] = lua::ArenaAllocate(16);
++      Require(blocks[index] != nullptr);
++      std::memset(blocks[index], static_cast<int>(index % 251), 16);
++    }
++    Require(lua::ArenaAllocate(16) == nullptr);
++    Require(lua::ArenaAllocate(32768) == nullptr);
++    for (std::size_t index = 0; index < blocks.size(); ++index) {
++      Require(static_cast<unsigned char*>(blocks[index])[0] == index % 251);
++      lua::ArenaFree(blocks[index]);
++    }
++    failHostNew = false;
++    std::puts("PASS: all 64 large-free spans reused as 16-byte blocks without host allocation");
++  }
++
++  void MixedSizes()
++  {
++    void* const entireArena = lua::ArenaAllocate(gReserveBytes);
++    Require(entireArena != nullptr);
++    lua::ArenaFree(entireArena);
++
++    void* const small = lua::ArenaAllocate(16384);
++    Require(reinterpret_cast<std::uintptr_t>(small) == gBase);
++    std::memset(small, 53, 16384);
++    void* const large = lua::ArenaAllocate(2 * kSpanBytes);
++    Require(reinterpret_cast<std::uintptr_t>(large) == gBase + kSpanBytes);
++    std::memset(large, 97, 2 * kSpanBytes);
++    lua::ArenaFree(large);
++
++    for (unsigned index = 0; index < 3; ++index) {
++      void* const block = lua::ArenaAllocate(16384);
++      Require(block != nullptr);
++      std::memset(block, 42, 16384);
++    }
++    Require(static_cast<char*>(small)[0] == 53);
++    Require(static_cast<char*>(small)[16383] == 53);
++    Require(lua::ArenaAllocate(16384) != nullptr);
++    std::puts("PASS: splitting a free run preserves its remainder and live small payload");
++  }
++
++  void OversizedRejection()
++  {
++    const auto beforeSpan = gNextSpan;
++    const auto beforeRuns = gFreeRunCount;
++    for (std::size_t bytes : {gReserveBytes + 1u, std::numeric_limits<std::size_t>::max(),
++                              std::numeric_limits<std::size_t>::max() - kSpanBytes + 1u}) {
++      Require(lua::ArenaAllocate(bytes) == nullptr);
++    }
++    Require(gNextSpan == beforeSpan && gFreeRunCount == beforeRuns);
++    void* const live = lua::ArenaAllocate(gReserveBytes);
++    Require(live != nullptr);
++    lua::ArenaFree(live);
++    void* const recovered = lua::ArenaAllocate(16384);
++    Require(recovered == live);
++    std::puts("PASS: oversized requests are rejected without zero-run records or lost capacity");
++  }
++
++  void ConcurrentReuse()
++  {
++    std::vector<void*> large;
++    for (unsigned index = 0; index < 64; ++index) {
++      void* const block = lua::ArenaAllocate(32768);
++      Require(block != nullptr);
++      large.push_back(block);
++    }
++    std::atomic<unsigned> finished = 0;
++    std::vector<std::thread> threads;
++    for (unsigned worker = 0; worker < 8; ++worker) {
++      threads.emplace_back([&, worker] {
++        for (unsigned index = worker; index < 64; index += 8) {
++          lua::ArenaFree(large[index]);
++        }
++        ++finished;
++      });
++    }
++    std::vector<void*> small;
++    while (finished < 8) {
++      if (void* const block = lua::ArenaAllocate(16384)) {
++        std::memset(block, 73, 16384);
++        small.push_back(block);
++      }
++    }
++    for (auto& thread : threads) {
++      thread.join();
++    }
++    while (void* const block = lua::ArenaAllocate(16384)) {
++      std::memset(block, 73, 16384);
++      small.push_back(block);
++    }
++    Require(small.size() == 256);
++    for (std::size_t index = 0; index < small.size(); ++index) {
++      Require(static_cast<char*>(small[index])[0] == 73);
++      Require(static_cast<char*>(small[index])[16383] == 73);
++      for (std::size_t other = 0; other < index; ++other) {
++        Require(small[index] != small[other]);
++      }
++    }
++    std::puts("PASS: concurrent large frees and small refills recover exactly 256 blocks");
++  }
++}
++
++void* operator new(std::size_t bytes)
++{
++  if (failHostNew) {
++    throw std::bad_alloc();
++  }
++  if (void* const block = std::malloc(bytes != 0 ? bytes : 1)) {
++    return block;
++  }
++  throw std::bad_alloc();
++}
++
++void operator delete(void* block) noexcept { std::free(block); }
++void operator delete(void* block, std::size_t) noexcept { std::free(block); }
++
++int main(int argc, char** argv)
++{
++  lua::ArenaReserve();
++  gReserveBytes = 64 * kSpanBytes;
++  const char* const mode = argc > 1 ? argv[1] : "full";
++  if (std::strcmp(mode, "full") == 0) {
++    FullCapacity();
++  } else if (std::strcmp(mode, "mixed") == 0) {
++    MixedSizes();
++  } else if (std::strcmp(mode, "oversized") == 0) {
++    OversizedRejection();
++  } else if (std::strcmp(mode, "threads") == 0) {
++    ConcurrentReuse();
++  } else {
++    return 2;
++  }
++}
+diff --git a/tests/zip/zip_offset_source_test.py b/tests/zip/zip_offset_source_test.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..5981fd58e9c4ac5d97ccc98c3b9f2adba00db909
+--- /dev/null
++++ b/tests/zip/zip_offset_source_test.py
+@@ -0,0 +1,104 @@
++"""Test the checked-out ZIP offset helper against a small stream mock.
++
++This is a host-side source-body test, not a Windows or complete-engine test.
++"""
++
++import argparse
++import hashlib
++import subprocess
++import tempfile
++from pathlib import Path
++
++
++def read_helper(source):
++    marker = "bool ReadZipDirectory(gpg::Stream& stream, moho::CZipFileEntry& entry)"
++    start = source.index(marker)
++    end = source.index("{", start) + 1
++    depth = 1
++    while depth:
++        if source[end] == "{":
++            depth += 1
++        elif source[end] == "}":
++            depth -= 1
++        end += 1
++    return source[start:end]
++
++
++parser = argparse.ArgumentParser(description=__doc__)
++parser.add_argument(
++    "source",
++    type=Path,
++    nargs="?",
++    default=Path(__file__).resolve().parents[2] / "src/moho/misc/CZipFile.cpp",
++    help="Path to src/moho/misc/CZipFile.cpp",
++)
++parser.add_argument("--compiler", default="g++")
++parser.add_argument("--ubsan", action="store_true")
++args = parser.parse_args()
++fn = read_helper(args.source.read_text())
++
++pre=r'''
++#include <bit>
++#include <cstdint>
++#include <cstddef>
++#include <cstring>
++#include <cassert>
++#include <limits>
++#include <array>
++#include <iostream>
++constexpr std::uint32_t kInvalidZipOffset=0xffffffffU,kZipLocalFileHeaderMagic=0x04034b50U;
++namespace moho {
++#pragma pack(push,1)
++struct SZipLocalFileHeader {std::uint32_t mSignature;std::uint16_t mVersionNeeded,mGeneralPurposeFlags,mCompressionMethod,mDosTime,mDosDate;std::uint32_t mCrc32,mCompressedSize,mUncompressedSize;std::uint16_t mFileNameLength,mExtraFieldLength;};
++#pragma pack(pop)
++struct CZipFileEntry {std::uint32_t mLocalHeaderOffset;std::int32_t mCachedDataOffset=-1;};
++}
++namespace gpg {
++struct Stream {
++ enum SeekOrigin {OriginBegin,OriginCurr};
++ std::uint64_t pos=0,local=0;unsigned reads=0,seeks=0;std::int64_t lastSeek=-1;unsigned failRead=0;moho::SZipLocalFileHeader header{};
++ explicit Stream(std::uint32_t at):local(at){header.mSignature=kZipLocalFileHeaderMagic;}
++ std::uint64_t Seek(SeekOrigin origin,std::int64_t n){assert(n>=0);lastSeek=n;++seeks;pos=(origin==OriginBegin?0:pos)+static_cast<std::uint64_t>(n);return pos;}
++ std::size_t Read(char* dst,std::size_t n){++reads;if(reads==failRead)return 0;assert(pos>=local);auto off=pos-local;assert(off+n<=sizeof(header));std::memcpy(dst,reinterpret_cast<const char*>(&header)+off,n);pos+=n;return n;}
++};}
++'''
++tail=r'''
++static unsigned cases=0;
++static void cached(std::uint32_t bits){
++ moho::CZipFileEntry e{0x123U,std::bit_cast<std::int32_t>(bits)};gpg::Stream s(0x123);assert(bits!=0xffffffffU);
++ assert(ReadZipDirectory(s,e));assert(s.pos==bits&&s.lastSeek==static_cast<std::int64_t>(bits));assert(s.reads==0&&s.seeks==1);++cases;
++}
++static void fresh(std::uint32_t local,std::uint16_t name,std::uint16_t extra){
++ moho::CZipFileEntry e{local,-1};gpg::Stream s(local);s.header.mFileNameLength=name;s.header.mExtraFieldLength=extra;
++ auto expected=std::uint64_t(local)+sizeof(s.header)+name+extra;
++ assert(ReadZipDirectory(s,e)&&s.pos==expected);assert(e.mLocalHeaderOffset==local);assert(s.reads==2);auto r=s.reads;
++ if(expected<0xffffffffULL){assert(static_cast<std::uint32_t>(e.mCachedDataOffset)==expected);}else{assert(e.mCachedDataOffset==-1);}
++ assert(ReadZipDirectory(s,e)&&s.pos==expected);
++ assert(s.reads==(expected<0xffffffffULL?r:r+2));++cases;
++}
++int main(){
++ static_assert(sizeof(std::int32_t)==sizeof(std::uint32_t));
++ fresh(0x80000000U-30U,0,0);
++ for(auto bits:std::array<std::uint32_t,9>{0U,1U,30U,0x7ffffffeU,0x7fffffffU,0x80000000U,0x80000001U,0xffffff00U,0xfffffffeU})cached(bits);
++ for(auto target:std::array<std::uint64_t,9>{30ULL,0x7ffffffeULL,0x7fffffffULL,0x80000000ULL,0xffffff00ULL,0xfffffffeULL,0xffffffffULL,0x100000000ULL,0x100000001ULL})fresh(static_cast<std::uint32_t>(target-30),0,0);
++ fresh(0xfffffffeU,65535,65535);fresh(0,65535,65535);
++ std::uint32_t state=0x432195adU;
++ for(unsigned i=0;i<200000;++i){state=state*1664525U+1013904223U;if(state!=0xffffffffU)cached(state);if(i<10000&&state!=0xffffffffU)fresh(state,static_cast<std::uint16_t>(state),static_cast<std::uint16_t>(state>>16));}
++ for(unsigned fail=0;fail<=2;++fail){moho::CZipFileEntry e{0x80000000U,-1};gpg::Stream s(e.mLocalHeaderOffset);if(fail)s.failRead=fail;else s.header.mSignature=0;assert(!ReadZipDirectory(s,e));assert(e.mLocalHeaderOffset==0xffffffffU&&e.mCachedDataOffset==-1);auto reads=s.reads,seeks=s.seeks;assert(!ReadZipDirectory(s,e));assert(s.reads==reads&&s.seeks==seeks);++cases;}
++ for(auto bits:std::array<std::uint32_t,3>{0U,0x80000000U,0xffffffffU}){moho::CZipFileEntry e{0xffffffffU,std::bit_cast<std::int32_t>(bits)};gpg::Stream s(0);assert(!ReadZipDirectory(s,e)&&s.reads==0&&s.seeks==0);++cases;}
++ std::cout<<"PASS "<<cases<<" exact-body synthetic helper scenarios; pointer_width="<<8*sizeof(void*)<<"\n";
++}
++'''
++
++with tempfile.TemporaryDirectory(prefix="zip-offset-test-") as directory:
++    work = Path(directory)
++    source_file = work / "boundary_test.cpp"
++    executable = work / "boundary_test"
++    source_file.write_text(pre + fn + tail)
++    command = [args.compiler, "-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror"]
++    if args.ubsan:
++        command.extend(["-fsanitize=undefined", "-fno-sanitize-recover=undefined"])
++    command.extend([str(source_file), "-o", str(executable)])
++    subprocess.run(command, check=True)
++    subprocess.run([str(executable)], check=True)
++    print("helper SHA-256:", hashlib.sha256(fn.encode()).hexdigest(), flush=True)
+diff --git a/tools/test-lua-arena-reuse.sh b/tools/test-lua-arena-reuse.sh
+new file mode 100644
+index 0000000000000000000000000000000000000000..062eff0be4f1c25e8cc75871689fbcd73a45e189
+--- /dev/null
++++ b/tools/test-lua-arena-reuse.sh
+@@ -0,0 +1,17 @@
++#!/usr/bin/env bash
++set -euo pipefail
++root=$(cd "$(dirname "$0")/.." && pwd)
++build=$(mktemp -d)
++trap 'rm -rf "$build"' EXIT
++cxx=${CXX:-g++}
++flags=(-std=c++20 -O2 -pthread -I"$root/src")
++case "${SANITIZER:-none}" in
++  none) ;;
++  undefined) flags+=(-O1 -g -fsanitize=undefined -fno-sanitize-recover=all) ;;
++  thread) flags+=(-O1 -g -fsanitize=thread) ;;
++  *) echo 'SANITIZER must be none, undefined, or thread' >&2; exit 2 ;;
++esac
++"$cxx" "${flags[@]}" "$root/tests/memory/LuaArenaReuseTests.cpp" -o "$build/reuse"
++for mode in full mixed threads oversized; do
++  "$build/reuse" "$mode"
++done
+diff --git a/tools/test-lua-arena.sh b/tools/test-lua-arena.sh
+new file mode 100644
+index 0000000000000000000000000000000000000000..a69475ae5682a9aecefb0cda6dd8ce17e8db292b
+--- /dev/null
++++ b/tools/test-lua-arena.sh
+@@ -0,0 +1,23 @@
++#!/usr/bin/env bash
++set -euo pipefail
++root=$(cd "$(dirname "$0")/.." && pwd)
++build=$(mktemp -d)
++trap 'rm -rf "$build"' EXIT
++cxx=${CXX:-g++}
++flags=(-std=c++20 -O2 -pthread -I"$root/src")
++case "${SANITIZER:-none}" in
++  none) ;;
++  undefined) flags+=(-O1 -g -fsanitize=undefined -fno-sanitize-recover=all) ;;
++  thread) flags+=(-O1 -g -fsanitize=thread) ;;
++  *) echo 'SANITIZER must be none, undefined, or thread' >&2; exit 2 ;;
++esac
++"$cxx" "${flags[@]}" "$root/tests/memory/LuaArenaLargeRunTests.cpp" -o "$build/large-runs"
++if [[ ${SANITIZER:-none} == thread ]]; then
++  "$build/large-runs" threads
++else
++  for mode in capacity failed-order host-oom oversized threads; do
++    "$build/large-runs" "$mode"
++  done
++  "$cxx" "${flags[@]}" "$root/tests/memory/LuaArenaPressureTests.cpp" -o "$build/pressure"
++  "$build/pressure"
++fi

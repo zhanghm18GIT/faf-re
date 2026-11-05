@@ -1,0 +1,277 @@
+{
+  "schema": 1,
+  "base": "a9225d2d2bcc17fca2075d7c534bee18f6c93273",
+  "integrated_tree": "ff340b16db5af1cbb76df051a9a7439c1dd08160",
+  "executed": false,
+  "source": {
+    "release": "https://github.com/Draiget/faf-re/releases/tag/2026.05.11.001-nightly",
+    "release_build_commit": "6d64196ddba6270d71970f3608a00a40ae1e00a6",
+    "historical_parity_commit": "d3e4f594a8b8e286a7f1a19ca0265c8b83b4e077",
+    "run": "https://github.com/Draiget/faf-re/actions/runs/41903353755",
+    "report_job": "https://github.com/Draiget/faf-re/actions/runs/41903353755/job/126985903613",
+    "table_column": "First mismatch",
+    "game_version": 3835,
+    "known_failure_cause": "Release author attributes these six to 88bcf97ce; independently reproducing that attribution is not part of this audit."
+  },
+  "known_upstream_regressions": [
+    {
+      "replay": 26904791,
+      "historical_verdict": "desync",
+      "first_mismatch_beat": 7650,
+      "historical_last_beat_and_length": "7210/11511",
+      "players": 8,
+      "map": "astro_crater_battles_4x4_rich_huge.v0004",
+      "expected_desync_whitelist": false,
+      "upstream_control": "NOT_RUN",
+      "integrated_candidate": "NOT_RUN",
+      "required_result": "Full replay completes with no checksum mismatch; retain all failures, timeouts and missing-content outcomes."
+    },
+    {
+      "replay": 26953636,
+      "historical_verdict": "desync",
+      "first_mismatch_beat": 23700,
+      "historical_last_beat_and_length": "21889/27837",
+      "players": 3,
+      "map": "astro_crater_battles",
+      "expected_desync_whitelist": false,
+      "upstream_control": "NOT_RUN",
+      "integrated_candidate": "NOT_RUN",
+      "required_result": "Full replay completes with no checksum mismatch; retain all failures, timeouts and missing-content outcomes."
+    },
+    {
+      "replay": 26990495,
+      "historical_verdict": "desync",
+      "first_mismatch_beat": 5200,
+      "historical_last_beat_and_length": "0/18978",
+      "players": 2,
+      "map": "scmp_015",
+      "expected_desync_whitelist": false,
+      "upstream_control": "NOT_RUN",
+      "integrated_candidate": "NOT_RUN",
+      "required_result": "Full replay completes with no checksum mismatch; retain all failures, timeouts and missing-content outcomes."
+    },
+    {
+      "replay": 26992801,
+      "historical_verdict": "desync",
+      "first_mismatch_beat": 4150,
+      "historical_last_beat_and_length": "0/22971",
+      "players": 2,
+      "map": "scmp_015",
+      "expected_desync_whitelist": false,
+      "upstream_control": "NOT_RUN",
+      "integrated_candidate": "NOT_RUN",
+      "required_result": "Full replay completes with no checksum mismatch; retain all failures, timeouts and missing-content outcomes."
+    },
+    {
+      "replay": 26995947,
+      "historical_verdict": "desync",
+      "first_mismatch_beat": 7200,
+      "historical_last_beat_and_length": "6091/15067",
+      "players": 12,
+      "map": "dualgap_adaptive.v0014",
+      "expected_desync_whitelist": false,
+      "upstream_control": "NOT_RUN",
+      "integrated_candidate": "NOT_RUN",
+      "required_result": "Full replay completes with no checksum mismatch; retain all failures, timeouts and missing-content outcomes."
+    },
+    {
+      "replay": 26997855,
+      "historical_verdict": "desync",
+      "first_mismatch_beat": 4350,
+      "historical_last_beat_and_length": "0/14155",
+      "players": 2,
+      "map": "scmp_015",
+      "expected_desync_whitelist": false,
+      "upstream_control": "NOT_RUN",
+      "integrated_candidate": "NOT_RUN",
+      "required_result": "Full replay completes with no checksum mismatch; retain all failures, timeouts and missing-content outcomes."
+    }
+  ],
+  "already_fixed_watch": {
+    "replay": 26910291,
+    "historical_first_mismatch_beat": 68600,
+    "maintainer_reported_fix": "931c711af",
+    "must_not_classify_as_one_of_six_open": true,
+    "result": "NOT_RUN"
+  },
+  "core_replays": [
+    {
+      "replay": 26902315,
+      "init": "init_parity.lua",
+      "fixed_call_hash_end_beat": 7952,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    },
+    {
+      "replay": 26930624,
+      "init": "init_parity.lua",
+      "fixed_call_hash_end_beat": 8181,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    },
+    {
+      "replay": 26943656,
+      "init": "init_parity_m28_v0294.lua",
+      "fixed_call_hash_end_beat": 9248,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    },
+    {
+      "replay": 26883423,
+      "init": "init_parity_m28_v0292.lua",
+      "fixed_call_hash_end_beat": 10725,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    },
+    {
+      "replay": 26881085,
+      "init": "init_parity.lua",
+      "fixed_call_hash_end_beat": 12686,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    },
+    {
+      "replay": 26928211,
+      "init": "init_parity.lua",
+      "fixed_call_hash_end_beat": 16348,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    },
+    {
+      "replay": 26989770,
+      "init": "init_parity.lua",
+      "fixed_call_hash_end_beat": 19706,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    },
+    {
+      "replay": 26897073,
+      "init": "init_parity.lua",
+      "fixed_call_hash_end_beat": 20632,
+      "normal_full_parity": "NOT_RUN",
+      "call_hash_check": "NOT_RUN"
+    }
+  ],
+  "rules": [
+    "Run both exact upstream-control and integrated candidate with identical game/map/mod/init/prefs inputs and architecture.",
+    "No new expected-desync entries, shortened replay windows, ignored checksums or regenerated goldens to obtain green.",
+    "A known failure in upstream-control establishes baseline context, not a candidate pass. All six remain acceptance blockers until actual evidence resolves them.",
+    "Separate normal checksum parity from x86 stored call hashes: use the unchanged eight fixed-end-beat inputs and retail_bugs.tsv exceptions only.",
+    "Record architecture, renderer, sim_Workers, CPUs, speed, switches, executable/tree/resources hash, replay/map/mod identities and complete stdout/log."
+  ],
+  "viewer_acceptance": {
+    "primary_replay": 26902315,
+    "upstream_reported_only": "6d64196 and d725bde describe 52 forward/backward seeks to every keyframe twice, whole map visible; these tests were not rerun here.",
+    "required": [
+      "Forward/backward seek, first forward jump before viewer reaches target, cancellation/rapid repeated seeks, camera/focus/speed preservation.",
+      "No notify watcher access to destroyed units; no script errors, trail/history crashes or new checksum mismatch after replacement.",
+      "Flattened terrain restored from initial map copy; new replay and sequential replay cleanup preserve correct scene and decals.",
+      "Keyframe producer uses the same exact executable and --keep-client-data with matching /init and content.",
+      "PrepareKeyframes on/off comparison for CPU, RAM peak, disk transient and exit cleanup; 2048 MiB is a cache disk budget, not a total-memory bound.",
+      "Cold cache, no writable exe directory/temp fallback, disk-full/write failure, corrupt or incomplete .part files, child startup/exit and game shutdown.",
+      "Never load keyframes created by another executable/build; no runtime run/cleanup is authorized by this preparation."
+    ],
+    "result": "NOT_RUN"
+  },
+  "render_integration": {
+    "switches": [
+      "ren_MeshPaletteUsedOnly=0/1",
+      "ren_BuildGhostsPerBeat=0/1"
+    ],
+    "required": [
+      "D3D12/Vulkan packed bone batches and float4 bulk parameter copies, short/large batches, shader constants and descriptor rollover with #284.",
+      "D3D9/10/11 full-palette fallback unchanged visually; compare animated units and build ghosts per beat, camera views and replay rewind.",
+      "Existing #282 particle drag and #283 terrain shadow acceptance plus representative real large ZIP and mixed loading."
+    ],
+    "result": "NOT_RUN"
+  },
+  "rejoin_acceptance": {
+    "new_scenarios": [
+      "3p-rejoin-off.yaml",
+      "3p-rejoin-order-burst.yaml",
+      "3p-rejoin-pause-before.yaml",
+      "3p-rejoin-pause-during.yaml",
+      "3p-rejoin-unit-orders.yaml"
+    ],
+    "updated_scenario": "3p-rejoin-eject-one.yaml",
+    "rule": "Keep ordinary build defaults; test rejoin in an explicitly scoped scenario environment, preserve real orders/pause/handover/no-duplicate checks.",
+    "result": "NOT_RUN"
+  },
+  "router_acceptance": {
+    "build_scope": "Separate explicitly authorized FAF_SERVER_MODE=ON validation, not ordinary main test settings.",
+    "replays": [
+      26957207,
+      27029855
+    ],
+    "required": [
+      "Routed replay end/early stop/repeated runs, --tear-down on/off, driver shutdown before router release and no dangling callback; routing disabled control.",
+      "Recall votes/messages to each allied view, off-team announcements, defeat/resync, due tick status and view/focus changes; unchanged simulation/checksum.",
+      "Initial reclaim labels exact per beat, later visible/allied-visible labels, disappearance before first visibility, updates/deletion/ID reuse, reconnect restoration and no fog leaks.",
+      "Capture complete run, record beat coverage and independent visibility oracle; compare.py success alone is insufficient."
+    ],
+    "upstream_reported_only": [
+      "7fb36e7 reports 15/15 clean endings on 26957207 after a routed-replay use-after-free fix; not rerun here.",
+      "4a9ab49 reports two remaining recall status timing differences: repeated gate omitted near expiry, cooldown first status can be one beat early.",
+      "4a9ab49 explicitly says reconnecting players do not receive their reclaim labels again yet."
+    ],
+    "result": "NOT_RUN"
+  },
+  "pose_lane_rollback": {
+    "commit": "f38d11f7a1711b230b2d6521bf17240fa2c5b021",
+    "result": "NOT_RUN",
+    "upstream_reported_environment": "Linux x64 fw0, 63f97161c + ring from 931c711af + this pose rollback, not newer master and not CI.",
+    "reported_only": "156/157 clean including six previously failing and 26910291; 26848652 separate with own M28AI; 22 keyframe restarts across 26915859/26916583/26901494. None rerun on this candidate.",
+    "six_previous_regressions": "Keep original six cases and their historical first-mismatch evidence unchanged; require full current upstream-control and candidate runs, not assumed fixed.",
+    "reopened_regression": {
+      "replay": 27064121,
+      "reported_first_mismatch_beat": 7400,
+      "upstream_control": "NOT_RUN",
+      "integrated_candidate": "NOT_RUN",
+      "expected_desync_whitelist": false
+    },
+    "additional_keyframe_replays": [
+      26915859,
+      26916583,
+      26901494
+    ],
+    "required": [
+      "Record same replay/game/mod/map/init, architecture, sim_Workers, native binary and tree identities for both profiles.",
+      "Full-checksum replay and restart/save-resume checks are required because pointer/free-list reuse is observable by sim.",
+      "Do not add expected-desync entries, shorten runs or reinterpret upstream-control failure as candidate pass.",
+      "Neither pose policy is established retail-equivalent; IdPool BVIntSet and mVisibleDecals block-taking gaps remain upstream limitations."
+    ]
+  },
+  "frame_cap_carry": {
+    "commit": "feff0562cca1f5813d2e76c1d4882599a22240c0",
+    "default": 1,
+    "result": "NOT_RUN",
+    "required": [
+      "Same-scene sc_FrameTimeCarry=0/1 with cap 4ms, normal speed, idle/late-frame and long-frame recovery.",
+      "Record real frame duration, CPU/GPU time, vsync/timer settings and workload; no FPS claim from authors single runs.",
+      "Preserve existing renderer/bone/descriptor-rollover and GUI replay acceptance."
+    ]
+  },
+  "pgo_acceptance": {
+    "ordinary_test": "PGO OFF / empty profile. Do not mix PGO and plain binaries in baseline comparison.",
+    "optional_pgo": "Separate future explicit work only, requires exact profile bytes, toolchain/runtime, training and held-out replay parity plus native client acceptance.",
+    "author_claims_not_current_tests": {
+      "core_training": 8,
+      "held_out": [
+        26975290,
+        26953273,
+        27034831
+      ],
+      "reported_wall_time_reduction_percent": [
+        18.8,
+        6.8
+      ],
+      "client_scenario": "1p-faf-patches 38/38"
+    },
+    "result": "NOT_RUN"
+  },
+  "inherited_from": {
+    "base": "f38d11f7a1711b230b2d6521bf17240fa2c5b021",
+    "integrated_tree": "b3316a40816c04241152da6baf86b27560ee43ef"
+  },
+  "current_base_execution": "NOT_RUN"
+}

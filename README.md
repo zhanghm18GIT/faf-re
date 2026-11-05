@@ -1,118 +1,53 @@
-# faf-re
+# One fresh AppVeyor Windows candidate: local inert draft
 
-The Moho engine behind *Supreme Commander: Forged Alliance* (2007), rebuilt as readable, buildable C++20 so it can be maintained instead of staying frozen in a binary. It builds for x86 and x64, plays real games bit for bit like the retail `ForgedAlliance.exe`, and the x64 build plays replays about a quarter faster.
+**Not published, configured, dispatched or natively built. Parent final GO is required.**
 
-*Snapshot: 24/10/2026.*
+The previous GitHub driver is adapted into a separate directory. The old source preparation, old GitHub settings/queue and all old AppVeyor artifacts remain untouched. This task does not request any old artifact, restore cached objects, modify user installations, or buy resources.
 
-> An independent preservation and interoperability effort, inspired by and indebted to the [Forged Alliance Forever](https://faforever.com) community. Not affiliated with, endorsed by, or supported by the original publisher or developer.
+## Source identity
 
-## Status
+Official upstream: Draiget/faf-re. Base commit: `a9225d2d2bcc17fca2075d7c534bee18f6c93273` (master rechecked 2026-11-05 08:28 UTC). Candidate tree: `ff340b16db5af1cbb76df051a9a7439c1dd08160`. Integrated once each: open, unmerged #282/#283/#284/#291/#299/#301/#303. No immature texture/cache prototype is included. The #299+#301 combination retains the reviewed adaptation. The only new compatibility edit restores Shadow::RenderShadowMap's terrain parameter name, required because current upstream had commented it out. #303 is merged without dropping upstream replay_scan.
 
-| | |
-|---|---|
-| Builds | `main.exe` (x86) and `main_x64.exe` link and run |
-| Renders | Main menu, cinematic playback, in-game world view; Direct3D 9, 11, 12 and Vulkan ([Renderer backends](docs/RENDERER_BACKENDS.md)) |
-| Plays | Native save/load on both architectures |
-| Replay parity | 448 of 449 vault replays match every recorded checksum, 232 hours of game on 168 maps; the one that does not desyncs at its first checksum, probably because of its map (x64 headless, `/simworkers 8`, 29/10/2026) ([Retail replay parity](docs/RETAIL_REPLAY_PARITY.md)) |
-| Live multiplayer | Retail, rebuilt x86 and rebuilt x64 in one game: 21 min of AI-driven fighting without a desync; retail and our x64 also ran 30 min without a desync, with and without sim workers |
-| Performance | x64 replays take 19 % less time than retail on average (4 % to 33 %) ([Performance](docs/PERFORMANCE.md)) |
-| Recovery | Complete: every engine function the game uses is written as source (40,617 functions). The rest of the shipped exe is library code we link from source (wxWidgets, the MSVC runtime, libpng, Wild Magic, ...) or unreferenced fragments; 0 functions are outstanding |
+The exact source input, patch, dependency and materials hashes are recorded in ci/DRIVER_FILES.json. The source author's independent receipt is under source_latest_0819/REPORT.md; 2,924 candidate blobs, all 34,775 dependency entries, reconstruction and tamper rejection, ten host test groups, and real BuildInfo generation were checked. These checks are not Windows-native or game acceptance.
 
-Most symbols in the retail engine were never hand-written: they are template instantiations, folded aliases, unwind glue and static-init thunks the 2007 compiler emitted from a single source line. Those are rebuilt as that one line, so the function count understates how much is covered.
+The eventual candidate is an integrated test build. Comparing it with retail does not isolate the causal effect of PR #282. In-game evidence must label the exact build, backend, replay/time/camera and selected emitter, and show the actual game. Compilation/unit test success is not a screenshot or game/replay PASS.
 
-## Retail parity
+## Single-job control
 
-Real games from the FAF replay vault (stock and community maps, 1–12 human players, games against the built-in AI and M28AI) play back on the rebuilt engine checksum-identical to retail: 448 of 449 in the 29/10/2026 run, including seven of the eight that still desynced on 27/10/2026. The remaining one desyncs at its first checksum, before the game has really started, probably because of its map. Method, per-replay results and the causes of past divergences: [docs/RETAIL_REPLAY_PARITY.md](docs/RETAIL_REPLAY_PARITY.md).
+- Existing account/project only: zhanghm18GIT/faf-re, Free / Active, Visual Studio 2022, max_jobs=1, platform timeout=60 minutes.
+- Manual forced build only, exact branch and next build number captured immediately before activation, no PR/tag/schedule/rebuild/re-run-incomplete.
+- Verified driver checkout SHA must equal APPVEYOR_REPO_COMMIT; all runtime/test file bytes and their exact set are manifest-checked. No extra runtime file may enter through a broad checkout.
+- There is no automatic dispatch/retry, no payment path, no new account/token/OAuth, no cache/restore, and no GitHub Actions activation.
+- The driver expires work at minute 50 from the init timestamp; an independent supervisor begins forced termination at minute 51.5, leaving 30 seconds to stop the worker tree by minute 52; diagnostic finalization and upload attempts must stop by minute 55, leaving five minutes before the platform's hard 60-minute limit.
+- One compile uses two workers. Extra CPU or matrix jobs are not purchased or silently selected.
+- Small minimal diagnostics are atomically finalized before fuller diagnostics. Timeout cannot make a partial product eligible. A product upload requires process success, final readiness, all gates PASS, and matching final bytes/hash. Upload attempts are not retried. Delivery remains unverified until the new artifact can be retrieved and checked.
+- The build-number guard prevents a later manual build from using the same authorization; provider rerun flags block rebuilding the same number. It is not a durable independent lock or authority to dispatch twice. The operator must inspect current history, dispatch once, and not reset the build number or delete history.
 
-## Performance
+## Native and packaging gates
 
-- **Against retail**: on five vault replays the x64 build saves 4 % (least), 33 % (most) and 19 % (average) of the time. The bigger the battle, the bigger the gain.
-- **Scale**: x86 runs out of address space at about 60,000 units; x64 was still running at 90,000.
-- **Exact**: sim work runs on worker threads only where the result is provably the same as serial, and every change has a switch that restores the original code ([docs/SWITCHES.md](docs/SWITCHES.md)).
+Use fixed official portable CMake 3.31.6, Ninja 1.13.2 and LLVM 22.1.7. The new CMake/Ninja ZIP size/hash pins are frozen from official release/checksum data. System PATH tool versions are not trusted. No tool installer is run; the legacy DirectX redistributable is used only for its authorized extraction mode, never to install system files.
 
-Numbers, method and what is next: [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+Installed MSVC14.44/VS17.14, SDK26100 headers, legacy x64 D3DX/X3DAudio runtime availability and loadability remain preconditions. The precise Microsoft22000 static UCRT is acquired from its pinned official NuGet package into an isolated overlay; the system SDK is unchanged. DirectX June2010 is privately downloaded/extracted from Microsoft with its fixed hash. SDK files are excluded from output.
 
-## Build
+Source blob hashes, candidate tree, patch, submodule HEADs, dependency source bytes, resource set, original flags and complete math inputs remain gated. Nine native targets are mandatory, including new replay_scan and texture_quality tests. All six selected CTests and explicit image_codec run are mandatory; no earlier target/test is removed. Actual old-UCRT linking is checked for engine consumers, including replay_scan. Only standalone effect_scan and texture_quality are excluded from engine-link attribution; their native architecture/import checks still apply. Native guards reject wrong architecture/dynamic CRT, image_codec SKIP, failed/skipped JUnit cases, untruthful BuildInfo and missing headless imports gate.
 
-CMake with clang-cl, for x64 and x86. The C/C++ runtime is linked statically, so the executables need no MSVC runtime DLLs.
+Output contains only explicitly staged candidate binaries, the matching main PDB, pinned DXC runtimes, exact resources, required corresponding source/notices, immutable evidence and a read-only installation checker. Product ZIP max400MiB; diagnostics max32MiB. No game assets, SDK, system DLLs, credentials, home directory or raw environment dump. Size limits must not be met by discarding mandatory symbols/source/licenses.
 
-Needs Visual Studio 2022 (C++ workload, for the Windows SDK and runtime libraries), LLVM (clang-cl, lld-link) in `C:\Program Files\LLVM` or `LLVM_ROOT`, and Git. CMake 3.25+ and Ninja come with Visual Studio's "C++ CMake tools for Windows" component, or from PATH.
+## Activation and recovery checklist
 
-```powershell
-git clone --recursive https://github.com/Draiget/faf-re.git
-.\build.ps1                    # x64 Release -> C:\ProgramData\FAForever\bin_x64\main_x64.exe
-.\build.ps1 -Arch both         # x64 and x86 (x86 -> C:\ProgramData\FAForever\bin\main.exe)
-.\build.ps1 -Arch x86 -Name main_test   # another exe name, to keep the current build alongside
-.\build.ps1 -NoBuild           # copy the last build only
-```
+1. Preserve the frozen latest source identity and finish independent review on the final complete bytes. Preserve exact base, PR heads, adaptations, source tree and candidate file inventories.
+2. Parent reviews the final report, SDK/license boundaries, public driver/diagnostic/product scope and confirms GO. Keep the actual user evidence in a private operator receipt; only its SHA256 goes into the public driver authorization.
+3. Refresh Free/Active/public-repository state and next build number, check no other job is active or queued for this plan, and capture current full settings. Do not assume the 08:04 reference is fresh enough. No documented numeric storage/minute remainder is available; disclose that uncertainty. Do not upgrade or alter billing.
+4. Publish only the exact reviewed driver payload to the authorized dedicated branch while automatic AppVeyor triggers remain off. Leave GitHub Actions disabled. Do not overwrite master or reuse an old resume branch/script. Verify the remote commit and manifest.
+5. Change the existing project's configuration to the reviewed YAML/branch, maxjobs1/timeout60; keep push/PR/tags/schedule off, inherited notifications/cache/deploy disabled. UI environment/notification settings may merge with YAML, so reread them. Remove only the deliberate draft throw after final review and regenerate final manifest; never flip authorization without corresponding evidence.
+6. Record the exact intended next build number and current preflight UTC (<1h). Dispatch once. Observe the actual new build ID/job ID/commit; if dispatch outcome is uncertain, inspect before doing anything else and never blindly dispatch again.
+7. Monitor until terminal. On missing tools, denied read, hash mismatch, timeout or test failure, stop, retain bounded diagnostics and report exact failed/not-run gates. Do not read old R, relay through mirrors, change identities, raise limits or try a second build.
+8. Restore the original inert project settings whether build succeeds or fails: default master, Ignore YAML On, init/install/finalizers off, build/test/deploy off, no automatic artifacts/cache, push/PR/tags/schedules disabled as before. Preserve natural advancement of the build number; never reset it to28. Verify after reload. The worker intentionally has no credentials to change settings, so restoration is a parent/operator obligation, not a claimed in-job action.
+9. Retrieve only this new run's final artifacts. Verify hashes/contents and native evidence before saying delivered. Any new403 also stops that retrieval; no alternate identity or mirror. Save successful authorized outputs promptly because Free AppVeyor artifacts expire after one month.
+10. Use a new side-by-side game candidate directory, retain the original retail executable/path and rollback instructions. No automatic replacement of the user's game or system setup. Rendering/replay comparison remains a separate authorized runtime task.
 
-`build.ps1` configures and builds the presets and copies the exe with its `.pdb`, the `fafengine\` hook folder and the DXC DLLs into the FAF run folders. Other options: `-Configuration Debug`, `-Profile` (see [Profiling with Tracy](#profiling-with-tracy)), `-FafDir`, `-Out` (also copy into `out\<arch>\`), `-NoCopy`, `-Rebuild`, `-Jobs`. Without it:
+## Feasibility limits
 
-```powershell
-cmake --preset clang-x64-release; cmake --build --preset clang-x64-release   # build/clang-x64-release/src/main_x64.exe
-cmake --preset clang-x86-release; cmake --build --preset clang-x86-release   # build/clang-x86-release/src/main.exe
-```
+A complete 60-minute clean build has not been measured. An older cold job reached its2700-second compile cap with full completion unknown and no standalone tests/package; a separate42:27 log restored prebuilt objects and cannot establish clean-build time. The current input is newer and mandatory tests may grow. Large fixed LLVM/DirectX downloads, extraction/hash checks, compilation, full math tests and packaging may exceed the work budget. This is one bounded attempt, not a promise of a runnable result. Do not reduce tests or correctness to make it fit.
 
-Configuring brings `dependencies/` up to date: the submodules (Wild Magic 3.8, zlib 1.2.3, FX11, Vulkan headers, FFmpeg 7.1.3), then boost 1.34.1, wxWidgets 2.4.2 and DXC, each pinned by commit or SHA256, and finally the FAF patches in `dependencies/patches/`. A missing submodule is cloned, a missing download is fetched, and everything is compiled from source. The DirectX SDK (June 2010) is used when installed; otherwise its headers and libraries are extracted from Microsoft's installer. `cmake -P cmake/FafDependencies.cmake` does the same without configuring.
-
-**IDEs.** Visual Studio 2022: File → Open → Folder, then pick a preset. VS Code: install the recommended extensions (CMake Tools, C/C++); CMake Tools offers the same presets, and IntelliSense reads the configured preset.
-
-FFmpeg 7.1.3 (the SFD movie player's decoder) is compiled from source with the engine: `dependencies/ffmpeg` is the unmodified FFmpeg release plus a CMake build ([Draiget/ffmpeg-mirror](https://github.com/Draiget/ffmpeg-mirror)), and its libraries are linked statically, so there are no FFmpeg DLLs and no prebuilt binaries. Its configuration and licence (LGPL v2.1+): [SFD compatibility](docs/FAF_SFD_COMPATIBILITY.md#ffmpeg-dependency-and-build).
-
-### Profiling with Tracy
-
-A profile build adds [Tracy](https://github.com/wolfpld/tracy) 0.14.1 instrumentation: zones for the sim beat and its phases, the sim and UI Lua garbage collection, the worker pool tasks, rendering, `Present`, the UI and UDP send/receive, a frame mark per rendered frame and per sim beat, thread names, and every engine allocation and free.
-
-```powershell
-.\build.ps1 -Profile    # or build_profile.bat; -> bin_x64\main_x64_profile.exe
-.\run_tracy.bat         # the Tracy profiler; downloads it into tools\tracy\ on first run
-```
-
-A profile build is copied as `main_x64_profile.exe` (x86: `main_profile.exe`), so it never replaces the exe the FAF client launches; `-Name` picks another name. Without `build.ps1`: `cmake --preset clang-x64-profile; cmake --build --preset clang-x64-profile` (also `clang-x86-profile`). The preset sets `FAF_ENABLE_TRACY=ON`, and configuring fetches Tracy from GitHub.
-
-The client collects only while a profiler is connected (`TRACY_ON_DEMAND`): start the game, then connect from the profiler; it listens on port 8086. Engine code uses the `FAF_PROFILE_*` macros from `src/gpg/core/profiling/Profiler.h`. In every other build they compile to nothing, so release builds are unchanged.
-
-## What is and isn't here
-
-- **Here:** C++ source, build files, and the tooling used to check behaviour against the original.
-- **Not here:** any game binary, executable, asset, map, script or other copyrighted content, and nothing derived from them. `bin/`, `dumps/`, `decomp/`, `output/` and `gamedata/` are excluded by design. **You need your own legitimately obtained copy of the game.** Nothing here distributes, circumvents or replaces it.
-
-## Layout
-
-| Path | What |
-|---|---|
-| `src/` | The engine (`moho`, `gpg`, `legacy`, `lua`, `platform`, ...); source list `src/sources.cmake` |
-| `data/fafengine/` | Engine-owned Lua hooks copied next to the exe (for example the Graphics API option) |
-| `tools/` | Go multiplayer test harness (`mpemu`) and checkers; see [tools/README.md](tools/README.md) |
-| `scripts/` | Sampling profiler, benchmark and replay helpers (`perf/`), shader and texture checks (`effects/`), and the hang stack dumper (`stackdump.cpp`) |
-| `docs/` | [Performance](docs/PERFORMANCE.md), [Switches](docs/SWITCHES.md), [Retail replay parity](docs/RETAIL_REPLAY_PARITY.md), [PR replay check](docs/PR_REPLAY_CHECK.md), [Renderer backends](docs/RENDERER_BACKENDS.md), [SFD compatibility](docs/FAF_SFD_COMPATIBILITY.md) |
-
-## Libraries the engine uses
-
-All of them are fetched by CMake configure at the exact version below, patched with `dependencies/patches/` where noted, and compiled from source for x86 and x64. Nothing prebuilt is needed.
-
-| Library | Version | Source | FAF patch |
-|---|---|---|---|
-| Wild Magic | 3.8 (original 2006 release) | [Draiget/wild-magic-3-8](https://github.com/Draiget/wild-magic-3-8) (submodule) | `wildmagic3p8_faf_required` |
-| wxWidgets (MSW) | 2.4.2 | [wxMSW-2.4.2.zip](https://github.com/wxWidgets/wxWidgets/releases/download/v2.4.2/wxMSW-2.4.2.zip) | `wxwindows_2_4_2_faf_required`, `_x64`, `_x64_pointers` |
-| Boost | 1.34.1 | [boost_1_34_1.tar.bz2](https://downloads.sourceforge.net/project/boost/boost/1.34.1/boost_1_34_1.tar.bz2) | `boost_1_34_1_faf_required` |
-| zlib | 1.2.3 | [madler/zlib](https://github.com/madler/zlib/tree/v1.2.3) (submodule) | `zlib_1_2_3_faf_required` |
-| FFmpeg | 7.1.3 (LGPL) | [Draiget/ffmpeg-mirror](https://github.com/Draiget/ffmpeg-mirror) (submodule) | none; linked statically, for SFD movies in place of CRI Sofdec/ADX |
-| FX11 | bec3b8fc | [microsoft/FX11](https://github.com/microsoft/FX11) (submodule) | none |
-| Vulkan headers | 1.4.304 | [KhronosGroup/Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers) (submodule) | none |
-| DirectX Shader Compiler | 1.9.2609 | [DXC release](https://github.com/microsoft/DirectXShaderCompiler/releases/tag/v1.9.2609) | none |
-| DirectX SDK | June 2010 | an installed SDK, else extracted from [Microsoft's installer](https://download.microsoft.com/download/A/E/7/AE743F1F-632B-4809-87A9-AA1BB3458E31/DXSDK_Jun10.exe) | none |
-
-Lua is part of the engine source: it carries the Lua 5.0 C API headers of LuaPlus build 1081 (`src/lua/luaplus/`), not the LuaPlus library. The original's BugSplat crash reporter is not used. Graphics: Direct3D 9 and 10 as shipped, plus Direct3D 11, Direct3D 12 and Vulkan added here.
-
-## SFD movie playback
-
-The engine does not use or distribute the CRI Sofdec/ADX runtime. `.sfd` support is an independent implementation with FFmpeg and a bounded FAF metadata parser. The legacy `mwPly*`/`ADXM_*` names remain only as a compatibility facade for the recovered call sites. Embedded audio and optional external XACT sound/voice cues stay separate. Profile, dependency setup, validation and unsupported composition modes: [docs/FAF_SFD_COMPATIBILITY.md](docs/FAF_SFD_COMPATIBILITY.md).
-
-## Support
-
-This rebuild took a lot of time and paid AI compute. If it is useful to you, donations in ETH are welcome: `0x8f614802906dF231b8fbC9a6f11C6728D2A13DDF`
-
-## Credits
-
-Built on many years of engine study by the Forged Alliance Forever community. Particular thanks to [Hdt80bro](https://github.com/Hdt80bro) and [4z0t](https://github.com/4z0t).
+Run local checks without bytecode: `python -B -m unittest discover -s ci/tests -v` and `python -B ci/verify_draft.py`. They do not establish Windows-native execution or game acceptance.
